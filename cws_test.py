@@ -70,7 +70,6 @@ def test_usub_1():
             outlist.append('%d;' % (a - b,))
     test_gen('USUB_1', USUB, inplist, outlist)
 
-
 def test_usub_2():
     # Input  PS: M;N;
     # Output PS: R;   with R = M-N
@@ -82,6 +81,18 @@ def test_usub_2():
         inplist.append('%d;%d;' % (a, b))
         outlist.append('%d;' % (a - b,))
     test_gen('USUB_2', USUB, inplist, outlist)
+
+def test_usub_3():
+    # Input  PS: M;N;
+    # Output PS: R;   with R = M-N
+    inplist = list()
+    outlist = list()
+    for n in range(100):
+        a = random.randint(0, 10 ** n)
+        b = a
+        inplist.append('%d;%d;' % (a, b))
+        outlist.append('%d;' % (a - b,))
+    test_gen('USUB_3', USUB, inplist, outlist)
 
 
 def test_fullmul():
@@ -223,19 +234,20 @@ def test_gen(descr, func, inplist, outlist):
 
 
 def main():
-    #test_fulladd()
-    #test_fullsub()
-    #test_uadd()
+    test_fulladd()
+    test_fullsub()
+    test_uadd()
     test_usub_1()
     test_usub_2()
-    #test_fullmul()
-    #test_mulbydigit()
-    #test_umul_1()
-    #test_umul_2()
-    #test_umul_3()
-    #test_umul_4()
-    #test_umul_5()
-    #test_umul_6()
-    #test_umul_7()
+    test_usub_3()
+    test_fullmul()
+    test_mulbydigit()
+    test_umul_1()
+    test_umul_2()
+    test_umul_3()
+    test_umul_4()
+    test_umul_5()
+    test_umul_6()
+    test_umul_7()
 
 main()
