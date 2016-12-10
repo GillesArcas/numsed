@@ -1,4 +1,4 @@
-from cws import FULLADD, FULLSUB, UADD, USUB, FULLMUL, MULBYDIGIT, UMUL
+from cws import CMP, FULLADD, FULLSUB, UADD, USUB, FULLMUL, MULBYDIGIT, UMUL
 import subprocess
 import random
 
@@ -8,6 +8,31 @@ def random_content():
     return ';'.join(x)
 
 
+def test_cmp_1():
+    # Input  PS: M;N;
+    # Output PS: < or = or >
+    inplist = list()
+    outlist = list()
+    for a in range(100):
+        for b in range(100):
+            inplist.append('%d;%d;' % (a, b))
+            outlist.append('%s' % '<' if a < b else '=' if a == b else '>')
+    test_gen('CMP_1', CMP, inplist, outlist)
+    
+def test_cmp_2():
+    # Input  PS: M;N;
+    # Output PS: < or = or >
+    inplist = list()
+    outlist = list()
+    for p in range(1, 100):
+        for q in range(1, 100):
+            a = random.randint(10 ** (p-1), 10 ** p)
+            b = random.randint(10 ** (q-1), 10 ** q)
+            inplist.append('%d;%d;' % (a, b))
+            outlist.append('%s' % '<' if a < b else '=' if a == b else '>')
+    test_gen('CMP_2', CMP, inplist, outlist)
+    
+    
 def test_fulladd():
     # Input  PS: abcX with c = 0 or 1
     # Output PS: rX   with r = a + b + c padded on two digits
@@ -236,6 +261,9 @@ def test_gen(descr, func, inplist, outlist):
 
 
 def main():
+    test_cmp_1()
+    test_cmp_2()
+    return
     test_fulladd()
     test_fullsub()
     test_uadd()
