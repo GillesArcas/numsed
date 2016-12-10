@@ -1,7 +1,12 @@
 import sys
+import re
 import dis
 import subprocess
-
+from StringIO import StringIO  # Python2
+#from io import StringIO  # Python3
+ 
+ 
+import sys
 # https://docs.python.org/2/library/dis.html
 # http://www.goldsborough.me/python/low-level/2016/10/04/00-31-30-disassembling_python_bytecode/
 
@@ -36,6 +41,10 @@ def LOAD_CONST(const):
     return replace('const', const, snippet)
 
 
+# LOAD_NAME et STORE_NAME travaillent toujours dans le contexte courant
+# par ex, les contextes sont separes par des "|"
+
+
 def LOAD_NAME(name):
     snippet = r'''                      # PS: ?         HS: ?;v;x?
         g                               # PS: ?;v;x?    HS: ?;v;x?
@@ -57,7 +66,6 @@ def STORE_NAME(name):
     return replace('name', name, snippet)
 
 
-
 def CMP():
     snippet = r'''                      # PS: X;Y;
         s/;/!;/g                        # PS: X!;Y!;
@@ -68,35 +76,35 @@ def CMP():
         /;!/!blt
                                         # PS: !X;!Y;
         s/^!(\d*)(\d*);!\1(\d*);/\2;\3;/# strip identical leading digits
-        /^;;$/ { s/.*/=/; bend }        # PS: 1 if all digits are equal
+        /^;;$/ { s/.*/=/; bend }        # PS: = if all digits are equal
 
         s/$/9876543210/
         /^(.)\d*;(.)\d*;.*\1.*\2/bgt
         :lt
-        s/.*/</                         # PS: 0 if x < y
+        s/.*/</                         # PS: < if x < y
         bend
         :gt
-        s/.*/>/                         # PS: 2 if x > y
-        :end                            # PS: 0|1|2
+        s/.*/>/                         # PS: > if x > y
+        :end                            # PS: <|=|>
     '''
     return normalize(snippet, labels=('loop', 'gt', 'lt', 'end'))
 
 def COMPARE_OP(opname):
     if opname == 'EQ':
-        snippet = 'LOAD_TOP2; CMP; y/<=>/010/; PUSH'
+        snippet = 'POP2; CMP; y/<=>/010/; PUSH'
     elif opname == 'NE':
-        snippet = 'LOAD_TOP2; CMP; y/<=>/101/; PUSH'
+        snippet = 'POP2; CMP; y/<=>/101/; PUSH'
     elif opname == 'LT':
-        snippet = 'LOAD_TOP2; CMP; y/<=>/100/; PUSH'
+        snippet = 'POP2; CMP; y/<=>/100/; PUSH'
     elif opname == 'LE':
-        snippet = 'LOAD_TOP2; CMP; y/<=>/110/; PUSH'
+        snippet = 'POP2; CMP; y/<=>/110/; PUSH'
     elif opname == 'GT':
-        snippet = 'LOAD_TOP2; CMP; y/<=>/001/; PUSH'
+        snippet = 'POP2; CMP; y/<=>/001/; PUSH'
     elif opname == 'GE':
-        snippet = 'LOAD_TOP2; CMP; y/<=>/011/; PUSH'
+        snippet = 'POP2; CMP; y/<=>/011/; PUSH'
     return snippet
 
-
+ 
 def POP_JUMP_IF_TRUE(target):
     snippet = 'LOAD_TOP; /^1$/b ' + target
     return snippet
@@ -186,7 +194,7 @@ def UADD():
 def USUB():
     snippet = r'''
                                         # PS: M;N*
-        s/(\d*;\d*)/0;&;/               # PS; 0;M;N;*
+        s/\d*;\d*/0;&;/                 # PS; 0;M;N;*
         :loop                           # PS: cR;Mm;Nn;*
         s/(\d*);(\d*)(\d);(\d*)(\d);/\3\5\1;\2;\4;/
                                         # PS: mncR;M;N;*
@@ -206,6 +214,16 @@ def USUB():
         :end                            # PS: M-N|NAN
      '''
     return normalize(snippet, labels=('loop', 'nan', 'end'), macros=('FULLSUB',))
+
+
+def BINARY_SUBTRACT():
+    snippet = r'''
+                                        # PS: X         HS: M;N;Y
+        POP2                            # PS: M;N;      HS: Y
+        USUB                            # PS: R         HS: Y
+        PUSH                            # PS: R         HS: R;Y 
+     '''
+    return normalize(snippet, macros=('POP2', 'USUB', 'PUSH'))
 
 
 def sign_add(x, y):
@@ -310,22 +328,92 @@ def euclide(a, b):
         n += 1
 
     while n > 0:
-        aux = aux / 2
+        #aux = aux / 2
+        aux *= 5
+        aux /= 10
         n -= 1
         q = q * 2
         if r >= aux:
             r -= aux
             q += 1
 
-    return q, r
+    return q
 
 
+def UDIV():
+    print euclide.func_code.co_varnames
+    print euclide.func_code.co_varnames[:euclide.func_code.co_argcount]
+    old_stdout = sys.stdout
+    result = StringIO()   
+    sys.stdout = result
+    dis.dis(euclide)
+    sys.stdout = old_stdout
+    return result.getvalue()
+    
+
+def make_opcode(func):
+    # func is a python function
+    # result is a list of opcodes, arguments and result at top of stack
+    
+    # disassemble function
+    old_stdout = sys.stdout
+    result = StringIO()   
+    sys.stdout = result
+    dis.dis(func)
+    sys.stdout = old_stdout
+    code = result.getvalue()
+
+    # normalize labels and opcode arguments
+    for line in code.splitlines():
+        if line.strip():
+            parse_dis_instruction(line)
+
+    # create ontext and add opcodes to store arguments in current context
+    args = func.func_code.co_varnames[:func.func_code.co_argcount]
+    
+    store_args = '\n'.join(['STORE_NAME %s' % arg for arg in args])
+        
+    # after code the result is on top of stack, remais to clean context
+    snippet = 'MAKE_CONTEXT' + store_args + code + 'POP_CONTEXT'
+    
+    # ok sauf que normalize ne traite pas de opcode avec arguments
+    return normalize(snippet, macros=('MAKE_CONTEXT', 'POP_CONTEXT', 'STORE_NAME'))
+    
+  
 def decompfile(filename):
     with open(filename) as f:
         source = f.read()
     code = compile(source, filename, "exec")
     print dis.dis(code)
+   
+   
+def parse_dis(x):
+    print x
+    for line in x.splitlines():
+        if line.strip():
+            parse_dis_instruction(line)
+    
+def parse_dis_instruction(s):
+    #  45 BINARY_MULTIPLY
+    #  59 JUMP_ABSOLUTE           27
+    #  46 STORE_FAST               5 (aux)
+    m = re.search('(\d+) (\w+) +(.*)', s)
+    label, instr, arg = m.group(1), m.group(2), m.group(3)
+    
+    if '>>' not in s:
+        label = None
+        
+    if not arg:
+        arg = None
+    elif not '(' in arg:
+        arg = arg.strip()
+    else:
+        m = re.search('\((.*)\)', arg)
+        arg = m.group(1)
+    
+    print label, instr, arg
 
+    
 def test():
     #decompfile(sys.argv[1])
     #print dis.dis(euclide)
@@ -333,8 +421,10 @@ def test():
     #print euclide(17,3)
     #print MULBYDIGIT()
     #print 123456 * 567, UMUL(123456, 567)
-    #print UMUL()
+    x = UDIV()
+    parse_dis(x)
     pass
 
 
-test()
+if __name__ == "__main__":
+    test()

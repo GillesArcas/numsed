@@ -225,6 +225,8 @@ def test_gen(descr, func, inplist, outlist):
             print>>f, line
 
     com = 'sed -r -f %s %s' % ('test.sed', 'test.input')
+    
+    # TODO: check sed in path
     res = subprocess.check_output(com).splitlines()
 
     print descr
