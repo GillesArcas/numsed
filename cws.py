@@ -4,8 +4,8 @@ import dis
 import subprocess
 from StringIO import StringIO  # Python2
 #from io import StringIO  # Python3
- 
- 
+
+
 import sys
 # https://docs.python.org/2/library/dis.html
 # http://www.goldsborough.me/python/low-level/2016/10/04/00-31-30-disassembling_python_bytecode/
@@ -18,10 +18,21 @@ def normalize(snippet, labels=None, macros=None):
 
     if macros:
         for macro in macros:
-            snippet = snippet.replace(macro, globals()[macro]())
+            #snippet = snippet.replace(macro, globals()[macro]())
+
+            def repl(m):
+                #print '(%s)' % m.group(1)
+                if not m.group(1):
+                    return globals()[macro]()
+                else:
+                    return globals()[macro](m.group(1))
+
+            snippet = re.sub(r'%s *([^; #\n]*)' % macro, repl, snippet)
+            #print snippet
 
     snippet = snippet.replace('\\d', '[0-9]')
     return snippet
+
 
 label_counter = 0
 def new_label():
@@ -46,13 +57,14 @@ def LOAD_CONST(const):
 
 
 def LOAD_NAME(name):
+    # TOS = val(name)
     snippet = r'''                      # PS: ?         HS: ?;v;x?
         g                               # PS: ?;v;x?    HS: ?;v;x?
         /;name;/! s/.*/0/               # PS: 0 if var undefined
         s/(^.*;name;([^;]*).*)/\2;\1/   # PS: x;?;v;x?  HS: ?;v;x?
         h                               # PS: ?         HS: x;?;v;x?
     '''
-    return replace('name', name, snippet)
+    return snippet.replace('name', name)
 
 
 def STORE_NAME(name):
@@ -63,7 +75,14 @@ def STORE_NAME(name):
         s/([^;]*).*/&;name;\1/          # PS: x;X';v;x  HS: ?
         h                               # PS: ?         HS: x;X';v;x
     '''
-    return replace('name', name, snippet)
+    return snippet.replace('name', name)
+
+
+def MAKE_CONTEXT():
+    return ''
+
+def POP_CONTEXT():
+    return ''
 
 
 def CMP():
@@ -71,18 +90,18 @@ def CMP():
         s/;/!;/g                        # PS: X!;Y!;
         :loop                           # PS: Xx!X';Yy!Y';
         s/(\d)!(\d*;\d*)(\d)!/!\1\2!\3/ # PS: X!xX';Y!yY';
-        tloop
-        /^!/!bgt
-        /;!/!blt
+        t loop
+        /^!/!b gt
+        /;!/!b lt
                                         # PS: !X;!Y;
         s/^!(\d*)(\d*);!\1(\d*);/\2;\3;/# strip identical leading digits
-        /^;;$/ { s/.*/=/; bend }        # PS: = if all digits are equal
+        /^;;$/ { s/.*/=/; b end }       # PS: = if all digits are equal
 
         s/$/9876543210/
-        /^(.)\d*;(.)\d*;.*\1.*\2/bgt
+        /^(.)\d*;(.)\d*;.*\1.*\2/b gt
         :lt
         s/.*/</                         # PS: < if x < y
-        bend
+        b end
         :gt
         s/.*/>/                         # PS: > if x > y
         :end                            # PS: <|=|>
@@ -104,7 +123,7 @@ def COMPARE_OP(opname):
         snippet = 'POP2; CMP; y/<=>/011/; PUSH'
     return snippet
 
- 
+
 def POP_JUMP_IF_TRUE(target):
     snippet = 'LOAD_TOP; /^1$/b ' + target
     return snippet
@@ -221,7 +240,7 @@ def BINARY_SUBTRACT():
                                         # PS: X         HS: M;N;Y
         POP2                            # PS: M;N;      HS: Y
         USUB                            # PS: R         HS: Y
-        PUSH                            # PS: R         HS: R;Y 
+        PUSH                            # PS: R         HS: R;Y
      '''
     return normalize(snippet, macros=('POP2', 'USUB', 'PUSH'))
 
@@ -344,65 +363,71 @@ def UDIV():
     print euclide.func_code.co_varnames
     print euclide.func_code.co_varnames[:euclide.func_code.co_argcount]
     old_stdout = sys.stdout
-    result = StringIO()   
+    result = StringIO()
     sys.stdout = result
     dis.dis(euclide)
     sys.stdout = old_stdout
     return result.getvalue()
-    
+
 
 def make_opcode(func):
     # func is a python function
     # result is a list of opcodes, arguments and result at top of stack
-    
+
     # disassemble function
     old_stdout = sys.stdout
-    result = StringIO()   
+    result = StringIO()
     sys.stdout = result
     dis.dis(func)
     sys.stdout = old_stdout
     code = result.getvalue()
 
     # normalize labels and opcode arguments
+    newcode = []
     for line in code.splitlines():
         if line.strip():
-            parse_dis_instruction(line)
+            label, instr, arg = parse_dis_instruction(line)
+            if label:
+                newcode.append(':%s' % label)
+            if arg:
+                newcode.append('%s %s' % (instr, arg))
+            else:
+                newcode.append(instr)
 
-    # create ontext and add opcodes to store arguments in current context
+    # create context and add opcodes to store arguments in current context
     args = func.func_code.co_varnames[:func.func_code.co_argcount]
-    
+
     store_args = '\n'.join(['STORE_NAME %s' % arg for arg in args])
-        
+
     # after code the result is on top of stack, remais to clean context
-    snippet = 'MAKE_CONTEXT' + store_args + code + 'POP_CONTEXT'
-    
-    # ok sauf que normalize ne traite pas de opcode avec arguments
+    snippet = 'MAKE_CONTEXT\n' + store_args + '\n'.join(newcode) + 'POP_CONTEXT\n'
+
     return normalize(snippet, macros=('MAKE_CONTEXT', 'POP_CONTEXT', 'STORE_NAME'))
-    
-  
+
+
 def decompfile(filename):
     with open(filename) as f:
         source = f.read()
     code = compile(source, filename, "exec")
     print dis.dis(code)
-   
-   
+
+
 def parse_dis(x):
     print x
     for line in x.splitlines():
         if line.strip():
             parse_dis_instruction(line)
-    
+
 def parse_dis_instruction(s):
     #  45 BINARY_MULTIPLY
     #  59 JUMP_ABSOLUTE           27
     #  46 STORE_FAST               5 (aux)
     m = re.search('(\d+) (\w+) +(.*)', s)
     label, instr, arg = m.group(1), m.group(2), m.group(3)
-    
+
     if '>>' not in s:
         label = None
-        
+
     if not arg:
         arg = None
     elif not '(' in arg:
@@ -410,10 +435,18 @@ def parse_dis_instruction(s):
     else:
         m = re.search('\((.*)\)', arg)
         arg = m.group(1)
-    
-    print label, instr, arg
 
-    
+    return label, instr, arg
+
+
+def tmp():
+    snippet = r'''
+        LOAD_NAME foo
+        STORE_NAME bar
+    '''
+    return normalize(snippet, macros=('LOAD_NAME', 'STORE_NAME',))
+
+
 def test():
     #decompfile(sys.argv[1])
     #print dis.dis(euclide)
@@ -421,8 +454,10 @@ def test():
     #print euclide(17,3)
     #print MULBYDIGIT()
     #print 123456 * 567, UMUL(123456, 567)
-    x = UDIV()
-    parse_dis(x)
+    #x = UDIV()
+    #parse_dis(x)
+    #print tmp()
+    print make_opcode(euclide)
     pass
 
 

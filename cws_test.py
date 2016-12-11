@@ -263,7 +263,6 @@ def test_gen(descr, func, inplist, outlist):
 def main():
     test_cmp_1()
     test_cmp_2()
-    return
     test_fulladd()
     test_fullsub()
     test_uadd()
