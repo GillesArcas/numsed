@@ -1,12 +1,47 @@
-from cws import CMP, FULLADD, FULLSUB, UADD, USUB, FULLMUL, MULBYDIGIT, UMUL
+from cws import MAKE_CONTEXT, POP_CONTEXT, PUSH, POP, LOAD_FAST, STORE_FAST,\
+                CMP, FULLADD, FULLSUB, UADD, USUB, FULLMUL, MULBYDIGIT, UMUL
 import subprocess
 import random
 
+
+def random_ndigits(p):
+    return random.randint(10 ** (p-1), 10 ** p)
 
 def random_content():
     x = [str(random.randint(0, 10 ** 10)) for n in range(random.randint(0, 10))]
     return ';'.join(x)
 
+def func_context():
+    snippet =\
+        '''/^push/ {
+        s/^push// ''' +\
+        MAKE_CONTEXT() +\
+        PUSH() +\
+        STORE_FAST('x') +\
+        LOAD_FAST('x') +\
+        POP() +\
+        '}\n' +\
+        '/^pop/ { s/^pop// ' +\
+        LOAD_FAST('x') +\
+        POP() +\
+        POP_CONTEXT() +\
+        '}'
+    return snippet
+
+
+def test_context():
+    # Input  PS:
+    # Output PS:
+    inplist = list()
+    outlist = list()
+    numlist = [random_ndigits(n) for n in range(1, 3)]
+    for x in numlist:
+        inplist.append('push%d' % x)
+        outlist.append('%d' % x)
+    for x in reversed(numlist):
+        inplist.append('pop')
+        outlist.append('%d' % x)
+    test_gen('func_context', func_context, inplist, outlist)
 
 def test_cmp_1():
     # Input  PS: M;N;
@@ -18,7 +53,7 @@ def test_cmp_1():
             inplist.append('%d;%d;' % (a, b))
             outlist.append('%s' % '<' if a < b else '=' if a == b else '>')
     test_gen('CMP_1', CMP, inplist, outlist)
-    
+
 def test_cmp_2():
     # Input  PS: M;N;
     # Output PS: < or = or >
@@ -31,8 +66,8 @@ def test_cmp_2():
             inplist.append('%d;%d;' % (a, b))
             outlist.append('%s' % '<' if a < b else '=' if a == b else '>')
     test_gen('CMP_2', CMP, inplist, outlist)
-    
-    
+
+
 def test_fulladd():
     # Input  PS: abcX with c = 0 or 1
     # Output PS: rX   with r = a + b + c padded on two digits
@@ -250,7 +285,7 @@ def test_gen(descr, func, inplist, outlist):
             print>>f, line
 
     com = 'sed -r -f %s %s' % ('test.sed', 'test.input')
-    
+
     # TODO: check sed in path
     res = subprocess.check_output(com).splitlines()
 
@@ -261,6 +296,8 @@ def test_gen(descr, func, inplist, outlist):
 
 
 def main():
+    test_context()
+    return
     test_cmp_1()
     test_cmp_2()
     test_fulladd()
