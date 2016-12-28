@@ -18,6 +18,7 @@ def func_context():
         MAKE_CONTEXT() +\
         PUSH() +\
         STORE_FAST('x') +\
+        POP() +\
         LOAD_FAST('x') +\
         POP() +\
         '}\n' +\
@@ -34,7 +35,7 @@ def test_context():
     # Output PS:
     inplist = list()
     outlist = list()
-    numlist = [random_ndigits(n) for n in range(1, 3)]
+    numlist = [random_ndigits(n) for n in range(1, 11)]
     for x in numlist:
         inplist.append('push%d' % x)
         outlist.append('%d' % x)

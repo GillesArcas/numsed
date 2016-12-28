@@ -98,7 +98,7 @@ def MAKE_CONTEXT():
 def POP_CONTEXT():
     snippet = '''
         x
-        s/[|][^|]*//
+        s/[|][^|]*$//
         x
     '''
     return snippet
@@ -109,7 +109,7 @@ def LOAD_FAST(name):
         g                               # PS: ?;v;x?    HS: ?;v;x?
         /[|][^|]*;name;[^|]*/! s/.*/0;&/
                                         # PS: 0 if var undefined
-        s/([|][^|]*;name;([^;]*);[^|]*)/\2;\1/
+        s/.*[|][^|]*;name;([^;]*)[^|]*$/\1;&/
                                         # PS: x;?;v;x?  HS: ?;v;x?
         h                               # PS: ?         HS: x;?;v;x?
     '''
@@ -120,7 +120,6 @@ def STORE_FAST(name):
     snippet = r'''                      # PS: ?         HS: x;X
         g                               # PS: x;X       HS: ?
         s/([^;]*).*/&;name;\1/          # PS: x;X';v;x  HS: ?
-        p
         h                               # PS: ?         HS: x;X';v;x
     '''
     return DELETE_FAST(name) + snippet.replace('name', name)
