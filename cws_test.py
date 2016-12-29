@@ -7,11 +7,15 @@ import random
 def random_ndigits(p):
     return random.randint(10 ** (p-1), 10 ** p)
 
+def random_varname():
+    return ''.join(random.sample('abcdefghijklmnopqrstuvwxyz', random.randint(1, 10)))
+
 def random_content():
     x = [str(random.randint(0, 10 ** 10)) for n in range(random.randint(0, 10))]
     return ';'.join(x)
 
-def func_context():
+
+def func_context_1():
     snippet =\
         '''/^push/ {
         s/^push// ''' +\
@@ -29,8 +33,7 @@ def func_context():
         '}'
     return snippet
 
-
-def test_context():
+def test_context_1():
     # Input  PS:
     # Output PS:
     inplist = list()
@@ -42,7 +45,46 @@ def test_context():
     for x in reversed(numlist):
         inplist.append('pop')
         outlist.append('%d' % x)
-    test_gen('func_context', func_context, inplist, outlist)
+    test_gen('func_context_1', func_context_1, inplist, outlist)
+
+
+def func_context_2():
+    nvars = 10
+    lvars = [random_varname() for n in range(nvars)]
+    snippet_begin = '1 {' + MAKE_CONTEXT() + '}\n'
+    snippet_end =  '$ {' +  POP_CONTEXT() + '}\n'
+    pattern_store = \
+        '%d {' +\
+        PUSH() +\
+        STORE_FAST('%s') +\
+        POP() +\
+        '}\n'
+    pattern_load = \
+        '%d {' +\
+        LOAD_FAST('%s') +\
+        POP() +\
+        '}\n'
+    snippet = '\n'.join([snippet_begin] +
+                        [pattern_store % (n, s, s) for n,s in zip(range(1, nvars+1), lvars)] +
+                        [pattern_load % (n, s, s) for n,s in zip(range(nvars+1, nvars+11), lvars)] +
+                        [snippet_end])
+    return snippet
+
+def test_context_2():
+    # Input  PS:
+    # Output PS:
+    nvars = 10
+    inplist = list()
+    outlist = list()
+    numlist = [random_ndigits(10) for n in range(1, nvars+1)]
+    for x in numlist:
+        inplist.append('%d' % x)
+        outlist.append('%d' % x)
+    for x in numlist:
+        inplist.append('pop')
+        outlist.append('%d' % x)
+    test_gen('func_context_2', func_context_2, inplist, outlist)
+
 
 def test_cmp_1():
     # Input  PS: M;N;
@@ -297,7 +339,8 @@ def test_gen(descr, func, inplist, outlist):
 
 
 def main():
-    test_context()
+    test_context_1()
+    test_context_2()
     return
     test_cmp_1()
     test_cmp_2()
