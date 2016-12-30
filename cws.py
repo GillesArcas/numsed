@@ -586,85 +586,6 @@ def make_opcode(func):
 
     return normalize(snippet, macros=('MAKE_CONTEXT', 'POP_CONTEXT', 'STORE_NAME'))
 
-def make_opcode_module(filename):
-
-    # compile module
-    with open(filename) as f:
-        source = f.read()
-    code = compile(source, filename, "exec")
-
-    # disassemble module
-    old_stdout = sys.stdout
-    result = StringIO()
-    sys.stdout = result
-    dis.dis(code)
-    sys.stdout = old_stdout
-    code = result.getvalue()
-
-    # normalize disassembly labels and opcode arguments
-    newcode = []
-    for line in code.splitlines():
-        if line.strip():
-            label, instr, arg = parse_dis_instruction(line)
-            if label:
-                newcode.append(':%s' % label)
-            if arg:
-                newcode.append('%s %s' % (instr, arg))
-            else:
-                newcode.append(instr)
-
-    # create list of function labels and list of return labels
-    function_labels = []
-    return_labels = []
-    newcode2 = []
-    for instr in newcode:
-        if instr.startswith('FUNCTION'):
-            name = instr.split()[1]
-            function_labels.append(name)
-            newcode2.append(instr)
-            newcode2.append(':%s' % name)
-        elif instr.startswith('CALL_FUNCTION'):
-            label = new_label()
-            return_labels.append(label)
-            newcode2.append(instr)
-            newcode2.append(':%s' % label)
-        else:
-            newcode2.append(instr)
-
-    for instr in newcode2:
-        print instr
-
-def parse_dis_instruction(s):
-    #  45 BINARY_MULTIPLY
-    #  59 JUMP_ABSOLUTE           27
-    #  46 STORE_FAST               5 (aux)
-    m = re.search('(\d+) (\w+) +(.*)', s)
-    label, instr, arg = m.group(1), m.group(2), m.group(3)
-
-    if '>>' not in s:
-        label = None
-
-    if not arg:
-        arg = None
-    elif 'code object' in arg:
-        # <code object foo at 030E7EC0, file "exemple01.py", line 1>
-        m = re.search('code object ([^ ]+) at ([^ ]+),', arg)
-        arg = '%s_%s' % (m.group(1), m.group(2))
-    elif '(' in arg:
-        m = re.search('\((.*)\)', arg)
-        arg = m.group(1)
-    else:
-        arg = arg.strip()
-
-    return label, instr, arg
-
-
-def decompfile(filename):
-    with open(filename) as f:
-        source = f.read()
-    code = compile(source, filename, "exec")
-    dis.dis(code)
-
 
 def parse_dis(x):
     print x
@@ -714,6 +635,105 @@ def cws_compile(fname):
     #                 if inspect.isfunction(obj)]
 
 
+# -- Disassemble -------------------------------------------------------------
+
+
+def disassemble(source, trace=False):
+
+    # compile
+    with open(source) as f:
+        script = f.read()
+    code = compile(script, source, "exec")
+
+    # disassemble
+    old_stdout = sys.stdout
+    result = StringIO()
+    sys.stdout = result
+    dis.dis(code)
+    sys.stdout = old_stdout
+    code = result.getvalue().splitlines()
+
+    # trace if requested
+    if trace:
+        for instr in code:
+            print instr
+
+    # return list of instructions
+    return code
+
+
+# -- Disassemble to cws opcodes ----------------------------------------------
+
+
+def make_opcode_module(source, trace=False):
+
+    # disassemble
+    code = disassemble(source, trace=False)
+
+    # normalize disassembly labels and opcode arguments
+    newcode = []
+    for line in code:
+        if line.strip():
+            label, instr, arg = parse_dis_instruction(line)
+            if label:
+                newcode.append(':%s' % label)
+            if arg:
+                newcode.append('%s %s' % (instr, arg))
+            else:
+                newcode.append(instr)
+
+    # create list of function labels and list of return labels
+    function_labels = []
+    return_labels = []
+    newcode2 = []
+    for instr in newcode:
+        if instr.startswith('FUNCTION'):
+            name = instr.split()[1]
+            function_labels.append(name)
+            newcode2.append(instr)
+            newcode2.append(':%s' % name)
+        elif instr.startswith('CALL_FUNCTION'):
+            label = new_label()
+            return_labels.append(label)
+            newcode2.append(instr)
+            newcode2.append(':%s' % label)
+        else:
+            newcode2.append(instr)
+
+    # trace if requested
+    if trace:
+        for instr in newcode2:
+            print instr
+
+    # return list of instructions
+    return newcode2
+
+
+def parse_dis_instruction(s):
+    #  45 BINARY_MULTIPLY
+    #  59 JUMP_ABSOLUTE           27
+    #  46 STORE_FAST               5 (aux)
+    m = re.search('(\d+) (\w+) +(.*)', s)
+    label, instr, arg = m.group(1), m.group(2), m.group(3)
+
+    if '>>' not in s:
+        label = None
+
+    if not arg:
+        arg = None
+    elif 'code object' in arg:
+        # <code object foo at 030E7EC0, file "exemple01.py", line 1>
+        m = re.search('code object ([^ ]+) at ([^ ]+),', arg)
+        arg = '%s_%s' % (m.group(1), m.group(2))
+    elif '(' in arg:
+        m = re.search('\((.*)\)', arg)
+        arg = m.group(1)
+    else:
+        arg = arg.strip()
+
+    return label, instr, arg
+
+
 # -- Tests -------------------------------------------------------------------
 
 
@@ -721,7 +741,6 @@ def test():
     #import exemple01
     #dis.dis(exemple01)
     #cws_compile('exemple01')
-    decompfile(sys.argv[1])
     #print make_opcode_module(sys.argv[1])
     #import inspect
     #functions_list = [obj for name,obj in inspect.getmembers(sys.modules[__name__])
@@ -786,9 +805,9 @@ def main():
         do_helphtml()
         return
     elif args.disassemble:
-        decompfile(args.source)
+        disassemble(args.source, trace=True)
     elif args.opcodes:
-        make_opcode_module(args.source)
+        make_opcode_module(args.source, trace=True)
     elif args.test:
         test()
     else:
