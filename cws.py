@@ -217,7 +217,7 @@ def STORE_NAME(name):
     return snippet.replace('name', name)
 
 
-# --
+# -- Functions ---------------------------------------------------------------
 
 
 def CALL_FUNCTION(argc):
@@ -231,6 +231,26 @@ def CALL_FUNCTION(argc):
         '''
     return normalize(snippet, replace=(('argc', argc),))
 
+
+def RETURN():
+    # HS: label;X
+    return_labels = X
+    snippet = '''
+        s/^//                           # force a substitution to enable t
+        t test_return                   # t to next line to reset t flag
+        :test_return
+        s/^label1;//
+        t label1
+        s/^label2;//
+        t label2
+    '''
+    return snippet
+
+
+def RETURN_VALUE():
+    return '\np\ng\np'
+
+
 def BRANCH_ON_NAME(labels):
     snippet = '''                       # HS: label;X
         s/^//                           # force a substitution to enable t
@@ -242,6 +262,9 @@ def BRANCH_ON_NAME(labels):
     snippet += '\n'.join(('s^%s;//;t %s' % (label, label) for label in labels))
 
     return snippet
+
+
+# -- Compare operators -------------------------------------------------------
 
 
 def CMP():
@@ -290,6 +313,9 @@ def POP_JUMP_IF_TRUE(target):
 def POP_JUMP_IF_FALSE(target):
     snippet = 'LOAD_TOP; /^0$/b ' + target
     return snippet
+
+
+# - Addition and subtraction -------------------------------------------------
 
 
 def HALFADD():
@@ -436,6 +462,9 @@ def sign_add(x, y):
     return r
 
 
+# -- Multiplication ----------------------------------------------------------
+
+
 def FULLMUL(): # dc.sed version
     # Multiply two digits with carry
     #
@@ -501,6 +530,9 @@ def UMUL():
         s/^0*(.)/\1/                    # Normalize leading zeros
     '''
     return normalize(snippet, labels=('loop',), macros=('UADD', 'MULBYDIGIT',))
+
+
+# -- Division ----------------------------------------------------------------
 
 
 def euclide(a, b):
@@ -594,47 +626,6 @@ def parse_dis(x):
             parse_dis_instruction(line)
 
 
-def tmp():
-    snippet = r'''
-        LOAD_NAME foo
-        STORE_NAME bar
-    '''
-    return normalize(snippet, macros=('LOAD_NAME', 'STORE_NAME'))
-
-
-def RETURN_douteux():
-    # HS: label;X
-    # en :label1, etc, on doit commencer par nettoyer label1label1
-    return_labels = X
-    snippet = '''
-        s/^/label1/
-        /^label1\1/b label1
-        s/^label1//
-        s/^/label2/
-        /^label2\1/b label2
-        s/^label2//
-    '''
-
-def RETURN():
-    # HS: label;X
-    return_labels = X
-    snippet = '''
-        s/^//                           # force a substitution to enable t
-        t test_return                   # t to next line to reset t flag
-        :test_return
-        s/^label1;//
-        t label1
-        s/^label2;//
-        t label2
-    '''
-
-
-def cws_compile(fname):
-    __import__(fname)
-    #functions_list = [obj for name,obj in inspect.getmembers(sys.modules[fname])
-    #                 if inspect.isfunction(obj)]
-
-
 # -- Disassemble -------------------------------------------------------------
 
 
@@ -672,6 +663,7 @@ def make_opcode_module(source, trace=False):
 
     # normalize disassembly labels and opcode arguments
     newcode = []
+    newcode.append('STARTUP')
     for line in code:
         if line.strip():
             label, instr, arg = parse_dis_instruction(line)
@@ -734,8 +726,31 @@ def parse_dis_instruction(s):
     return label, instr, arg
 
 
+# -- Generate sed code -------------------------------------------------------
+
+
+def make_sed_module(source, trace=False):
+
+    x = make_opcode_module(source, trace=False)
+    y = normalize('\n'.join(x), macros=('STARTUP', 'LOAD_CONST', 'LOAD_NAME', 'STORE_NAME',
+                                        'BINARY_ADD', 'RETURN_VALUE'))
+    print y
+
+
 # -- Tests -------------------------------------------------------------------
 
+
+def tmp():
+    snippet = r'''
+        LOAD_NAME foo
+        STORE_NAME bar
+    '''
+    return normalize(snippet, macros=('LOAD_NAME', 'STORE_NAME'))
+
+def cws_compile(fname):
+    __import__(fname)
+    #functions_list = [obj for name,obj in inspect.getmembers(sys.modules[fname])
+    #                 if inspect.isfunction(obj)]
 
 def test():
     #import exemple01
@@ -808,6 +823,8 @@ def main():
         disassemble(args.source, trace=True)
     elif args.opcodes:
         make_opcode_module(args.source, trace=True)
+    elif args.sed:
+        make_sed_module(args.source, trace=True)
     elif args.test:
         test()
     else:
