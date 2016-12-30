@@ -714,6 +714,9 @@ def cws_compile(fname):
     #                 if inspect.isfunction(obj)]
 
 
+# -- Tests -------------------------------------------------------------------
+
+
 def test():
     #import exemple01
     #dis.dis(exemple01)
