@@ -64,7 +64,7 @@ def PUSH():
     return snippet
 
 def POP():
-    snippet = '''                       # PS: ?         HS: N;X
+    snippet = r'''                      # PS: ?         HS: N;X
         g                               # PS: N;X       HS: N;X
         s/^[^;]*;//                     # PS: X         HS: N;X
         x                               # PS: N;X       HS: X
@@ -73,7 +73,7 @@ def POP():
     return snippet
 
 def POP2():
-    snippet = '''                       # PS: ?         HS: M;N;X
+    snippet = r'''                      # PS: ?         HS: M;N;X
         g                               # PS: M;N;X     HS: M;N;X
         s/^[^;]*;[^;]*;//               # PS: X         HS: M;N;X
         x                               # PS: M;N;X     HS: X
@@ -206,16 +206,6 @@ def DELETE_FAST(name):
     '''
     return snippet.replace('name', name)
 
-def STORE_NAME(name):
-    # name = TOS
-    snippet = r'''                      # PS: ?         HS: x;X
-        g                               # PS: x;X       HS: ?
-        s/;name;[^;]*//                 # PS: x;X'      HS: ? (del ;var;val in PS)
-        s/([^;]*).*/&;name;\1/          # PS: x;X';v;x  HS: ?
-        h                               # PS: ?         HS: x;X';v;x
-    '''
-    return snippet.replace('name', name)
-
 
 # -- Functions ---------------------------------------------------------------
 
@@ -248,7 +238,8 @@ def RETURN():
 
 
 def RETURN_VALUE():
-    return '\np\ng\np'
+    # TODO: remove temp behavior
+    return 's/.*//'
 
 
 def BRANCH_ON_NAME(labels):
@@ -262,6 +253,21 @@ def BRANCH_ON_NAME(labels):
     snippet += '\n'.join(('s^%s;//;t %s' % (label, label) for label in labels))
 
     return snippet
+
+
+# -- Printing ----------------------------------------------------------------
+
+
+def PRINT_ITEM():
+    snippet = r'''
+                                        # PS: ?         HS: N;X
+        POP                             # PS: N         HS: X
+        p
+     '''
+    return normalize(snippet, macros=('POP',))
+
+def PRINT_NEWLINE():
+    return ''
 
 
 # -- Compare operators -------------------------------------------------------
@@ -532,6 +538,17 @@ def UMUL():
     return normalize(snippet, labels=('loop',), macros=('UADD', 'MULBYDIGIT',))
 
 
+def BINARY_MULTIPLY():
+    snippet = r'''
+                                        # PS: ?         HS: M;N;X
+        POP2                            # PS: M;N;      HS: X
+        p;x;p;x # TODO: mul buggy as well as STORE (exemple11.py)
+        UMUL                            # PS: R         HS: X
+        PUSH                            # PS: R         HS: R;X
+     '''
+    return normalize(snippet, macros=('POP2', 'UMUL', 'PUSH'))
+
+
 # -- Division ----------------------------------------------------------------
 
 
@@ -733,8 +750,39 @@ def make_sed_module(source, trace=False):
 
     x = make_opcode_module(source, trace=False)
     y = normalize('\n'.join(x), macros=('STARTUP', 'LOAD_CONST', 'LOAD_NAME', 'STORE_NAME',
-                                        'BINARY_ADD', 'RETURN_VALUE'))
-    print y
+                                        'BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY',
+                                        'RETURN_VALUE',
+                                        'PRINT_ITEM', 'PRINT_NEWLINE'))
+    # trace if requested
+    if trace:
+        print y
+
+    # return string
+    return y
+
+
+# -- Generate sed script and run ---------------------------------------------
+
+
+def make_sed_and_run(source):
+
+    sed = make_sed_module(source, trace=False)
+
+    name_script = 'test.sed'
+    name_input = 'test.input'
+
+    with open(name_script, 'w') as f:
+        print>>f, sed
+
+    with open(name_input, 'w') as f:
+        print>>f, '0'
+
+    com = 'sed -r -f %s %s' % (name_script, name_input)
+
+    # TODO: check sed in path
+    res = subprocess.check_output(com).splitlines()
+    for line in res:
+        print line
 
 
 # -- Tests -------------------------------------------------------------------
@@ -799,6 +847,7 @@ def parse_command_line():
     parser.add_argument("-dis", help="disassemble", action="store_true", dest="disassemble")
     parser.add_argument("-ops", help="cws intermediate opcodes", action="store_true", dest="opcodes")
     parser.add_argument("-sed", help="generate sed script", action="store_true", dest="sed")
+    parser.add_argument("-run", help="generate sed script and run", action="store_true", dest="run")
     parser.add_argument("-test", help="test", action="store_true", dest="test")
     parser.add_argument("source", nargs='?', help=argparse.SUPPRESS, default=sys.stdin)
 
@@ -825,6 +874,8 @@ def main():
         make_opcode_module(args.source, trace=True)
     elif args.sed:
         make_sed_module(args.source, trace=True)
+    elif args.run:
+        make_sed_and_run(args.source)
     elif args.test:
         test()
     else:
