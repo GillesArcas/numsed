@@ -1,3 +1,4 @@
+import argparse
 import sys
 import re
 import dis
@@ -54,8 +55,8 @@ def new_label():
 
 
 def PUSH():
-    snippet = r'''                       # PS: N         HS: X
-        G                               # PS: N\nX     HS: X
+    snippet = r'''                      # PS: N         HS: X
+        G                               # PS: N\nX      HS: X
         s/\n/;/                         # PS: N;X       HS: X
         h                               # PS: N;X       HS: N;X
         s/;.*//                         # PS: N         HS: N;X
@@ -68,6 +69,15 @@ def POP():
         s/^[^;]*;//                     # PS: X         HS: N;X
         x                               # PS: N;X       HS: X
         s/;.*//                         # PS: N         HS: X
+        '''
+    return snippet
+
+def POP2():
+    snippet = '''                       # PS: ?         HS: M;N;X
+        g                               # PS: M;N;X     HS: M;N;X
+        s/^[^;]*;[^;]*;//               # PS: X         HS: M;N;X
+        x                               # PS: M;N;X     HS: X
+        s/(^[^;]*;[^;]*).*/\1/          # PS: M;N       HS: X
         '''
     return snippet
 
@@ -160,6 +170,10 @@ def DELETE_GLOBAL(name):
         h                               # PS: ?         HS: x;X';v;x
     '''
     return snippet.replace('name', name)
+
+
+STORE_NAME = STORE_GLOBAL
+LOAD_NAME = LOAD_GLOBAL
 
 
 def LOAD_FAST(name):
@@ -380,12 +394,21 @@ def USUB():
     return normalize(snippet, labels=('loop', 'nan', 'end'), macros=('FULLSUB',))
 
 
+def BINARY_ADD():
+    snippet = r'''
+                                        # PS: ?         HS: M;N;X
+        POP2                            # PS: M;N;      HS: X
+        UADD                            # PS: R         HS: X
+        PUSH                            # PS: R         HS: R;X
+     '''
+    return normalize(snippet, macros=('POP2', 'UADD', 'PUSH'))
+
 def BINARY_SUBTRACT():
     snippet = r'''
-                                        # PS: X         HS: M;N;Y
-        POP2                            # PS: M;N;      HS: Y
-        USUB                            # PS: R         HS: Y
-        PUSH                            # PS: R         HS: R;Y
+                                        # PS: ?         HS: M;N;X
+        POP2                            # PS: M;N;      HS: X
+        USUB                            # PS: R         HS: X
+        PUSH                            # PS: R         HS: R;X
      '''
     return normalize(snippet, macros=('POP2', 'USUB', 'PUSH'))
 
@@ -626,7 +649,7 @@ def parse_dis_instruction(s):
     elif 'code object' in arg:
         # <code object foo at 030E7EC0, file "exemple01.py", line 1>
         m = re.search('code object ([^ ]+) at ([^ ]+),', arg)
-        arg = '%s-%s' % (m.group(1), m.group(2))
+        arg = '%s_%s' % (m.group(1), m.group(2))
     elif '(' in arg:
         m = re.search('\((.*)\)', arg)
         arg = m.group(1)
@@ -714,6 +737,60 @@ def test():
     pass
 
 
+# -- Main --------------------------------------------------------------------
+
+
+def do_helphtml():
+    if os.path.isfile('cws.html'):
+        helpfile = 'cws.html'
+    else:
+        helpfile = r'http://cws.godrago.net/cws.html'
+
+    webbrowser.open(helpfile, new=2)
+
+USAGE = '''
+cws.py -h | -H | -v
+       -dis | -ops | -sed python-script
+'''
+
+def parse_command_line():
+    parser = argparse.ArgumentParser(usage=USAGE, add_help=False)
+
+    parser.add_argument('-h', help='show this help message', action='store_true', dest='do_help')
+    parser.add_argument('-H', help='open html help page', action='store_true', dest='do_helphtml')
+    parser.add_argument("-v", help="version", action="store_true", dest="version")
+    parser.add_argument("-dis", help="disassemble", action="store_true", dest="disassemble")
+    parser.add_argument("-ops", help="cws intermediate opcodes", action="store_true", dest="opcodes")
+    parser.add_argument("-sed", help="generate sed script", action="store_true", dest="sed")
+    parser.add_argument("-test", help="test", action="store_true", dest="test")
+    parser.add_argument("source", nargs='?', help=argparse.SUPPRESS, default=sys.stdin)
+
+    args = parser.parse_args()
+    return parser, args
+
+
+def main():
+    parser, args = parse_command_line()
+
+    if args.version:
+        print(BRIEF)
+        print(VERSION)
+        return
+    elif args.do_help:
+        parser.print_help()
+        return
+    elif args.do_helphtml:
+        do_helphtml()
+        return
+    elif args.disassemble:
+        decompfile(args.source)
+    elif args.opcodes:
+        make_opcode_module(args.source)
+    elif args.test:
+        test()
+    else:
+        raise
+
+
 if __name__ == "__main__":
-    test()
-    pass
+    main()
