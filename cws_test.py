@@ -1,4 +1,5 @@
-from cws import MAKE_CONTEXT, POP_CONTEXT, PUSH, POP, LOAD_FAST, STORE_FAST,\
+from cws import STARTUP, MAKE_CONTEXT, POP_CONTEXT, PUSH, POP,\
+                LOAD_GLOBAL, STORE_GLOBAL, LOAD_FAST, STORE_FAST,\
                 CMP, FULLADD, FULLSUB, UADD, USUB, FULLMUL, MULBYDIGIT, UMUL
 import subprocess
 import random
@@ -15,6 +16,45 @@ def random_content():
     return ';'.join(x)
 
 
+def func_context_0():
+    nvars = 10
+    lvars = [random_varname() for n in range(nvars)]
+    snippet_begin = '1 {' + STARTUP() + '}\n'
+    snippet_end =  ''
+    def pattern_store(n, s):
+        # must be a function not a constant, to generate different labels
+        # in STORE_GLOBAL
+        x = ('%d {' % n, PUSH(), STORE_GLOBAL(s), LOAD_GLOBAL(s), POP(), '}\n')
+        return '\n'.join(x)
+    def pattern_load(n, s):
+        x = ('%d {' % n, LOAD_GLOBAL(s), POP(), '}\n')
+        return '\n'.join(x)
+    snippet = '\n'.join([snippet_begin] +
+                        [pattern_store(n, s) for n,s in zip(range(1, nvars+1), lvars)] +
+                        [pattern_load(n, s)  for n,s in zip(range(nvars+01, nvars+11), lvars)] +
+                        [pattern_store(n, s) for n,s in zip(range(nvars+11, nvars+21), lvars)] +
+                        [pattern_load(n, s)  for n,s in zip(range(nvars+21, nvars+31), lvars)] +
+                        [snippet_end])
+    return snippet
+
+def test_context_0():
+    # Input  PS:
+    # Output PS:
+    nvars = 10
+    inplist = list()
+    outlist = list()
+    numlist1 = [random_ndigits(10) for n in range(1, nvars+1)]
+    numlist2 = [random_ndigits(10) for n in range(1, nvars+1)]
+    for numlist in (numlist1, numlist2):
+        for x in numlist:
+            inplist.append('%d' % x)
+            outlist.append('%d' % x)
+        for x in numlist:
+            inplist.append('pop')
+            outlist.append('%d' % x)
+    test_gen('func_context_0', func_context_0, inplist, outlist)
+
+
 def func_context_1():
     snippet =\
         '''/^push/ {
@@ -22,7 +62,6 @@ def func_context_1():
         MAKE_CONTEXT() +\
         PUSH() +\
         STORE_FAST('x') +\
-        POP() +\
         LOAD_FAST('x') +\
         POP() +\
         '}\n' +\
@@ -57,6 +96,7 @@ def func_context_2():
         '%d {' +\
         PUSH() +\
         STORE_FAST('%s') +\
+        LOAD_FAST('%s') +\
         POP() +\
         '}\n'
     pattern_load = \
@@ -65,7 +105,7 @@ def func_context_2():
         POP() +\
         '}\n'
     snippet = '\n'.join([snippet_begin] +
-                        [pattern_store % (n, s, s) for n,s in zip(range(1, nvars+1), lvars)] +
+                        [pattern_store % (n, s, s, s, s) for n,s in zip(range(1, nvars+1), lvars)] +
                         [pattern_load % (n, s, s) for n,s in zip(range(nvars+1, nvars+11), lvars)] +
                         [snippet_end])
     return snippet
@@ -339,6 +379,7 @@ def test_gen(descr, func, inplist, outlist):
 
 
 def main():
+    test_context_0()
     test_context_1()
     test_context_2()
     return

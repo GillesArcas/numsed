@@ -11,14 +11,19 @@ from StringIO import StringIO  # Python2
 # http://www.goldsborough.me/python/low-level/2016/10/04/00-31-30-disassembling_python_bytecode/
 # http://stackoverflow.com/questions/31989893/how-to-fully-disassemble-python-source
 # http://www.aosabook.org/en/500L/a-python-interpreter-written-in-python.html
+# https://github.com/python/cpython/blob/2bdba08bd0eb6f1b2a20d14558a4ea2009b46438/Python/ceval.c
 
 # http://faster-cpython-zh.readthedocs.io/en/latest/registervm.html
 
 
-def normalize(snippet, labels=None, macros=None):
+def normalize(snippet, labels=None, replace=None, macros=None): #TODO replace
     if labels:
         for label in labels:
             snippet = snippet.replace(label, new_label())
+
+    if replace:
+        for sfrom,sto in replace:
+            snippet = snippet.replace(sfrom, sto)
 
     if macros:
         for macro in macros:
@@ -32,7 +37,6 @@ def normalize(snippet, labels=None, macros=None):
                     return globals()[macro](m.group(1))
 
             snippet = re.sub(r'%s *([^; #\n]*)' % macro, repl, snippet)
-            #print snippet
 
     snippet = snippet.replace('\\d', '[0-9]')
     return snippet
@@ -83,9 +87,18 @@ def LOAD_CONST(const):
 # -- Name spaces -------------------------------------------------------------
 
 
-# LOAD_NAME et STORE_NAME travaillent toujours dans le contexte courant
-# par ex, les contextes sont separes par des "|"
-
+def STARTUP():
+    snippet = '''
+        x
+        s/.*/-/
+        x
+        b start
+        :NameError
+        s/.*/NameError: name & is not defined/
+        q
+        :start
+    '''
+    return snippet
 
 def MAKE_CONTEXT():
     snippet = '''
@@ -103,6 +116,52 @@ def POP_CONTEXT():
     '''
     return snippet
 
+
+def LOAD_GLOBAL(name):
+    # TOS = val(name)
+    snippet = r'''                      # PS: ?         HS: ?;v;x?
+        g                               # PS: ?;v;x?    HS: ?;v;x?
+        /-[^|]*;name;/! { s/.*/name/; b NameError }
+                                        # branch to error if var undefined
+        s/-[^|]*;name;([^;]*).*/\1;&/   # PS: x;?;v;x?  HS: ?;v;x?
+        h                               # PS: ?         HS: x;?;v;x?
+    '''
+    return snippet.replace('name', name)
+
+def STORE_GLOBAL(name):
+    # name = POP() (cf cpython/ceval.c)
+    snippet = r'''                      # PS: ?         HS: x;X
+        g                               # PS: x;X       HS: ?
+        s/([^;]*;)([^-]*-)/\2;name;\1/  # PS: X;v;x     HS: ?
+        h                               # PS: ?         HS: X;v;x
+    '''
+    return DELETE_GLOBAL(name) + snippet.replace('name', name)
+
+def STORE_GLOBAL(name):
+    # name = POP() (cf cpython/ceval.c)
+    snippet = r'''                      # PS: ?         HS: x;X
+        g                               # PS: x;X       HS: ?
+        t reset_t
+        :reset_t
+        s/^([^;]*;)([^-]*-[^|]*;name;)[^;]*/\2\1/
+                                        # PS: X;v;x     HS: ?
+        t next
+        s/^([^;]*);([^-]*-)/\2;name;\1/ # PS: X;v;x     HS: ?
+        :next
+        h                               # PS: ?         HS: X;v;x
+    '''
+    return normalize(snippet, labels=('reset_t', 'next'), replace=(('name', name),))
+
+def DELETE_GLOBAL(name):
+    snippet = r'''                      # PS: ?         HS: x;X
+        g                               # PS: x;X       HS: ?
+        s/(-[^|]*);name;[^;|]*;(.*)/\1\2/
+                                        # PS: x;X'      HS: ? (del ;var;val in PS)
+        h                               # PS: ?         HS: x;X';v;x
+    '''
+    return snippet.replace('name', name)
+
+
 def LOAD_FAST(name):
     # TOS = val(name)
     snippet = r'''                      # PS: ?         HS: ?;v;x?
@@ -116,11 +175,11 @@ def LOAD_FAST(name):
     return snippet.replace('name', name)
 
 def STORE_FAST(name):
-    # name = TOS
+    # name = POP() (cf cpython/ceval.c)
     snippet = r'''                      # PS: ?         HS: x;X
         g                               # PS: x;X       HS: ?
-        s/([^;]*).*/&;name;\1/          # PS: x;X';v;x  HS: ?
-        h                               # PS: ?         HS: x;X';v;x
+        s/([^;]*);(.*)/\2;name;\1/      # PS: X';v;x    HS: ?
+        h                               # PS: ?         HS: X';v;x
     '''
     return DELETE_FAST(name) + snippet.replace('name', name)
 
@@ -636,8 +695,8 @@ def test():
     #import exemple01
     #dis.dis(exemple01)
     #cws_compile('exemple01')
-    #decompfile(sys.argv[1])
-    print make_opcode_module(sys.argv[1])
+    decompfile(sys.argv[1])
+    #print make_opcode_module(sys.argv[1])
     #import inspect
     #functions_list = [obj for name,obj in inspect.getmembers(sys.modules[__name__])
     #                 if inspect.isfunction(obj)]
