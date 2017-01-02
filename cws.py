@@ -542,7 +542,7 @@ def BINARY_MULTIPLY():
     snippet = r'''
                                         # PS: ?         HS: M;N;X
         POP2                            # PS: M;N;      HS: X
-        p;x;p;x # TODO: mul buggy as well as STORE (exemple11.py)
+        s/$/;/
         UMUL                            # PS: R         HS: X
         PUSH                            # PS: R         HS: R;X
      '''
