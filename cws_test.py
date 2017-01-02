@@ -1,6 +1,7 @@
-from cws import STARTUP, MAKE_CONTEXT, POP_CONTEXT, PUSH, POP,\
-                LOAD_GLOBAL, STORE_GLOBAL, LOAD_FAST, STORE_FAST,\
-                CMP, FULLADD, FULLSUB, UADD, USUB, FULLMUL, MULBYDIGIT, UMUL
+from cws import (normalize,
+                 STARTUP, MAKE_CONTEXT, POP_CONTEXT, PUSH, POP,
+                 LOAD_GLOBAL, STORE_GLOBAL, DELETE_GLOBAL, LOAD_FAST, STORE_FAST,
+                 CMP, FULLADD, FULLSUB, UADD, USUB, FULLMUL, MULBYDIGIT, UMUL)
 import subprocess
 import random
 
@@ -20,7 +21,7 @@ def func_context_0():
     nvars = 10
     lvars = [random_varname() for n in range(nvars)]
     snippet_begin = '1 {' + STARTUP() + '}\n'
-    snippet_end =  ''
+    snippet_end = ''
     def pattern_store(n, s):
         # must be a function not a constant, to generate different labels
         # in STORE_GLOBAL
@@ -124,6 +125,37 @@ def test_context_2():
         inplist.append('pop')
         outlist.append('%d' % x)
     test_gen('func_context_2', func_context_2, inplist, outlist)
+
+
+def func_context_3():
+    snippet = '''
+        STARTUP
+        LOAD_CONST 1
+        STORE_NAME x
+        LOAD_CONST 2
+        STORE_NAME y
+        LOAD_CONST 3
+        STORE_NAME z
+        LOAD_CONST 4
+        STORE_NAME x
+        LOAD_CONST 5
+        STORE_NAME y
+        LOAD_CONST 6
+        STORE_NAME z
+        LOAD_CONST 1
+        STORE_NAME x
+        LOAD_CONST 2
+        STORE_NAME y
+        LOAD_CONST 3
+        STORE_NAME z
+        x
+        '''
+    return normalize(snippet, macros=('STARTUP', 'LOAD_CONST', 'STORE_NAME'))
+
+def test_context_3():
+    inplist = ['0']
+    outlist = ['-;z;3;y;2;x;1']
+    test_gen('func_context_3', func_context_3, inplist, outlist)
 
 
 def test_cmp_1():
@@ -374,6 +406,7 @@ def test_gen(descr, func, inplist, outlist):
 
     print descr
     for inp, out, res in zip(inplist, outlist, res):
+        # attention, ne compare pas si des lignes en plus
         if out != res:
             print '%-8s %-8s %-8s' % (inp, out, res)
 
@@ -382,7 +415,7 @@ def main():
     test_context_0()
     test_context_1()
     test_context_2()
-    return
+    test_context_3()
     test_cmp_1()
     test_cmp_2()
     test_fulladd()

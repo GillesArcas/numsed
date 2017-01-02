@@ -153,7 +153,7 @@ def STORE_GLOBAL(name):
         g                               # PS: x;X       HS: ?
         t reset_t
         :reset_t
-        s/^([^;]*;)([^-]*-[^|]*;name;)[^;]*/\2\1/
+        s/^([^;]*);([^-]*-[^|]*;name;)[^;]*/\2\1/
                                         # PS: X;v;x     HS: ?
         t next
         s/^([^;]*);([^-]*-)/\2;name;\1/ # PS: X;v;x     HS: ?
@@ -165,7 +165,7 @@ def STORE_GLOBAL(name):
 def DELETE_GLOBAL(name):
     snippet = r'''                      # PS: ?         HS: x;X
         g                               # PS: x;X       HS: ?
-        s/(-[^|]*);name;[^;|]*;(.*)/\1\2/
+        s/(-[^|]*);name;[^;|]*(.*)/\1\2/
                                         # PS: x;X'      HS: ? (del ;var;val in PS)
         h                               # PS: ?         HS: x;X';v;x
     '''
