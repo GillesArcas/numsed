@@ -311,6 +311,9 @@ def COMPARE_OP(opname):
         snippet = 'POP2; CMP; y/<=>/011/; PUSH'
     return snippet
 
+def signed_compare_op(opname):
+    # TODO
+    return ''
 
 def POP_JUMP_IF_TRUE(target):
     snippet = 'LOAD_TOP; /^1$/b ' + target
@@ -319,6 +322,10 @@ def POP_JUMP_IF_TRUE(target):
 def POP_JUMP_IF_FALSE(target):
     snippet = 'LOAD_TOP; /^0$/b ' + target
     return snippet
+
+
+def is_positive(x):
+    return x >= 0
 
 
 # - Addition and subtraction -------------------------------------------------
@@ -445,9 +452,9 @@ def BINARY_SUBTRACT():
     return normalize(snippet, macros=('POP2', 'USUB', 'PUSH'))
 
 
-def sign_add(x, y):
-    if x > 0:
-        if y > 0:
+def signed_add(x, y):
+    if is_positive(x):
+        if is_positive(y):
             r = x + y
         else:
             y = -y
@@ -457,7 +464,7 @@ def sign_add(x, y):
                 r = -(y - x)
     else:
         x = -x
-        if y > 0:
+        if is_positive(y):
             if x > y:
                 r = -(x - y)
             else:
@@ -466,6 +473,16 @@ def sign_add(x, y):
             y = -y
             r = -(x + y)
     return r
+
+def BINARY_ADD():
+    snippet = r'''
+                                        # PS: ?         HS: M;N;X
+        POP2                            # PS: M;N;      HS: X
+        LOAD_GLOBAL signed_add          # PS: M;N;      HS: signed_add;X
+        PUSH2                           # PS: ?         HS: M;N;signed_add;X
+        CALL_FUNCTION 2                 # PS: ?         HS: R;X
+     '''
+    return normalize(snippet, macros=('POP2', 'PUSH2', 'LOAD_GLOBAL', 'CALL_FUNCTION'), functions=('signed_add',))
 
 
 # -- Multiplication ----------------------------------------------------------
@@ -601,6 +618,9 @@ def UDIV():
     return result.getvalue()
 
 
+# -- Disassemble function ----------------------------------------------------
+
+
 def make_opcode(func):
     # func is a python function
     # result is a list of opcodes, arguments and result at top of stack
@@ -636,21 +656,25 @@ def make_opcode(func):
     return normalize(snippet, macros=('MAKE_CONTEXT', 'POP_CONTEXT', 'STORE_NAME'))
 
 
-def parse_dis(x):
-    print x
-    for line in x.splitlines():
-        if line.strip():
-            parse_dis_instruction(line)
-
-
 # -- Disassemble -------------------------------------------------------------
 
 
 def disassemble(source, trace=False):
 
+    # determine list of required builtin functions
+    # TODO
+    builtin = (signed_add,)
+    builtin = []
+
     # compile
     with open(source) as f:
         script = f.read()
+
+    # add builtin functions to code to compile
+    for func in builtin:
+        script += '\n'
+        script += '\n'.join(inspect.getsourcelines(func)[0])
+
     code = compile(script, source, "exec")
 
     # disassemble
@@ -815,10 +839,10 @@ def test():
     #print MULBYDIGIT()
     #print 123456 * 567, UMUL(123456, 567)
     #x = UDIV()
-    #parse_dis(x)
     #print tmp()
     #print make_opcode(euclide)
-    #print dis.dis(signed_divide)
+    #print dis.dis(signed_add)
+    print inspect.getsourcelines(signed_add)
     pass
 
 

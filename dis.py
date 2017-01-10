@@ -58,7 +58,7 @@ def distb(tb=None):
         while tb.tb_next: tb = tb.tb_next
     disassemble(tb.tb_frame.f_code, tb.tb_lasti)
 
-def disassemble(co, lasti=-1):
+def disassemble(co, lasti=-1, offset=0):
     """Disassemble a code object."""
     code = co.co_code
     labels = findlabels(code)
@@ -82,7 +82,7 @@ def disassemble(co, lasti=-1):
         else: print '   ',
         if i in labels: print '>>',
         else: print '  ',
-        print repr(i).rjust(4),
+        print repr(offset + i).rjust(4),
         print opname[op].ljust(20),
         i = i+1
         if op >= HAVE_ARGUMENT:
@@ -101,7 +101,7 @@ def disassemble(co, lasti=-1):
             elif op in hasname:
                 print '(' + co.co_names[oparg] + ')',
             elif op in hasjrel:
-                print '(to ' + repr(i + oparg) + ')',
+                print '(to ' + repr(offset + i + oparg) + ')',
             elif op in haslocal:
                 print '(' + co.co_varnames[oparg] + ')',
             elif op in hascompare:
@@ -112,12 +112,15 @@ def disassemble(co, lasti=-1):
                 print '(' + free[oparg] + ')',
         print
 
+    offset += i
     for func_code in functions:
         print '\n', ' ' * 12, '%-27s %s_%08X %s' % ('-1 FUNCTION',
                                                   func_code.co_name,
                                                   id(func_code),
                                                   ' '.join(func_code.co_varnames[:func_code.co_argcount]))
-        disassemble(func_code)
+        offset = disassemble(func_code, offset=offset)
+
+    return offset
 
 
 def disassemble_string(code, lasti=-1, varnames=None, names=None,
