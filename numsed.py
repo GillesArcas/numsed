@@ -664,7 +664,7 @@ def disassemble(source, trace=False):
     # determine list of required builtin functions
     # TODO
     builtin = (signed_add,)
-    builtin = []
+    #builtin = []
 
     # compile
     with open(source) as f:
