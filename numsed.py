@@ -215,6 +215,7 @@ def CALL_FUNCTION(argc):
         # do not handle keyword parameters
         raise
     # argc parameters on top of stack above name of function
+    # swap first parameters and name
     snippet = '''
         s/(([^;];){argc})([^;];)/\3\2/
         BRANCH_ON_NAME(call_labels)
@@ -694,7 +695,7 @@ def disassemble(source, trace=False):
     return code
 
 
-# -- Disassemble to cws opcodes ----------------------------------------------
+# -- Disassemble to numsed opcodes -------------------------------------------
 
 
 def make_opcode_module(source, trace=False):
@@ -724,7 +725,6 @@ def make_opcode_module(source, trace=False):
             name = instr.split()[1]
             function_labels.append(name)
             newcode2.append(instr)
-            newcode2.append(':%s' % name)
         elif instr.startswith('CALL_FUNCTION'):
             label = new_label()
             return_labels.append(label)
@@ -733,13 +733,30 @@ def make_opcode_module(source, trace=False):
         else:
             newcode2.append(instr)
 
+    # handle function arguments and context
+    newcode3 = []
+    for instr in newcode2:
+        if instr.startswith('FUNCTION'):
+            x = instr.split()
+            name = x[1]
+            args = x[2:]
+            newcode3.append(':%s' % name)
+            newcode3.append('MAKE_CONTEXT')
+            for arg in args:
+                newcode3.append('STORE_NAME %s' % arg)
+        elif instr.startswith('RETURN_VALUE'):
+            newcode3.append('POP_CONTEXT')
+            newcode3.append(instr)
+        else:
+            newcode3.append(instr)
+
     # trace if requested
     if trace:
-        for instr in newcode2:
+        for instr in newcode3:
             print instr
 
     # return list of instructions
-    return newcode2
+    return newcode3
 
 
 def parse_dis_instruction(s):
@@ -819,7 +836,7 @@ def tmp():
     '''
     return normalize(snippet, macros=('LOAD_NAME', 'STORE_NAME'))
 
-def cws_compile(fname):
+def numsed_compile(fname):
     __import__(fname)
     #functions_list = [obj for name,obj in inspect.getmembers(sys.modules[fname])
     #                 if inspect.isfunction(obj)]
@@ -827,7 +844,7 @@ def cws_compile(fname):
 def test():
     #import exemple01
     #dis.dis(exemple01)
-    #cws_compile('exemple01')
+    #numsed_compile('exemple01')
     #print make_opcode_module(sys.argv[1])
     #import inspect
     #functions_list = [obj for name,obj in inspect.getmembers(sys.modules[__name__])
@@ -850,15 +867,15 @@ def test():
 
 
 def do_helphtml():
-    if os.path.isfile('cws.html'):
-        helpfile = 'cws.html'
+    if os.path.isfile('numsed.html'):
+        helpfile = 'numsed.html'
     else:
-        helpfile = r'http://cws.godrago.net/cws.html'
+        helpfile = r'http://numsed.godrago.net/numsed.html'
 
     webbrowser.open(helpfile, new=2)
 
 USAGE = '''
-cws.py -h | -H | -v
+numsed.py -h | -H | -v
        -dis | -ops | -sed python-script
 '''
 
@@ -869,7 +886,7 @@ def parse_command_line():
     parser.add_argument('-H', help='open html help page', action='store_true', dest='do_helphtml')
     parser.add_argument("-v", help="version", action="store_true", dest="version")
     parser.add_argument("-dis", help="disassemble", action="store_true", dest="disassemble")
-    parser.add_argument("-ops", help="cws intermediate opcodes", action="store_true", dest="opcodes")
+    parser.add_argument("-ops", help="numsed intermediate opcodes", action="store_true", dest="opcodes")
     parser.add_argument("-sed", help="generate sed script", action="store_true", dest="sed")
     parser.add_argument("-run", help="generate sed script and run", action="store_true", dest="run")
     parser.add_argument("-test", help="test", action="store_true", dest="test")
