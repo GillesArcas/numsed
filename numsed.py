@@ -17,7 +17,7 @@ from StringIO import StringIO  # Python2
 # http://faster-cpython-zh.readthedocs.io/en/latest/registervm.html
 
 
-def normalize(snippet, labels=None, replace=None, macros=None): #TODO replace
+def normalize(snippet, labels=None, replace=None, macros=None, functions=None):
     if labels:
         for label in labels:
             snippet = snippet.replace(label, new_label())
@@ -38,6 +38,10 @@ def normalize(snippet, labels=None, replace=None, macros=None): #TODO replace
                     return globals()[macro](m.group(1))
 
             snippet = re.sub(r'%s *([^; #\n]*)' % macro, repl, snippet)
+
+    if functions:
+        # TODO
+        pass
 
     snippet = snippet.replace('\\d', '[0-9]')
     return snippet
@@ -69,6 +73,15 @@ def POP():
         s/^[^;]*;//                     # PS: X         HS: N;X
         x                               # PS: N;X       HS: X
         s/;.*//                         # PS: N         HS: X
+        '''
+    return snippet
+
+def PUSH2():
+    snippet = r'''                      # PS: M;N       HS: X
+        G                               # PS: M;N\nX    HS: X
+        s/\n/;/                         # PS: M;N;X     HS: X
+        h                               # PS: M;N;X     HS: M;N;X
+        s/^([^;]*;[^;]*);.*/\1/         # PS: M;N       HS: M;N;X
         '''
     return snippet
 
@@ -211,14 +224,15 @@ def DELETE_FAST(name):
 
 
 def CALL_FUNCTION(argc):
-    if argc >= 256:
+    if int(argc) >= 256:
         # do not handle keyword parameters
+        print '[%s]' % argc
         raise
     # argc parameters on top of stack above name of function
     # swap first parameters and name
     snippet = '''
         s/(([^;];){argc})([^;];)/\3\2/
-        BRANCH_ON_NAME(call_labels)
+        BRANCH_ON_NAME(function_labels)
         '''
     return normalize(snippet, replace=(('argc', argc),))
 
@@ -239,8 +253,8 @@ def RETURN():
 
 
 def RETURN_VALUE():
-    # TODO: remove temp behavior
-    return 's/.*//'
+    return BRANCH_ON_NAME(return_labels)
+    #return 's/.*//'
 
 
 def BRANCH_ON_NAME(labels):
@@ -249,9 +263,9 @@ def BRANCH_ON_NAME(labels):
         t test_return                   # t to next line to reset t flag
         :test_return
     '''
-    snippet = normalize(snippet, labels=(test_return,))
+    snippet = normalize(snippet, labels=('test_return',))
 
-    snippet += '\n'.join(('s^%s;//;t %s' % (label, label) for label in labels))
+    snippet += '\n'.join(('s/^%s;//;t %s' % (label, label) for label in labels))
 
     return snippet
 
@@ -728,7 +742,7 @@ def make_opcode_module(source, trace=False):
         elif instr.startswith('CALL_FUNCTION'):
             label = new_label()
             return_labels.append(label)
-            newcode2.append(instr)
+            newcode2.append('%s %s' % (instr, label))
             newcode2.append(':%s' % label)
         else:
             newcode2.append(instr)
@@ -756,7 +770,7 @@ def make_opcode_module(source, trace=False):
             print instr
 
     # return list of instructions
-    return newcode3
+    return newcode3, function_labels, return_labels
 
 
 def parse_dis_instruction(s):
@@ -789,11 +803,21 @@ def parse_dis_instruction(s):
 
 def make_sed_module(source, trace=False):
 
-    x = make_opcode_module(source, trace=False)
-    y = normalize('\n'.join(x), macros=('STARTUP', 'LOAD_CONST', 'LOAD_NAME', 'STORE_NAME',
-                                        'BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY',
-                                        'RETURN_VALUE',
-                                        'PRINT_ITEM', 'PRINT_NEWLINE'))
+    x, function_labels_, return_labels_ = make_opcode_module(source, trace=False)
+
+    global function_labels, return_labels
+
+    function_labels = function_labels_
+    return_labels = return_labels_
+
+    list_macros = ('STARTUP',
+                   'MAKE_CONTEXT', 'POP_CONTEXT',
+                   'LOAD_CONST', 'LOAD_NAME', 'STORE_NAME',
+                   'BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY',
+                   'RETURN_VALUE',
+                   'PRINT_ITEM', 'PRINT_NEWLINE')
+
+    y = normalize('\n'.join(x), macros=list_macros)
     # trace if requested
     if trace:
         print y
