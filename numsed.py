@@ -657,7 +657,7 @@ def interpreter(code):
     instr_pointer = 0
     while instr_pointer < len(opcodes):
         opc, arg = opcodes[instr_pointer]
-        #print opc, arg
+        #print instr_pointer, opc, arg
         instr_pointer += 1
         if False:
             pass
@@ -669,9 +669,9 @@ def interpreter(code):
             except:
                 x = arg
             stack.append(x)
-        elif opc == 'LOAD_NAME':
+        elif opc == 'LOAD_NAME' or opc == 'LOAD_GLOBAL':
             stack.append(names[arg])
-        elif opc == 'STORE_NAME':
+        elif opc == 'STORE_NAME' or opc == 'STORE_GLOBAL':
             names[arg] = stack.pop()
             #print names
         elif opc == 'LOAD_FAST':
@@ -686,17 +686,27 @@ def interpreter(code):
             tos = stack.pop()
             tos1 = stack.pop()
             stack.append(tos1 - tos)
+        elif opc == 'BINARY_MULTIPLY':
+            tos = stack.pop()
+            tos1 = stack.pop()
+            stack.append(tos1 * tos)
         elif opc == 'COMPARE_OP':
             tos = stack.pop()
             tos1 = stack.pop()
             if arg == '==':
                 stack.append(tos1 == tos)
-            if arg == '<':
+            elif arg == '!=':
+                stack.append(tos1 != tos)
+            elif arg == '<':
                 stack.append(tos1 < tos)
             elif arg == '>':
                 stack.append(tos1 > tos)
+            elif arg == '<=':
+                stack.append(tos1 <= tos)
+            elif arg == '>=':
+                stack.append(tos1 >= tos)
             else:
-                raise Exception('numsed: unknown compare operator')
+                raise Exception('numsed: unknown compare operator: %s' % arg)
         elif opc == 'POP_JUMP_IF_TRUE':
             tos = stack.pop()
             if tos:
@@ -719,8 +729,6 @@ def interpreter(code):
             else:
                 pass
         elif opc == 'CALL_FUNCTION':
-            pass
-        elif opc == 'STARTUP':
             # argc parameters on top of stack above name of function
             # first, add return address and swap parameters and name
             args = list()
@@ -730,7 +738,14 @@ def interpreter(code):
             stack.append(instr_pointer)
             for i in range(int(arg)):
                 stack.append(args.pop())
-            instr_pointer = 0
+            instr_pointer = labels[func]
+        elif opc == 'RETURN_VALUE':
+            ret_value = stack.pop()
+            ret_pointer = stack.pop()
+            instr_pointer = ret_pointer
+            stack.append(ret_value)
+        elif opc == 'STARTUP':
+            pass
         elif opc == 'MAKE_CONTEXT':
             varnames.append(dict())
         elif opc == 'POP_CONTEXT':
@@ -769,12 +784,12 @@ def make_opcode(func):
     # create context and add opcodes to store arguments in current context
     args = func.func_code.co_varnames[:func.func_code.co_argcount]
 
-    store_args = '\n'.join(['STORE_NAME %s' % arg for arg in args])
+    store_args = '\n'.join(['STORE_FAST %s' % arg for arg in args])
 
     # after code the result is on top of stack, remains to clean context
     snippet = 'MAKE_CONTEXT\n' + store_args + '\n'.join(newcode) + 'POP_CONTEXT\n'
 
-    return normalize(snippet, macros=('MAKE_CONTEXT', 'POP_CONTEXT', 'STORE_NAME'))
+    return normalize(snippet, macros=('MAKE_CONTEXT', 'POP_CONTEXT', 'STORE_FAST'))
 
 
 # -- Disassemble -------------------------------------------------------------
@@ -829,6 +844,8 @@ def make_opcode_module(source, trace=False):
 
     # add dummy context to be removed by final RETURN_VALUE
     newcode.append('MAKE_CONTEXT')
+    # add dummy pointer address to be taken by final RETURN_VALUE
+    newcode.append('LOAD_CONST 1000000')
 
     for line in code:
         if line.strip():
@@ -867,7 +884,7 @@ def make_opcode_module(source, trace=False):
             newcode3.append(':%s' % name)
             newcode3.append('MAKE_CONTEXT')
             for arg in args:
-                newcode3.append('STORE_NAME %s' % arg)
+                newcode3.append('STORE_FAST %s' % arg)
         elif instr.startswith('RETURN_VALUE'):
             newcode3.append('POP_CONTEXT')
             newcode3.append(instr)
@@ -915,8 +932,9 @@ def parse_dis_instruction(s):
 
 def make_opcode_and_run(source, trace=False):
 
-    global BINARY_ADD
+    global BINARY_ADD, BINARY_MULTIPLY
     def BINARY_ADD(): return 'BINARY_ADD'
+    def BINARY_MULTIPLY(): return 'BINARY_MULTIPLY'
 
     opcodes, function_labels, return_labels = make_opcode_module(source, trace=True)
     interpreter(opcodes)
