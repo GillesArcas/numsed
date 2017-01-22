@@ -224,12 +224,13 @@ def DELETE_FAST(name):
 
 
 def CALL_FUNCTION(argc):
+    # TODO: return address to be handled
     if int(argc) >= 256:
         # do not handle keyword parameters
         print '[%s]' % argc
-        raise
+        raise Exception('numsed: keyword parameters not handled')
     # argc parameters on top of stack above name of function
-    # swap first parameters and name
+    # first, swap parameters and name
     snippet = '''
         s/(([^;];){argc})([^;];)/\3\2/
         BRANCH_ON_NAME(function_labels)
@@ -238,6 +239,7 @@ def CALL_FUNCTION(argc):
 
 
 def RETURN():
+    # TODO: remove
     # HS: label;X
     return_labels = X
     snippet = '''
@@ -633,8 +635,112 @@ def UDIV():
     return result.getvalue()
 
 
-# -- Disassemble function ----------------------------------------------------
+# -- Opcode interpreter ------------------------------------------------------
 
+
+def interpreter(code):
+
+    stack = list()
+    names = dict()
+    varnames = list()
+    opcodes = list()
+    labels = dict()
+
+    for index, x in enumerate(code):
+        y = x.split() + [None]
+        opc, arg = y[:2]
+        if opc[0] == ':':
+            opc, arg = opc[0], opc[1:]
+            labels[arg] = index
+        opcodes.append((opc, arg))
+
+    instr_pointer = 0
+    while instr_pointer < len(opcodes):
+        opc, arg = opcodes[instr_pointer]
+        #print opc, arg
+        instr_pointer += 1
+        if False:
+            pass
+        elif opc == ':':
+            pass
+        elif opc == 'LOAD_CONST':
+            try:
+                x = int(arg)
+            except:
+                x = arg
+            stack.append(x)
+        elif opc == 'LOAD_NAME':
+            stack.append(names[arg])
+        elif opc == 'STORE_NAME':
+            names[arg] = stack.pop()
+            #print names
+        elif opc == 'LOAD_FAST':
+            stack.append(varnames[-1][arg])
+        elif opc == 'STORE_FAST':
+            varnames[-1][arg] = stack.pop()
+        elif opc == 'BINARY_ADD':
+            tos = stack.pop()
+            tos1 = stack.pop()
+            stack.append(tos1 + tos)
+        elif opc == 'BINARY_SUBTRACT':
+            tos = stack.pop()
+            tos1 = stack.pop()
+            stack.append(tos1 - tos)
+        elif opc == 'COMPARE_OP':
+            tos = stack.pop()
+            tos1 = stack.pop()
+            if arg == '==':
+                stack.append(tos1 == tos)
+            if arg == '<':
+                stack.append(tos1 < tos)
+            elif arg == '>':
+                stack.append(tos1 > tos)
+            else:
+                raise Exception('numsed: unknown compare operator')
+        elif opc == 'POP_JUMP_IF_TRUE':
+            tos = stack.pop()
+            if tos:
+                instr_pointer = labels[arg]
+        elif opc == 'POP_JUMP_IF_FALSE':
+            tos = stack.pop()
+            if not tos:
+                instr_pointer = labels[arg]
+        elif opc == 'JUMP_FORWARD':
+            # TODO: should be JUMP
+            instr_pointer = labels[arg]
+        elif opc == 'PRINT_ITEM':
+            tos = stack.pop()
+            print tos,
+        elif opc == 'PRINT_NEWLINE':
+            print
+        elif opc == 'MAKE_FUNCTION':
+            if int(arg) >= 256:
+                raise Exception('numsed: keyword parameters not handled')
+            else:
+                pass
+        elif opc == 'CALL_FUNCTION':
+            pass
+        elif opc == 'STARTUP':
+            # argc parameters on top of stack above name of function
+            # first, add return address and swap parameters and name
+            args = list()
+            for i in range(int(arg)):
+                args.append(stack.pop())
+            func = stack.pop()
+            stack.append(instr_pointer)
+            for i in range(int(arg)):
+                stack.append(args.pop())
+            instr_pointer = 0
+        elif opc == 'MAKE_CONTEXT':
+            varnames.append(dict())
+        elif opc == 'POP_CONTEXT':
+            varnames.pop()
+        else:
+            raise Exception('numsed: Unknown opcode: %s' % opc)
+
+
+# -- Disassemble function ----------------------------------------------------
+# TODO: remove
 
 def make_opcode(func):
     # func is a python function
@@ -678,8 +784,8 @@ def disassemble(source, trace=False):
 
     # determine list of required builtin functions
     # TODO
-    builtin = (signed_add,)
-    #builtin = []
+    #builtin = (signed_add,)
+    builtin = []
 
     # compile
     with open(source) as f:
@@ -720,6 +826,10 @@ def make_opcode_module(source, trace=False):
     # normalize disassembly labels and opcode arguments
     newcode = []
     newcode.append('STARTUP')
+
+    # add dummy context to be removed by final RETURN_VALUE
+    newcode.append('MAKE_CONTEXT')
+
     for line in code:
         if line.strip():
             label, instr, arg = parse_dis_instruction(line)
@@ -792,10 +902,24 @@ def parse_dis_instruction(s):
     elif '(' in arg:
         m = re.search('\((.*)\)', arg)
         arg = m.group(1)
+        if arg.startswith('to '):
+            arg = arg[3:]
     else:
         arg = arg.strip()
 
     return label, instr, arg
+
+
+# -- Generate opcodes and run ------------------------------------------------
+
+
+def make_opcode_and_run(source, trace=False):
+
+    global BINARY_ADD
+    def BINARY_ADD(): return 'BINARY_ADD'
+
+    opcodes, function_labels, return_labels = make_opcode_module(source, trace=True)
+    interpreter(opcodes)
 
 
 # -- Generate sed code -------------------------------------------------------
@@ -813,6 +937,7 @@ def make_sed_module(source, trace=False):
     list_macros = ('STARTUP',
                    'MAKE_CONTEXT', 'POP_CONTEXT',
                    'LOAD_CONST', 'LOAD_NAME', 'STORE_NAME',
+                   'LOAD_FAST', 'STORE_FAST',
                    'BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY',
                    'RETURN_VALUE',
                    'PRINT_ITEM', 'PRINT_NEWLINE')
@@ -911,6 +1036,7 @@ def parse_command_line():
     parser.add_argument("-v", help="version", action="store_true", dest="version")
     parser.add_argument("-dis", help="disassemble", action="store_true", dest="disassemble")
     parser.add_argument("-ops", help="numsed intermediate opcodes", action="store_true", dest="opcodes")
+    parser.add_argument("-opsrun", help="run numsed intermediate opcodes", action="store_true", dest="runopcodes")
     parser.add_argument("-sed", help="generate sed script", action="store_true", dest="sed")
     parser.add_argument("-run", help="generate sed script and run", action="store_true", dest="run")
     parser.add_argument("-test", help="test", action="store_true", dest="test")
@@ -937,6 +1063,8 @@ def main():
         disassemble(args.source, trace=True)
     elif args.opcodes:
         make_opcode_module(args.source, trace=True)
+    elif args.runopcodes:
+        make_opcode_and_run(args.source, trace=True)
     elif args.sed:
         make_sed_module(args.source, trace=True)
     elif args.run:
