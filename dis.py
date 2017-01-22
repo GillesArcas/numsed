@@ -91,7 +91,11 @@ def disassemble(co, lasti=-1, offset=0):
             i = i+2
             if op == EXTENDED_ARG:
                 extended_arg = oparg*65536L
-            print repr(oparg).rjust(5),
+            #if opname[op] == 'POP_JUMP_IF_FALSE':
+            if op in hasjabs:
+                print repr(oparg + offset).rjust(5),
+            else:
+                print repr(oparg).rjust(5),
             if op in hasconst:
                 import types
                 if isinstance(co.co_consts[oparg], types.CodeType):
