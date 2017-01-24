@@ -152,6 +152,7 @@ def LOAD_GLOBAL(name):
     return snippet.replace('name', name)
 
 def STORE_GLOBAL(name):
+    # TODO: remove
     # name = POP() (cf cpython/ceval.c)
     snippet = r'''                      # PS: ?         HS: x;X
         g                               # PS: x;X       HS: ?
@@ -202,6 +203,7 @@ def LOAD_FAST(name):
     return snippet.replace('name', name)
 
 def STORE_FAST(name):
+    # TODO: code without DELETE, see STORE_GLOBAL
     # name = POP() (cf cpython/ceval.c)
     snippet = r'''                      # PS: ?         HS: x;X
         g                               # PS: x;X       HS: ?
@@ -491,6 +493,9 @@ def signed_add(x, y):
             r = -(x + y)
     return r
 
+def is_positive(x):
+    return x >= 0
+
 def BINARY_ADD():
     snippet = r'''
                                         # PS: ?         HS: M;N;X
@@ -678,7 +683,7 @@ def interpreter(code):
             stack.append(varnames[-1][arg])
         elif opc == 'STORE_FAST':
             varnames[-1][arg] = stack.pop()
-        elif opc == 'BINARY_ADD':
+        elif opc == 'BINARY_ADD' or opc == 'INPLACE_ADD':
             tos = stack.pop()
             tos1 = stack.pop()
             stack.append(tos1 + tos)
@@ -707,6 +712,8 @@ def interpreter(code):
                 stack.append(tos1 >= tos)
             else:
                 raise Exception('numsed: unknown compare operator: %s' % arg)
+        elif opc == 'JUMP_ABSOLUTE':
+            instr_pointer = labels[arg]
         elif opc == 'POP_JUMP_IF_TRUE':
             tos = stack.pop()
             if tos:
@@ -744,6 +751,10 @@ def interpreter(code):
             ret_pointer = stack.pop()
             instr_pointer = ret_pointer
             stack.append(ret_value)
+        elif opc == 'SETUP_LOOP':
+            pass
+        elif opc == 'POP_BLOCK':
+            pass
         elif opc == 'STARTUP':
             pass
         elif opc == 'MAKE_CONTEXT':
@@ -799,8 +810,8 @@ def disassemble(source, trace=False):
 
     # determine list of required builtin functions
     # TODO
-    #builtin = (signed_add,)
-    builtin = []
+    builtin = (signed_add, is_positive)
+    #builtin = []
 
     # compile
     with open(source) as f:
@@ -932,9 +943,10 @@ def parse_dis_instruction(s):
 
 def make_opcode_and_run(source, trace=False):
 
-    global BINARY_ADD, BINARY_MULTIPLY
-    def BINARY_ADD(): return 'BINARY_ADD'
-    def BINARY_MULTIPLY(): return 'BINARY_MULTIPLY'
+    if 1 == 0:
+        global BINARY_ADD, BINARY_MULTIPLY
+        def BINARY_ADD(): return 'BINARY_ADD'
+        def BINARY_MULTIPLY(): return 'BINARY_MULTIPLY'
 
     opcodes, function_labels, return_labels = make_opcode_module(source, trace=True)
     interpreter(opcodes)
