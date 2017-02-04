@@ -7,6 +7,10 @@ import inspect
 from StringIO import StringIO  # Python2
 #from io import StringIO  # Python3
 
+# AST
+# https://greentreesnakes.readthedocs.io/en/latest/
+
+# DST
 # https://docs.python.org/2/library/dis.html
 # http://unpyc.sourceforge.net/Opcodes.html
 # http://www.goldsborough.me/python/low-level/2016/10/04/00-31-30-disassembling_python_bytecode/
@@ -73,6 +77,12 @@ def POP():
         s/^[^;]*;//                     # PS: X         HS: N;X
         x                               # PS: N;X       HS: X
         s/;.*//                         # PS: N         HS: X
+        '''
+    return snippet
+
+def ROT_THREE():
+    # TODO
+    snippet = '''
         '''
     return snippet
 
@@ -506,6 +516,15 @@ def BINARY_ADD():
      '''
     return normalize(snippet, macros=('POP2', 'PUSH2', 'LOAD_GLOBAL', 'CALL_FUNCTION'), functions=('signed_add',))
 
+def BINARY_ADD():
+    snippet = r'''                      ## interpreted in opcodes, perhaps should not be described in sed
+                                        ##  # PS: ?         HS: M;N;X
+        LOAD_GLOBAL signed_add          ##  # PS: ?         HS: signed_add;M;N;X
+        ROT_THREE                       ##  # PS: ?         HS: M;N;signed_add;X
+        CALL_FUNCTION 2                 ##  # PS: ?         HS: R;X
+     '''
+    return snippet
+
 
 # -- Multiplication ----------------------------------------------------------
 
@@ -683,6 +702,21 @@ def interpreter(code):
             stack.append(varnames[-1][arg])
         elif opc == 'STORE_FAST':
             varnames[-1][arg] = stack.pop()
+        elif opc == 'ROT_THREE':
+            # stack in  = [... z y x]
+            # stack out = [... x z y]
+            x = stack.pop()
+            y = stack.pop()
+            z = stack.pop()
+            stack.extend([x, z, y])
+        elif opc == 'UNARY_NEGATIVE':
+            # TODO: optimize
+            tos = stack.pop()
+            stack.append(-tos)
+        elif opc == 'UNARY_POSITIVE':
+            # TODO: NOP like
+            tos = stack.pop()
+            stack.append(+tos)
         elif opc == 'BINARY_ADD' or opc == 'INPLACE_ADD':
             tos = stack.pop()
             tos1 = stack.pop()
@@ -765,44 +799,6 @@ def interpreter(code):
             raise Exception('numsed: Unknown opcode: %s' % opc)
 
 
-# -- Disassemble function ----------------------------------------------------
-# TODO: remove
-
-def make_opcode(func):
-    # func is a python function
-    # result is a list of opcodes, arguments and result at top of stack
-
-    # disassemble function
-    old_stdout = sys.stdout
-    result = StringIO()
-    sys.stdout = result
-    dis.dis(func)
-    sys.stdout = old_stdout
-    code = result.getvalue()
-
-    # normalize labels and opcode arguments
-    newcode = []
-    for line in code.splitlines():
-        if line.strip():
-            label, instr, arg = parse_dis_instruction(line)
-            if label:
-                newcode.append(':%s' % label)
-            if arg:
-                newcode.append('%s %s' % (instr, arg))
-            else:
-                newcode.append(instr)
-
-    # create context and add opcodes to store arguments in current context
-    args = func.func_code.co_varnames[:func.func_code.co_argcount]
-
-    store_args = '\n'.join(['STORE_FAST %s' % arg for arg in args])
-
-    # after code the result is on top of stack, remains to clean context
-    snippet = 'MAKE_CONTEXT\n' + store_args + '\n'.join(newcode) + 'POP_CONTEXT\n'
-
-    return normalize(snippet, macros=('MAKE_CONTEXT', 'POP_CONTEXT', 'STORE_FAST'))
-
-
 # -- Disassemble -------------------------------------------------------------
 
 
@@ -845,6 +841,11 @@ def disassemble(source, trace=False):
 
 
 def make_opcode_module(source, trace=False):
+
+    if 1 == 1:
+        global BINARY_ADD, BINARY_MULTIPLY
+        def BINARY_ADD(): return 'BINARY_ADD'
+        def BINARY_MULTIPLY(): return 'BINARY_MULTIPLY'
 
     # disassemble
     code = disassemble(source, trace=False)
@@ -902,6 +903,16 @@ def make_opcode_module(source, trace=False):
         else:
             newcode3.append(instr)
 
+    # print '[', '-' * 40
+    # for instr in newcode3:
+    #     print instr
+    # print ']', '-' * 40
+
+    # # TODO: ici ?
+    # list_macros = ('BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY')
+    # newcode3 = normalize('\n'.join(newcode3), macros=list_macros)
+    # newcode3 = newcode3.splitlines()
+
     # trace if requested
     if trace:
         for instr in newcode3:
@@ -942,11 +953,6 @@ def parse_dis_instruction(s):
 
 
 def make_opcode_and_run(source, trace=False):
-
-    if 1 == 0:
-        global BINARY_ADD, BINARY_MULTIPLY
-        def BINARY_ADD(): return 'BINARY_ADD'
-        def BINARY_MULTIPLY(): return 'BINARY_MULTIPLY'
 
     opcodes, function_labels, return_labels = make_opcode_module(source, trace=True)
     interpreter(opcodes)
@@ -1036,7 +1042,6 @@ def test():
     #print 123456 * 567, UMUL(123456, 567)
     #x = UDIV()
     #print tmp()
-    #print make_opcode(euclide)
     #print dis.dis(signed_add)
     print inspect.getsourcelines(signed_add)
     pass
