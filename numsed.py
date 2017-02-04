@@ -354,6 +354,7 @@ def POP_JUMP_IF_FALSE(target):
 
 
 def is_positive(x):
+    # TODO: check
     return x >= 0
 
 
@@ -480,31 +481,6 @@ def BINARY_SUBTRACT():
      '''
     return normalize(snippet, macros=('POP2', 'USUB', 'PUSH'))
 
-
-def signed_add(x, y):
-    if is_positive(x):
-        if is_positive(y):
-            r = x + y
-        else:
-            y = -y
-            if x > y:
-                r = x - y
-            else:
-                r = -(y - x)
-    else:
-        x = -x
-        if is_positive(y):
-            if x > y:
-                r = -(x - y)
-            else:
-                r = y - x
-        else:
-            y = -y
-            r = -(x + y)
-    return r
-
-def is_positive(x):
-    return x >= 0
 
 def BINARY_ADD():
     snippet = r'''
@@ -804,19 +780,9 @@ def interpreter(code):
 
 def disassemble(source, trace=False):
 
-    # determine list of required builtin functions
-    # TODO
-    builtin = (signed_add, is_positive)
-    #builtin = []
-
-    # compile
+     # compile
     with open(source) as f:
         script = f.read()
-
-    # add builtin functions to code to compile
-    for func in builtin:
-        script += '\n'
-        script += '\n'.join(inspect.getsourcelines(func)[0])
 
     code = compile(script, source, "exec")
 

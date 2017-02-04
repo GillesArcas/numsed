@@ -1,17 +1,10 @@
 import sys
+import inspect
 import ast
-#import codegen
-import unparser
+import codegen
 
 
-class NumsedAstVisitor(ast.NodeVisitor):
-    def generic_visit(self, node):
-        print type(node).__name__
-        ast.NodeVisitor.generic_visit(self, node)
-
-    #def visit_BinOp(self, node):
-    #    print ast.dump(node)
-
+# -- Transformer --------------------------------------------------------------
 
 
 class NumsedAstTransformer(ast.NodeTransformer):
@@ -55,16 +48,139 @@ class NumsedAstTransformer(ast.NodeTransformer):
                 list_compare.append(compare)
                 left = comparators[0]
                 ops = ops[1:]
-                comparators= comparators[1:]
+                comparators = comparators[1:]
             return ast.BoolOp(op=ast.And(), values=list_compare)
 
 
-tree = ast.parse(open('compare.py').read())
+# -- Builtin functions -------------------------------------------------------
 
-numsed_ast_transformer = NumsedAstTransformer()
-numsed_ast_transformer.visit(tree)
-print ast.dump(tree)
-#print codegen.to_source(tree)
 
-unparser.Unparser(tree, sys.stdout)
-print numsed_ast_transformer.required_func
+def signed_eq(x, y):
+    if is_positive(x):
+        if is_positive(y):
+            return x == y
+        else:
+            return False
+    else:
+        if is_positive(y):
+            return False
+        else:
+            return abs(x) == abs(y)
+
+def signed_noteq(x, y):
+    return not signed_eq(x, y)
+
+def signed_lt(x, y):
+    if is_positive(x):
+        if is_positive(y):
+            return x < y
+        else:
+            return True
+    else:
+        if is_positive(y):
+            return True
+        else:
+            return abs(x) < abs(y)
+
+
+def signed_add(x, y):
+    if is_positive(x):
+        if is_positive(y):
+            r = x + y
+        else:
+            y = -y
+            if x > y:
+                r = x - y
+            else:
+                r = -(y - x)
+    else:
+        x = -x
+        if is_positive(y):
+            if x > y:
+                r = -(x - y)
+            else:
+                r = y - x
+        else:
+            y = -y
+            r = -(x + y)
+    return r
+
+def euclide(a, b):
+    # http://compoasso.free.fr/primelistweb/page/prime/euclide.php
+    r = a
+    q = 0
+    n = 0
+    aux = b
+
+    while aux <= a:
+        aux = aux * 2
+        n += 1
+
+    while n > 0:
+        #aux = aux / 2
+        aux *= 5
+        aux /= 10
+        n -= 1
+        q = q * 2
+        if r >= aux:
+            r -= aux
+            q += 1
+
+    return q
+
+def modulo(a, b):
+    q = euclide(a, b)
+    return a - b * q
+
+def signed_divide(a, b):
+    if (a >= 0 and b >= 0) or (a <= 0 and b <= 0):
+        return euclide(a, b)
+    else:
+        return -euclide(a, b)
+
+def signed_modulo(a, b):
+    q = signed_divide(a, b)
+    return a - b * q
+
+
+def is_positive(x):
+    return x >= 0
+
+
+# -- Tests -------------------------------------------------------------------
+
+
+class NumsedAstVisitor(ast.NodeVisitor):
+    def generic_visit(self, node):
+        print type(node).__name__
+        ast.NodeVisitor.generic_visit(self, node)
+
+    #def visit_BinOp(self, node):
+    #    print ast.dump(node)
+
+
+# -- Main --------------------------------------------------------------------
+
+
+def main():
+    tree = ast.parse(open('ast\\compare.py').read())
+    #print ast.dump(tree)
+
+    numsed_ast_transformer = NumsedAstTransformer()
+    numsed_ast_transformer.visit(tree)
+    script = codegen.to_source(tree)
+    builtin = numsed_ast_transformer.required_func
+    builtin = list(builtin) + ['is_positive',]
+    #print builtin
+
+    # add builtin functions to code to compile
+    for func in builtin:
+        funcobj = globals()[func]
+        script += '\n'
+        script += '\n'.join(inspect.getsourcelines(funcobj)[0])
+
+    print script
+
+    
+if __name__ == "__main__":
+    main()
