@@ -1,10 +1,18 @@
 """
 Transform a python program into positive form:
 - all operators and binary comparisons are replaced with call to functions
-  x + y --> signed_add(x, y), idem -, *, /, ==, !=, <, <=, >, >=
-- all operands of operators and binary comparisons must be positive integers.
-  This is tested by transformer_test.py
+  x + y --> signed_add(x, y), idem -, *, //, ==, !=, <, <=, >, >=
+- all operands of operators and binary comparisons inside signed_xxx functions
+  must be positive integers.
+- two functions handling negative values remain: is_positive and negative. They
+  are treated separately when testing python positive form or compiling to sed.
+- augmented assignments are replaces with simple assignments.
+
+A testing mode of the transformer program generates code testing that arguments
+of operators and comparisons are positive.
 """
+
+from __future__ import division
 
 import sys
 import inspect
@@ -32,7 +40,7 @@ class NumsedAstTransformer(ast.NodeTransformer):
         func = {ast.Add: 'signed_add',
                 ast.Sub: 'signed_sub',
                 ast.Mult: 'signed_mult',
-                ast.Div: 'signed_div',
+                ast.Div: None,
                 ast.FloorDiv: 'signed_div'}
         return self.make_call(func[type(node.op)], [node.left, node.right])
 
@@ -100,42 +108,51 @@ def signed_add(x, y):
         if is_positive(y):
             r = x + y
         else:
-            y = -y
+            y = negative(y)
             if x > y:
                 r = x - y
             else:
-                r = -(y - x)
+                r = negative(y - x)
     else:
-        x = -x
+        x = negative(x)
         if is_positive(y):
             if x > y:
-                r = -(x - y)
+                r = negative(x - y)
             else:
                 r = y - x
         else:
-            y = -y
-            r = -(x + y)
+            y = negative(y)
+            r = negative(x + y)
     return r
 
+
 def signed_sub(x, y):
-    abs_x = absolute(x)
-    abs_y = absolute(y)
     if is_positive(x):
         if is_positive(y):
-            if unsigned_gte(abs_x, abs_y):
-                return unsigned_sub(abs_x, abs_y)
+            if x > y:
+                return x - y
             else:
-                return negative(unsigned_sub(abs_y, abs_x))
+                return negative(y - x)
         else:
-            return unsigned_add(abs_x, abs_y)
+            return x + negative(y)
     else:
+        abs_x = negative(x)
         if is_positive(y):
-            return negative(unsigned_add(abs_x, abs_y))
+            return negative(abs_x + y)
         else:
-            if unsigned_gte(abs_x, abs_y):
-                return negative(unsigned_sub(abs_x, abs_y))
+            abs_y = negative(y)
+            if abs_x > abs_y:
+                return negative(abs_x - abs_y)
             else:
-                return unsigned_sub(abs_y, abs_x)
+                return abs_y - abs_x
+
+
+def signed_pos(x):
+    return x
+
+
+def signed_neg(x):
+    return negative(x)
 
 
 def euclide(a, b):
@@ -182,26 +199,25 @@ def signed_modulo(a, b):
 def is_positive(x):
     return x >= 0
 
-def absolute(x):
-    return abs(x)
-
 def negative(x):
     return -x
 
+
+# -- Testing transformation --------------------------------------------------
+
+
 def unsigned_gte(x, y):
-    assert(x >= 0)
-    assert(y >= 0)
+    assert x >= 0
+    assert y >= 0
     return x > y
 
 def unsigned_add(x, y):
-    assert(x >= 0)
-    assert(y >= 0)
+    assert x >= 0
+    assert y >= 0
     return x + y
 
-def unsigned_sub(x, y):
-    assert(x >= 0)
-    assert(y >= 0)
-    return x - y
+
+# ... or rather visitor adds assertions before each operator and comparison
 
 
 # -- Tests -------------------------------------------------------------------
@@ -227,7 +243,7 @@ def main():
     numsed_ast_transformer.visit(tree)
     builtin = numsed_ast_transformer.required_func
     builtin = [globals()[x] for x in builtin]
-    builtin += [is_positive, absolute, negative, unsigned_gte, unsigned_add, unsigned_sub]
+    builtin += [is_positive, negative, unsigned_gte, unsigned_add]
     #print builtin
 
     # add builtin functions to code to compile
