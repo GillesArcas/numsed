@@ -1,3 +1,11 @@
+"""
+Transform a python program into positive form:
+- all operators and binary comparisons are replaced with call to functions
+  x + y --> signed_add(x, y), idem -, *, /, ==, !=, <, <=, >, >=
+- all operands of operators and binary comparisons must be positive integers.
+  This is tested by transformer_test.py
+"""
+
 import sys
 import inspect
 import ast
@@ -8,6 +16,7 @@ import codegen
 
 
 class NumsedAstTransformer(ast.NodeTransformer):
+    # TODO: +=, ...
 
     def __init__(self):
         self.required_func = set()
@@ -82,6 +91,9 @@ def signed_lt(x, y):
         else:
             return abs(x) < abs(y)
 
+def signed_gte(x, y):
+    return not signed_lt(x, y)
+
 
 def signed_add(x, y):
     if is_positive(x):
@@ -104,6 +116,27 @@ def signed_add(x, y):
             y = -y
             r = -(x + y)
     return r
+
+def signed_sub(x, y):
+    abs_x = absolute(x)
+    abs_y = absolute(y)
+    if is_positive(x):
+        if is_positive(y):
+            if unsigned_gte(abs_x, abs_y):
+                return unsigned_sub(abs_x, abs_y)
+            else:
+                return negative(unsigned_sub(abs_y, abs_x))
+        else:
+            return unsigned_add(abs_x, abs_y)
+    else:
+        if is_positive(y):
+            return negative(unsigned_add(abs_x, abs_y))
+        else:
+            if unsigned_gte(abs_x, abs_y):
+                return negative(unsigned_sub(abs_x, abs_y))
+            else:
+                return unsigned_sub(abs_y, abs_x)
+
 
 def euclide(a, b):
     # http://compoasso.free.fr/primelistweb/page/prime/euclide.php
@@ -143,8 +176,32 @@ def signed_modulo(a, b):
     return a - b * q
 
 
+# -- Primitives --------------------------------------------------------------
+
+
 def is_positive(x):
     return x >= 0
+
+def absolute(x):
+    return abs(x)
+
+def negative(x):
+    return -x
+
+def unsigned_gte(x, y):
+    assert(x >= 0)
+    assert(y >= 0)
+    return x > y
+
+def unsigned_add(x, y):
+    assert(x >= 0)
+    assert(y >= 0)
+    return x + y
+
+def unsigned_sub(x, y):
+    assert(x >= 0)
+    assert(y >= 0)
+    return x - y
 
 
 # -- Tests -------------------------------------------------------------------
@@ -163,24 +220,25 @@ class NumsedAstVisitor(ast.NodeVisitor):
 
 
 def main():
-    tree = ast.parse(open('ast\\compare.py').read())
-    #print ast.dump(tree)
+    tree = ast.parse(open('ast\\sub.py').read())
+    print ast.dump(tree)
 
     numsed_ast_transformer = NumsedAstTransformer()
     numsed_ast_transformer.visit(tree)
-    script = codegen.to_source(tree)
     builtin = numsed_ast_transformer.required_func
-    builtin = list(builtin) + ['is_positive',]
+    builtin = [globals()[x] for x in builtin]
+    builtin += [is_positive, absolute, negative, unsigned_gte, unsigned_add, unsigned_sub]
     #print builtin
 
     # add builtin functions to code to compile
+    script = ''
     for func in builtin:
-        funcobj = globals()[func]
         script += '\n'
-        script += '\n'.join(inspect.getsourcelines(funcobj)[0])
+        script += '\n'.join(inspect.getsourcelines(func)[0])
+    script += codegen.to_source(tree)
 
     print script
 
-    
+
 if __name__ == "__main__":
     main()
