@@ -586,44 +586,6 @@ def BINARY_MULTIPLY():
 # -- Division ----------------------------------------------------------------
 
 
-def euclide(a, b):
-    # http://compoasso.free.fr/primelistweb/page/prime/euclide.php
-    r = a
-    q = 0
-    n = 0
-    aux = b
-
-    while aux <= a:
-        aux = aux * 2
-        n += 1
-
-    while n > 0:
-        #aux = aux / 2
-        aux *= 5
-        aux /= 10
-        n -= 1
-        q = q * 2
-        if r >= aux:
-            r -= aux
-            q += 1
-
-    return q
-
-def modulo(a, b):
-    q = euclide(a, b)
-    return a - b * q
-
-def signed_divide(a, b):
-    if a >= 0 and b >= 0 or a <= 0 and b <= 0:
-        return euclide(a, b)
-    else:
-        return -euclide(a, b)
-
-def signed_modulo(a, b):
-    q = signed_divide(a, b)
-    return a - b * q
-
-
 def UDIV():
     print euclide.func_code.co_varnames
     print euclide.func_code.co_varnames[:euclide.func_code.co_argcount]
