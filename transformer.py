@@ -1,12 +1,13 @@
 """
-Transform a python program into positive form:
+Prepare a python program (tiny subset) for compliation into sed.
+Transform into positive form:
 - all operators and binary comparisons are replaced with call to functions
   x + y --> signed_add(x, y), idem -, *, //, ==, !=, <, <=, >, >=
 - all operands of operators and binary comparisons inside signed_xxx functions
   must be positive integers.
 - two functions handling negative values remain: is_positive and negative. They
-  are treated separately when testing python positive form or compiling to sed.
-- augmented assignments are replaces with simple assignments.
+  are treated separately when testing python positive form or compiling into sed.
+- augmented assignments are replaced with simple assignments.
 
 A testing mode of the transformer program generates code testing that arguments
 of operators and comparisons are positive.
@@ -60,13 +61,20 @@ class NumsedAstTransformer(ast.NodeTransformer):
         else:
             list_compare = []
             while ops:
-                #compare = ast.Compare(left, ops[:1], comparators[:1])
                 compare = self.make_call(func[type(ops[0])], [left, comparators[0]])
                 list_compare.append(compare)
                 left = comparators[0]
                 ops = ops[1:]
                 comparators = comparators[1:]
             return ast.BoolOp(op=ast.And(), values=list_compare)
+
+    def visit_AugAssign(self, node):
+        # AugAssign(target=Name(id='x', ctx=Store()), op=Add(), value=Num(n=1)),
+        # Assign(targets=[Name(id='x', ctx=Store())], value=BinOp(left=Name(id='x', ctx=Load()), op=Add(), right=Num(n=1)))])
+        #self.generic_visit(node)
+        target = node.target
+        source = ast.Name(id=target.id, cts=ast.Load())
+        return ast.Assign(targets=[target], value=self.visit_BinOp(ast.BinOp(left=source, op=node.op, right=node.value)))
 
 
 # -- Builtin functions -------------------------------------------------------
@@ -182,11 +190,20 @@ def modulo(a, b):
     q = euclide(a, b)
     return a - b * q
 
-def signed_divide(a, b):
+
+def signed_mult(a, b):
+    if (a >= 0 and b >= 0) or (a <= 0 and b <= 0):
+        return a * b
+    else:
+        return negative(a * b)
+
+
+def signed_div(a, b):
     if (a >= 0 and b >= 0) or (a <= 0 and b <= 0):
         return euclide(a, b)
     else:
         return -euclide(a, b)
+
 
 def signed_modulo(a, b):
     q = signed_divide(a, b)
@@ -236,7 +253,7 @@ class NumsedAstVisitor(ast.NodeVisitor):
 
 
 def main():
-    tree = ast.parse(open('ast\\sub.py').read())
+    tree = ast.parse(open('tmp.py').read())
     print ast.dump(tree)
 
     numsed_ast_transformer = NumsedAstTransformer()
@@ -248,9 +265,9 @@ def main():
 
     # add builtin functions to code to compile
     script = ''
-    for func in builtin:
-        script += '\n'
-        script += '\n'.join(inspect.getsourcelines(func)[0])
+    # for func in builtin:
+    #     script += '\n'
+    #     script += '\n'.join(inspect.getsourcelines(func)[0])
     script += codegen.to_source(tree)
 
     print script
