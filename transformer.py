@@ -202,10 +202,10 @@ def signed_div(a, b):
     if (a >= 0 and b >= 0) or (a <= 0 and b <= 0):
         return euclide(a, b)
     else:
-        return -euclide(a, b)
+        return negative(euclide(a, b))
 
 
-def signed_modulo(a, b):
+def signed_mod(a, b):
     q = signed_divide(a, b)
     return a - b * q
 
@@ -252,25 +252,33 @@ class NumsedAstVisitor(ast.NodeVisitor):
 # -- Main --------------------------------------------------------------------
 
 
-def main():
-    tree = ast.parse(open('tmp.py').read())
+def transform(script_in, script_out):
+    tree = ast.parse(open(script_in).read())
     print ast.dump(tree)
 
     numsed_ast_transformer = NumsedAstTransformer()
     numsed_ast_transformer.visit(tree)
     builtin = numsed_ast_transformer.required_func
     builtin = [globals()[x] for x in builtin]
-    builtin += [is_positive, negative, unsigned_gte, unsigned_add]
+    if signed_div in builtin or signed_mod in builtin:
+        builtin.append(euclide)
+    builtin += [is_positive, negative]
     #print builtin
 
     # add builtin functions to code to compile
     script = ''
-    # for func in builtin:
-    #     script += '\n'
-    #     script += '\n'.join(inspect.getsourcelines(func)[0])
+    for func in builtin:
+        script += '\n'
+        script += ''.join(inspect.getsourcelines(func)[0])
+    script += '\n'
     script += codegen.to_source(tree)
 
-    print script
+    with open(script_out, 'w') as f:
+        f.writelines(script)
+
+
+def main():
+    print transform(sys.argv[1], sys.argv[2])
 
 
 if __name__ == "__main__":
