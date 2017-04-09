@@ -18,16 +18,31 @@ from __future__ import division
 import sys
 import inspect
 import ast
+import operator
 import codegen
 
 
 # -- Transformer --------------------------------------------------------------
 
 
-class NumsedAstTransformer(ast.NodeTransformer):
-    # TODO: +=, ...
+signed_func = {
+    ast.Add: 'signed_add',
+    ast.Sub: 'signed_sub',
+    ast.Mult: 'signed_mult',
+    ast.Div: None,
+    ast.FloorDiv: 'signed_div',
+    ast.Eq: 'signed_eq',
+    ast.NotEq: 'signed_noteq',
+    ast.Lt: 'signed_lt',
+    ast.LtE: 'signed_lte',
+    ast.Gt: 'signed_gt',
+    ast.GtE: 'signed_gte'}
 
-    def __init__(self):
+
+class NumsedAstTransformer(ast.NodeTransformer):
+
+    def __init__(self, func):
+        self.func = func
         self.required_func = set()
 
     def make_call(self, func, args):
@@ -38,30 +53,19 @@ class NumsedAstTransformer(ast.NodeTransformer):
 
     def visit_BinOp(self, node):
         self.generic_visit(node)
-        func = {ast.Add: 'signed_add',
-                ast.Sub: 'signed_sub',
-                ast.Mult: 'signed_mult',
-                ast.Div: None,
-                ast.FloorDiv: 'signed_div'}
-        return self.make_call(func[type(node.op)], [node.left, node.right])
+        return self.make_call(self.func[type(node.op)], [node.left, node.right])
 
     def visit_Compare(self, node):
         self.generic_visit(node)
-        func = {ast.Eq: 'signed_eq',
-                ast.NotEq: 'signed_noteq',
-                ast.Lt: 'signed_lt',
-                ast.LtE: 'signed_lte',
-                ast.Gt: 'signed_gt',
-                ast.GtE: 'signed_gte'}
         left = node.left
         ops = node.ops
         comparators = node.comparators
         if len(ops) == 1:
-            return self.make_call(func[type(node.ops[0])], [node.left, comparators[0]])
+            return self.make_call(self.func[type(node.ops[0])], [node.left, comparators[0]])
         else:
             list_compare = []
             while ops:
-                compare = self.make_call(func[type(ops[0])], [left, comparators[0]])
+                compare = self.make_call(self.func[type(ops[0])], [left, comparators[0]])
                 list_compare.append(compare)
                 left = comparators[0]
                 ops = ops[1:]
@@ -73,7 +77,7 @@ class NumsedAstTransformer(ast.NodeTransformer):
         # Assign(targets=[Name(id='x', ctx=Store())], value=BinOp(left=Name(id='x', ctx=Load()), op=Add(), right=Num(n=1)))])
         #self.generic_visit(node)
         target = node.target
-        source = ast.Name(id=target.id, cts=ast.Load())
+        source = ast.Name(id=target.id, ctx=ast.Load())
         return ast.Assign(targets=[target], value=self.visit_BinOp(ast.BinOp(left=source, op=node.op, right=node.value)))
 
 
@@ -90,7 +94,7 @@ def signed_eq(x, y):
         if is_positive(y):
             return False
         else:
-            return abs(x) == abs(y)
+            return negative(x) == negative(y)
 
 def signed_noteq(x, y):
     return not signed_eq(x, y)
@@ -105,7 +109,7 @@ def signed_lt(x, y):
         if is_positive(y):
             return True
         else:
-            return abs(x) < abs(y)
+            return negative(x) < negative(y)
 
 def signed_gte(x, y):
     return not signed_lt(x, y)
@@ -214,10 +218,10 @@ def signed_mod(a, b):
 
 
 def is_positive(x):
-    return x >= 0
+    return operator.ge(x, 0)
 
 def negative(x):
-    return -x
+    return operator.neg(x)
 
 
 # -- Testing transformation --------------------------------------------------
@@ -253,11 +257,23 @@ class NumsedAstVisitor(ast.NodeVisitor):
 
 
 def transform(script_in, script_out):
-    tree = ast.parse(open(script_in).read())
-    print ast.dump(tree)
+    test = False
 
-    numsed_ast_transformer = NumsedAstTransformer()
+    tree = ast.parse(open(script_in).read())
+    if test:
+        print ast.dump(tree)
+        exec(compile(tree, filename="<ast>", mode="exec"))
+        print '--'
+
+    numsed_ast_transformer = NumsedAstTransformer(signed_func)
     numsed_ast_transformer.visit(tree)
+
+    if test:
+        ast.fix_missing_locations(tree)
+        print ast.dump(tree)
+        # going to and from AST
+        exec(compile(tree, filename="<ast>", mode="exec"))
+        
     builtin = numsed_ast_transformer.required_func
     builtin = [globals()[x] for x in builtin]
     if signed_div in builtin or signed_mod in builtin:
