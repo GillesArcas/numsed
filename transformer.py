@@ -31,12 +31,27 @@ signed_func = {
     ast.Mult: 'signed_mult',
     ast.Div: None,
     ast.FloorDiv: 'signed_div',
+    ast.Mod: 'signed_mod',
     ast.Eq: 'signed_eq',
     ast.NotEq: 'signed_noteq',
     ast.Lt: 'signed_lt',
     ast.LtE: 'signed_lte',
     ast.Gt: 'signed_gt',
     ast.GtE: 'signed_gte'}
+
+unsigned_func = {
+    ast.Add: 'unsigned_add',
+    ast.Sub: 'unsigned_sub',
+    ast.Mult: 'unsigned_mult',
+    ast.Div: None,
+    ast.FloorDiv: 'unsigned_div',
+    ast.Mod: 'unsigned_mod',
+    ast.Eq: 'unsigned_eq',
+    ast.NotEq: 'unsigned_noteq',
+    ast.Lt: 'unsigned_lt',
+    ast.LtE: 'unsigned_lte',
+    ast.Gt: 'unsigned_gt',
+    ast.GtE: 'unsigned_gte'}
 
 
 class NumsedAstTransformer(ast.NodeTransformer):
@@ -181,7 +196,7 @@ def euclide(a, b):
     while n > 0:
         #aux = aux / 2
         aux *= 5
-        aux /= 10
+        aux //= 10 # TODO: //10 should be a primitive divide_by_10()
         n -= 1
         q = q * 2
         if r >= aux:
@@ -227,18 +242,29 @@ def negative(x):
 # -- Testing transformation --------------------------------------------------
 
 
-def unsigned_gte(x, y):
+unsigned_func_pattern = """
+def %s(x, y):
     assert x >= 0
     assert y >= 0
-    return x > y
+    return x %s y
+"""
 
-def unsigned_add(x, y):
-    assert x >= 0
-    assert y >= 0
-    return x + y
+unsigned_op = {
+    'unsigned_add': '+',
+    'unsigned_sub': '-',
+    'unsigned_mult': '*',
+    'unsigned_div': '//',
+    'unsigned_mod': '%',
+    'unsigned_eq': '==',
+    'unsigned_noteq': '!=',
+    'unsigned_lt': '<',
+    'unsigned_lte': '<=',
+    'unsigned_gt': '>',
+    'unsigned_gte': '>='}
 
 
-# ... or rather visitor adds assertions before each operator and comparison
+def make_unsigned_func(name):
+    return unsigned_func_pattern % (name, unsigned_op[name])
 
 
 # -- Tests -------------------------------------------------------------------
@@ -273,7 +299,7 @@ def transform(script_in, script_out):
         print ast.dump(tree)
         # going to and from AST
         exec(compile(tree, filename="<ast>", mode="exec"))
-        
+
     builtin = numsed_ast_transformer.required_func
     builtin = [globals()[x] for x in builtin]
     if signed_div in builtin or signed_mod in builtin:
@@ -292,9 +318,44 @@ def transform(script_in, script_out):
     with open(script_out, 'w') as f:
         f.writelines(script)
 
+def transform_assert(script_in, script_out):
+    test = False
+
+    tree = ast.parse(open(script_in).read())
+    if test:
+        print ast.dump(tree)
+        exec(compile(tree, filename="<ast>", mode="exec"))
+        print '--'
+
+    numsed_ast_transformer = NumsedAstTransformer(unsigned_func)
+    numsed_ast_transformer.visit(tree)
+
+    if test:
+        ast.fix_missing_locations(tree)
+        print ast.dump(tree)
+        # going to and from AST
+        exec(compile(tree, filename="<ast>", mode="exec"))
+
+    # add builtin functions to code to compile
+    builtin = numsed_ast_transformer.required_func
+    script = ''
+    for func in builtin:
+        script += '\n'
+        script += make_unsigned_func(func)
+    script += '\n'
+    script += 'import operator\n'
+    script += codegen.to_source(tree)
+
+    with open(script_out, 'w') as f:
+        f.writelines(script)
+
 
 def main():
+    pass2 = True
     print transform(sys.argv[1], sys.argv[2])
+    # pass #2
+    if pass2:
+        print transform_assert(sys.argv[2], 'tmpassert.py')
 
 
 if __name__ == "__main__":
