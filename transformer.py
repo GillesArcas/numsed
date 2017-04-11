@@ -17,8 +17,8 @@ from __future__ import division
 
 import sys
 import inspect
-import ast
 import operator
+import ast
 import codegen
 
 
@@ -282,30 +282,18 @@ class NumsedAstVisitor(ast.NodeVisitor):
 # -- Main --------------------------------------------------------------------
 
 
-def transform(script_in, script_out):
-    test = False
-
+def transform_positive(script_in, script_out, do_exec):
     tree = ast.parse(open(script_in).read())
-    if test:
-        print ast.dump(tree)
-        exec(compile(tree, filename="<ast>", mode="exec"))
-        print '--'
-
+    test_exec(tree, do_exec)
     numsed_ast_transformer = NumsedAstTransformer(signed_func)
     numsed_ast_transformer.visit(tree)
-
-    if test:
-        ast.fix_missing_locations(tree)
-        print ast.dump(tree)
-        # going to and from AST
-        exec(compile(tree, filename="<ast>", mode="exec"))
+    test_exec(tree, do_exec)
 
     builtin = numsed_ast_transformer.required_func
     builtin = [globals()[x] for x in builtin]
     if signed_div in builtin or signed_mod in builtin:
         builtin.append(euclide)
     builtin += [is_positive, negative]
-    #print builtin
 
     # add builtin functions to code to compile
     script = ''
@@ -318,23 +306,13 @@ def transform(script_in, script_out):
     with open(script_out, 'w') as f:
         f.writelines(script)
 
-def transform_assert(script_in, script_out):
-    test = False
 
+def transform_assert(script_in, script_out, do_exec):
     tree = ast.parse(open(script_in).read())
-    if test:
-        print ast.dump(tree)
-        exec(compile(tree, filename="<ast>", mode="exec"))
-        print '--'
-
+    test_exec(tree, do_exec)
     numsed_ast_transformer = NumsedAstTransformer(unsigned_func)
     numsed_ast_transformer.visit(tree)
-
-    if test:
-        ast.fix_missing_locations(tree)
-        print ast.dump(tree)
-        # going to and from AST
-        exec(compile(tree, filename="<ast>", mode="exec"))
+    test_exec(tree, do_exec)
 
     # add builtin functions to code to compile
     builtin = numsed_ast_transformer.required_func
@@ -350,12 +328,28 @@ def transform_assert(script_in, script_out):
         f.writelines(script)
 
 
+def test_exec(tree, do_exec):
+    if do_exec:
+        ast.fix_missing_locations(tree)
+        print ast.dump(tree)
+        exec(compile(tree, filename="<ast>", mode="exec"))
+
+
+def transform(script_in, script_out, do_assert=False, do_exec=False):
+    transform_positive(script_in, script_out, do_exec)
+    if do_assert:
+        transform_assert(script_out, script_out, do_exec)
+
+
+# -- Main --------------------------------------------------------------------
+
+
 def main():
-    pass2 = True
-    print transform(sys.argv[1], sys.argv[2])
-    # pass #2
-    if pass2:
-        print transform_assert(sys.argv[2], 'tmpassert.py')
+    script_in = sys.argv[1]
+    script_out = sys.argv[2]
+    do_assert = False
+    do_exec = True
+    transform(script_in, script_out, do_assert, do_exec)
 
 
 if __name__ == "__main__":
