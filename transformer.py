@@ -321,7 +321,7 @@ def transform_assert(script_in, script_out, do_exec):
         script += '\n'
         script += make_unsigned_func(func)
     script += '\n'
-    script += 'import operator\n'
+    script += 'import operator\n\n'
     script += codegen.to_source(tree)
 
     with open(script_out, 'w') as f:
