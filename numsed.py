@@ -1,11 +1,14 @@
 import argparse
 import sys
+import os
 import re
 import dis
 import subprocess
 import inspect
 from StringIO import StringIO  # Python2
 #from io import StringIO  # Python3
+import transformer
+
 
 # AST
 # https://greentreesnakes.readthedocs.io/en/latest/
@@ -340,10 +343,6 @@ def COMPARE_OP(opname):
         snippet = 'POP2; CMP; y/<=>/011/; PUSH'
     return snippet
 
-def signed_compare_op(opname):
-    # TODO
-    return ''
-
 def POP_JUMP_IF_TRUE(target):
     snippet = 'LOAD_TOP; /^1$/b ' + target
     return snippet
@@ -351,11 +350,6 @@ def POP_JUMP_IF_TRUE(target):
 def POP_JUMP_IF_FALSE(target):
     snippet = 'LOAD_TOP; /^0$/b ' + target
     return snippet
-
-
-def is_positive(x):
-    # TODO: check
-    return x >= 0
 
 
 # - Addition and subtraction -------------------------------------------------
@@ -464,8 +458,10 @@ def USUB():
 
 
 def BINARY_ADD():
-    snippet = r'''
-                                        # PS: ?         HS: M;N;X
+    """
+    Implements TOS = TOS1 + TOS on unsigned integers (R = N + M).
+    """
+    snippet = r'''                      # PS: ?         HS: M;N;X
         POP2                            # PS: M;N;      HS: X
         UADD                            # PS: R         HS: X
         PUSH                            # PS: R         HS: R;X
@@ -473,33 +469,16 @@ def BINARY_ADD():
     return normalize(snippet, macros=('POP2', 'UADD', 'PUSH'))
 
 def BINARY_SUBTRACT():
-    snippet = r'''
-                                        # PS: ?         HS: M;N;X
+    """
+    Implements TOS = TOS1 - TOS on unsigned integers (R = N - M).
+    """
+    snippet = r'''                      # PS: ?         HS: M;N;X
         POP2                            # PS: M;N;      HS: X
+       #SWAP                            # PS: N;M;      HS: X (swap required ?) ou en 1ere ligne
         USUB                            # PS: R         HS: X
         PUSH                            # PS: R         HS: R;X
      '''
     return normalize(snippet, macros=('POP2', 'USUB', 'PUSH'))
-
-
-def BINARY_ADD():
-    snippet = r'''
-                                        # PS: ?         HS: M;N;X
-        POP2                            # PS: M;N;      HS: X
-        LOAD_GLOBAL signed_add          # PS: M;N;      HS: signed_add;X
-        PUSH2                           # PS: ?         HS: M;N;signed_add;X
-        CALL_FUNCTION 2                 # PS: ?         HS: R;X
-     '''
-    return normalize(snippet, macros=('POP2', 'PUSH2', 'LOAD_GLOBAL', 'CALL_FUNCTION'), functions=('signed_add',))
-
-def BINARY_ADD():
-    snippet = r'''                      ## interpreted in opcodes, perhaps should not be described in sed
-                                        ##  # PS: ?         HS: M;N;X
-        LOAD_GLOBAL signed_add          ##  # PS: ?         HS: signed_add;M;N;X
-        ROT_THREE                       ##  # PS: ?         HS: M;N;signed_add;X
-        CALL_FUNCTION 2                 ##  # PS: ?         HS: R;X
-     '''
-    return snippet
 
 
 # -- Multiplication ----------------------------------------------------------
@@ -595,6 +574,29 @@ def UDIV():
     dis.dis(euclide)
     sys.stdout = old_stdout
     return result.getvalue()
+
+
+# -- Helper opcodes ----------------------------------------------------------
+
+
+def IS_POSITIVE():
+    snippet = r'''                      # PS: ?         HS: N;X
+        g                               # PS: N;X       HS: N;X
+        s/^[0-9+][^;]+/1/               # PS: 1;X       HS: N;X  if pos
+        s/^-[^;]+/0/                    # PS: 0;X       HS: N;X  if neg
+        h                               # PS: r;X       HS: r;X  r = 0 or 1
+        '''
+    return snippet
+
+
+def NEGATIVE():
+    # TODO : sed implementation
+    pass
+
+
+def DIVIDE_BY_TEN():
+    # TODO : sed implementation
+    pass
 
 
 # -- Opcode interpreter ------------------------------------------------------
@@ -733,6 +735,9 @@ def interpreter(code):
             varnames.append(dict())
         elif opc == 'POP_CONTEXT':
             varnames.pop()
+        elif opc == 'IS_POSITIVE':
+            tos = stack.pop()
+            stack.append(tos >= 0)
         else:
             raise Exception('numsed: Unknown opcode: %s' % opc)
 
@@ -775,8 +780,11 @@ def make_opcode_module(source, trace=False):
         def BINARY_ADD(): return 'BINARY_ADD'
         def BINARY_MULTIPLY(): return 'BINARY_MULTIPLY'
 
+    # transform to positive form
+    transformer.transform(source, '~.py')
+
     # disassemble
-    code = disassemble(source, trace=False)
+    code = disassemble('~.py', trace=False)
 
     # normalize disassembly labels and opcode arguments
     newcode = []
@@ -841,6 +849,9 @@ def make_opcode_module(source, trace=False):
     # newcode3 = normalize('\n'.join(newcode3), macros=list_macros)
     # newcode3 = newcode3.splitlines()
 
+    # inline helper functions (is_positive, negative, divide_by_ten)
+    newcode3 = inline_helper_opcodes(newcode3)
+
     # trace if requested
     if trace:
         for instr in newcode3:
@@ -875,6 +886,52 @@ def parse_dis_instruction(s):
         arg = arg.strip()
 
     return label, instr, arg
+
+
+def inline_helper_opcodes(code):
+    """
+    Detect following opcode sequences :
+
+    LOAD_GLOBAL is_positive|negative|divide_by_ten
+    XXX
+    CALL_FUNCTION 1 labelname
+    :labelname
+
+    and replace with
+
+    XXX
+    IS_POSITIVE|NEGATIVE|DIVIDE_BY_TEN
+
+    This assumee the helper functions are called with arguments made of
+    variables, consts and operators, i:e. no call functions inside the XXX
+    sequence of opcodes.
+    """
+
+    # TODO: check in and out
+
+    code2 = []
+    i = 0
+    while i < len(code):
+        opcode = code[i]
+        i += 1
+        if not opcode.startswith('LOAD_GLOBAL'):
+            code2.append(opcode)
+        else:
+            func = opcode.split()[1]
+            if func not in ('is_positive', 'negative', 'divide_by_ten'):
+                code2.append(opcode)
+            else:
+                argseq = []
+                while not code[i].startswith('CALL_FUNCTION'):
+                    argseq.append(code[i])
+                    i += 1
+                # skip call and label
+                i += 2
+                # append sequence
+                code2.extend(argseq)
+                # append opcode
+                code2.append(func.upper())
+    return code2
 
 
 # -- Generate opcodes and run ------------------------------------------------
@@ -971,7 +1028,7 @@ def test():
     #x = UDIV()
     #print tmp()
     #print dis.dis(signed_add)
-    print inspect.getsourcelines(signed_add)
+    #print inspect.getsourcelines(signed_add)
     pass
 
 
@@ -1035,8 +1092,31 @@ def main():
     elif args.test:
         test()
     else:
-        raise
+        raise Exception()
 
 
 if __name__ == "__main__":
     main()
+
+
+# -- useless now
+
+
+def BINARY_ADD():
+    snippet = r'''
+                                        # PS: ?         HS: M;N;X
+        POP2                            # PS: M;N;      HS: X
+        LOAD_GLOBAL signed_add          # PS: M;N;      HS: signed_add;X
+        PUSH2                           # PS: ?         HS: M;N;signed_add;X
+        CALL_FUNCTION 2                 # PS: ?         HS: R;X
+     '''
+    return normalize(snippet, macros=('POP2', 'PUSH2', 'LOAD_GLOBAL', 'CALL_FUNCTION'), functions=('signed_add',))
+
+def BINARY_ADD():
+    snippet = r'''                      ## interpreted in opcodes, perhaps should not be described in sed
+                                        ##  # PS: ?         HS: M;N;X
+        LOAD_GLOBAL signed_add          ##  # PS: ?         HS: signed_add;M;N;X
+        ROT_THREE                       ##  # PS: ?         HS: M;N;signed_add;X
+        CALL_FUNCTION 2                 ##  # PS: ?         HS: R;X
+     '''
+    return snippet
