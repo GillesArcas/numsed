@@ -590,8 +590,15 @@ def IS_POSITIVE():
 
 
 def NEGATIVE():
-    # TODO : sed implementation
-    pass
+    snippet = r'''                      # PS: ?         HS: N;X
+        g                               # PS: N;X       HS: N;X
+        s/^-/!/                         # use marker to avoid another substitution
+        s/^+/-/                         #
+        s/^[0-9]/-\1/                   #
+        s/^!//                          # remove marker
+        h                               # PS: R;X       HS: R;X  R = -N
+        '''
+    return snippet
 
 
 def DIVIDE_BY_TEN():
@@ -621,7 +628,7 @@ def interpreter(code):
     instr_pointer = 0
     while instr_pointer < len(opcodes):
         opc, arg = opcodes[instr_pointer]
-        #print instr_pointer, opc, arg
+        #print instr_pointer, opc, arg, stack
         instr_pointer += 1
         if False:
             pass
@@ -738,6 +745,9 @@ def interpreter(code):
         elif opc == 'IS_POSITIVE':
             tos = stack.pop()
             stack.append(tos >= 0)
+        elif opc == 'NEGATIVE':
+            tos = stack.pop()
+            stack.append(-tos)
         else:
             raise Exception('numsed: Unknown opcode: %s' % opc)
 
@@ -831,7 +841,9 @@ def make_opcode_module(source, trace=False):
             args = x[2:]
             newcode3.append(':%s' % name)
             newcode3.append('MAKE_CONTEXT')
-            for arg in args:
+            # arguments are pushed first one first by natie python compiler,
+            # and they to be poped in reverse order
+            for arg in reversed(args):
                 newcode3.append('STORE_FAST %s' % arg)
         elif instr.startswith('RETURN_VALUE'):
             newcode3.append('POP_CONTEXT')
@@ -865,7 +877,7 @@ def parse_dis_instruction(s):
     #  45 BINARY_MULTIPLY
     #  59 JUMP_ABSOLUTE           27
     #  46 STORE_FAST               5 (aux)
-    m = re.search('(\d+) (\w+) +(.*)', s)
+    m = re.search('(\d+) (\w+) *(.*)', s)
     label, instr, arg = m.group(1), m.group(2), m.group(3)
 
     if '>>' not in s:
@@ -939,7 +951,7 @@ def inline_helper_opcodes(code):
 
 def make_opcode_and_run(source, trace=False):
 
-    opcodes, function_labels, return_labels = make_opcode_module(source, trace=True)
+    opcodes, function_labels, return_labels = make_opcode_module(source, trace=trace)
     interpreter(opcodes)
 
 

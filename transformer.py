@@ -221,6 +221,7 @@ def signed_div(a, b):
     if (a >= 0 and b >= 0) or (a <= 0 and b <= 0):
         return euclide(a, b)
     else:
+        # TODO: pas d'appel dans negative()
         return negative(euclide(a, b))
 
 

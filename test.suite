@@ -77,21 +77,93 @@ n = 5
 m += (m * n + m // n) - 3 * (m - n)
 print m
 ---
-# assign add negative values (+-)
+# add negative values (+-)
 m = 42
 n = -5
 p = m + n
 print p
 ---
-# assign add negative values (-+)
+# add negative values (-+)
 m = -42
 n = 5
 p = m + n
 print p
 ---
-# assign add negative values (--)
+# add negative values (--)
 m = -42
 n = -5
 p = m + n
+print p
+---
+# sub negative values (+-)
+m = 42
+n = -5
+p = m - n
+print p
+---
+# sub negative values (-+)
+m = -42
+n = 5
+p = m - n
+print p
+---
+# sub negative values (--)
+m = -42
+n = -5
+p = m - n
+print p
+---
+# mul negative values (+-)
+m = 42
+n = -5
+p = m * n
+print p
+---
+# mul negative values (-+)
+m = -42
+n = 5
+p = m * n
+print p
+---
+# mul negative values (--)
+m = -42
+n = -5
+p = m * n
+print p
+---
+# div negative values (+-)
+m = 42
+n = -5
+p = m // n
+print p
+---
+# div negative values (-+)
+m = -42
+n = 5
+p = m // n
+print p
+---
+# div negative values (--)
+m = -42
+n = -5
+p = m // n
+print p
+---
+# mod negative values (+-)
+m = 42
+n = -5
+p = m % n
+print p
+---
+# mod negative values (-+)
+m = -42
+n = 5
+p = m % n
+print p
+---
+# mod negative values (--)
+m = -42
+n = -5
+p = m % n
 print p
 ---

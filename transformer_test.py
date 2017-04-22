@@ -2,6 +2,7 @@ import sys
 import os
 import subprocess
 import transformer
+import numsed
 
 
 def testlines(name):
@@ -27,12 +28,17 @@ def run_test(test):
     ref = subprocess.check_output('python tmp.py')
     print ref
 
-    # transform
-    transformer.transform('tmp.py', 'tmp_transformed.py', do_assert=True)
+    mode = 2
+    if mode == 1:
+        # transform
+        transformer.transform('tmp.py', 'tmp_transformed.py', do_assert=True)
 
-    # run transformed script and store results
-    res = subprocess.check_output('python tmp.py')
-    print res
+        # run transformed script and store results
+        res = subprocess.check_output('python tmp.py')
+        print res
+    if mode == 2:
+        #numsed.make_opcode_and_run('tmp.py', trace=False)
+        res = subprocess.check_output('python numsed.py -opsrun tmp.py')
 
     # compare
     status, diff = list_compare('ref', 'res', ref.splitlines(), res.splitlines())
