@@ -28,17 +28,18 @@ def run_test(test):
     ref = subprocess.check_output('python tmp.py')
     print ref
 
-    mode = 2
+    mode = 1
     if mode == 1:
         # transform
         transformer.transform('tmp.py', 'tmp_transformed.py', do_assert=True)
 
         # run transformed script and store results
-        res = subprocess.check_output('python tmp.py')
+        res = subprocess.check_output('python tmp_transformed.py')
         print res
     if mode == 2:
         #numsed.make_opcode_and_run('tmp.py', trace=False)
         res = subprocess.check_output('python numsed.py -opsrun tmp.py')
+        print res
 
     # compare
     status, diff = list_compare('ref', 'res', ref.splitlines(), res.splitlines())
