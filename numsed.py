@@ -668,14 +668,18 @@ def interpreter(code):
             tos = stack.pop()
             tos1 = stack.pop()
             stack.append(tos1 + tos)
-        elif opc == 'BINARY_SUBTRACT':
+        elif opc == 'BINARY_SUBTRACT' or opc == 'INPLACE_SUBTRACT':
             tos = stack.pop()
             tos1 = stack.pop()
             stack.append(tos1 - tos)
-        elif opc == 'BINARY_MULTIPLY':
+        elif opc == 'BINARY_MULTIPLY' or opc == 'INPLACE_MULTIPLY':
             tos = stack.pop()
             tos1 = stack.pop()
             stack.append(tos1 * tos)
+        elif opc == 'BINARY_FLOOR_DIVIDE' or opc == 'INPLACE_FLOOR_DIVIDE':
+            tos = stack.pop()
+            tos1 = stack.pop()
+            stack.append(tos1 // tos)
         elif opc == 'COMPARE_OP':
             tos = stack.pop()
             tos1 = stack.pop()
@@ -841,8 +845,8 @@ def make_opcode_module(source, trace=False):
             args = x[2:]
             newcode3.append(':%s' % name)
             newcode3.append('MAKE_CONTEXT')
-            # arguments are pushed first one first by natie python compiler,
-            # and they to be poped in reverse order
+            # arguments are pushed first one first by native python compiler,
+            # and they have to be popped in reverse order
             for arg in reversed(args):
                 newcode3.append('STORE_FAST %s' % arg)
         elif instr.startswith('RETURN_VALUE'):
@@ -914,8 +918,8 @@ def inline_helper_opcodes(code):
     XXX
     IS_POSITIVE|NEGATIVE|DIVIDE_BY_TEN
 
-    This assumee the helper functions are called with arguments made of
-    variables, consts and operators, i:e. no call functions inside the XXX
+    This assumes the helper functions are called with arguments made of
+    variables, consts and operators, i.e. no call functions inside the XXX
     sequence of opcodes.
     """
 
@@ -926,9 +930,7 @@ def inline_helper_opcodes(code):
     while i < len(code):
         opcode = code[i]
         i += 1
-        if not opcode.startswith('LOAD_GLOBAL'):
-            code2.append(opcode)
-        else:
+        if opcode.startswith('LOAD_GLOBAL'):
             func = opcode.split()[1]
             if func not in ('is_positive', 'negative', 'divide_by_ten'):
                 code2.append(opcode)
@@ -937,12 +939,17 @@ def inline_helper_opcodes(code):
                 while not code[i].startswith('CALL_FUNCTION'):
                     argseq.append(code[i])
                     i += 1
-                # skip call and label
-                i += 2
-                # append sequence
-                code2.extend(argseq)
-                # append opcode
-                code2.append(func.upper())
+                i += 2                      # skip call and return label
+                code2.extend(argseq)        # append sequence
+                code2.append(func.upper())  # append opcode
+        elif (opcode.startswith(':is_positive_') or
+            opcode.startswith(':negative_') or
+            opcode.startswith(':divide_by_ten_')):
+            while not code[i].startswith('RETURN_VALUE'):
+                i += 1
+            i += 1
+        else:
+            code2.append(opcode)
     return code2
 
 
@@ -1096,7 +1103,7 @@ def main():
     elif args.opcodes:
         make_opcode_module(args.source, trace=True)
     elif args.runopcodes:
-        make_opcode_and_run(args.source, trace=True)
+        make_opcode_and_run(args.source, trace=False)
     elif args.sed:
         make_sed_module(args.source, trace=True)
     elif args.run:
