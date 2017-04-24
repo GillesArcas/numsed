@@ -205,29 +205,54 @@ def euclide(a, b):
 
     return q
 
-def modulo(a, b):
-    q = euclide(a, b)
-    return a - b * q
 
-
-def signed_mult(a, b):
-    if (a >= 0 and b >= 0) or (a <= 0 and b <= 0):
-        return a * b
+def signed_mult(x, y):
+    if is_positive(x):
+        if is_positive(y):
+            return x * y
+        else:
+            abs_y = negative(y)
+            return negative(x * abs_y)
     else:
-        return negative(a * b)
+        abs_x = negative(x)
+        if is_positive(y):
+            return negative(abs_x * y)
+        else:
+            abs_y = negative(y)
+            return abs_x * abs_y
 
 
-def signed_div(a, b):
-    if (a >= 0 and b >= 0) or (a <= 0 and b <= 0):
-        return euclide(a, b)
+def signed_div(x, y):
+    if is_positive(x):
+        if is_positive(y):
+            q = euclide(x, y)
+            return q
+        else:
+            abs_y = negative(y)
+            q = euclide(x, abs_y)
+            r = x - abs_y * q
+            if r > 0:
+                return negative(q + 1)
+            else:
+                return q
     else:
-        # TODO: pas d'appel dans negative()
-        return negative(euclide(a, b))
+        abs_x = negative(x)
+        if is_positive(y):
+            q = euclide(abs_x, y)
+            r = abs_x - y * q
+            if r > 0:
+                return negative(q + 1)
+            else:
+                return q
+        else:
+            abs_y = negative(y)
+            q = euclide(abs_x, abs_y)
+            return q
 
 
-def signed_mod(a, b):
-    q = signed_divide(a, b)
-    return a - b * q
+def signed_mod(x, y):
+    q = signed_div(x, y)
+    return signed_sub(x, signed_mult(y, q))
 
 
 # -- Primitives --------------------------------------------------------------
@@ -245,8 +270,8 @@ def negative(x):
 
 unsigned_func_pattern = """
 def %s(x, y):
-    assert x >= 0
-    assert y >= 0
+    assert x >= 0, 'x < 0'
+    assert y >= 0, 'y < 0'
     return x %s y
 """
 
@@ -292,8 +317,13 @@ def transform_positive(script_in, script_out, do_exec):
 
     builtin = numsed_ast_transformer.required_func
     builtin = [globals()[x] for x in builtin]
-    if signed_div in builtin or signed_mod in builtin:
+    if signed_div in builtin:
         builtin.append(euclide)
+    if signed_mod in builtin:
+        builtin.append(euclide)
+        builtin.append(signed_sub)
+        builtin.append(signed_mult)
+        builtin.append(signed_div)
     builtin += [is_positive, negative]
 
     # add builtin functions to code to compile
