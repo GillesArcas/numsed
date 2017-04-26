@@ -28,7 +28,7 @@ def run_test(test):
     ref = subprocess.check_output('python tmp.py')
     print ref
 
-    mode = 1
+    mode = 2
     if mode == 1:
         # transform
         transformer.transform('tmp.py', 'tmp_transformed.py', do_assert=True)

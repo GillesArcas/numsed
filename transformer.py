@@ -194,9 +194,7 @@ def euclide(a, b):
         n += 1
 
     while n > 0:
-        #aux = aux / 2
-        aux *= 5
-        aux //= 10 # TODO: //10 should be a primitive divide_by_10()
+        aux = divide_by_ten(aux * 5) # i.e. aux = aux // 2
         n -= 1
         q = q * 2
         if r >= aux:
@@ -264,6 +262,9 @@ def is_positive(x):
 def negative(x):
     return operator.neg(x)
 
+def divide_by_ten(x):
+    return operator.floordiv(x, 10)
+
 
 # -- Testing transformation --------------------------------------------------
 
@@ -324,7 +325,7 @@ def transform_positive(script_in, script_out, do_exec):
         builtin.append(signed_sub)
         builtin.append(signed_mult)
         builtin.append(signed_div)
-    builtin += [is_positive, negative]
+    builtin += [is_positive, negative, divide_by_ten]
 
     # add builtin functions to code to compile
     script = ''
