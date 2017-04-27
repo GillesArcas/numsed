@@ -167,6 +167,30 @@ n = -5
 p = m % n
 print p
 ---
+# loop
+n = -10
+while n <= 10:
+    print n
+    n += 1
+---
+# loop
+n = 10
+while n >= -10:
+    print n
+    n -= 1
+---
+# loop
+n = -10
+while n <= -5:
+    print n
+    n += 1
+---
+# loop
+n = -5
+while n >= -10:
+    print n
+    n -= 1
+---
 # loop on adding values
 m = -10
 while m <= 10:
@@ -174,6 +198,48 @@ while m <= 10:
     while n <= 10:
         p = m + n
         print p
+        n += 1
+    m += 1
+---
+# loop on subtracting values
+m = -10
+while m <= 10:
+    n = -10
+    while n <= 10:
+        p = m - n
+        print p
+        n += 1
+    m += 1
+---
+# loop on multiplying values
+m = -10
+while m <= 10:
+    n = -10
+    while n <= 10:
+        p = m * n
+        print p
+        n += 1
+    m += 1
+---
+# loop on dividing values
+m = -10
+while m <= 10:
+    n = -10
+    while n <= 10:
+        if n != 0:
+            p = m // n
+            print p
+        n += 1
+    m += 1
+---
+# loop on modulo
+m = -10
+while m <= 10:
+    n = -10
+    while n <= 10:
+        if n != 0:
+            p = m % n
+            print p
         n += 1
     m += 1
 ---
