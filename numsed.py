@@ -258,22 +258,6 @@ def CALL_FUNCTION(argc):
     return normalize(snippet, replace=(('argc', argc),))
 
 
-def RETURN():
-    # TODO: remove
-    # HS: label;X
-    return_labels = X
-    snippet = '''
-        s/^//                           # force a substitution to enable t
-        t test_return                   # t to next line to reset t flag
-        :test_return
-        s/^label1;//
-        t label1
-        s/^label2;//
-        t label2
-    '''
-    return snippet
-
-
 def RETURN_VALUE():
     return BRANCH_ON_NAME(return_labels)
     #return 's/.*//'
@@ -308,6 +292,11 @@ def PRINT_NEWLINE():
 
 
 # -- Compare operators -------------------------------------------------------
+
+
+def UNARY_NOT():
+    # TODO: to be implemented
+    pass
 
 
 def CMP():
