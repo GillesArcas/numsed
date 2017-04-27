@@ -152,7 +152,7 @@ def parse_dis_instruction(s):
     #  45 BINARY_MULTIPLY
     #  59 JUMP_ABSOLUTE           27
     #  46 STORE_FAST               5 (aux)
-    m = re.search('(\d+) (\w+) *(.*)', s)
+    m = re.search(r'(\d+) (\w+) *(.*)', s)
     label, instr, arg = m.group(1), m.group(2), m.group(3)
 
     if '>>' not in s:
@@ -165,7 +165,7 @@ def parse_dis_instruction(s):
         m = re.search('code object ([^ ]+) at ([^ ]+),', arg)
         arg = '%s_%s' % (m.group(1), m.group(2))
     elif '(' in arg:
-        m = re.search('\((.*)\)', arg)
+        m = re.search(r'\((.*)\)', arg)
         arg = m.group(1)
         if arg.startswith('to '):
             arg = arg[3:]
@@ -195,6 +195,7 @@ def inline_helper_opcodes(code):
     """
 
     # TODO: check in and out
+    # TODO: remove also initial LOAD_CONST
 
     code2 = []
     i = 0
@@ -214,8 +215,8 @@ def inline_helper_opcodes(code):
                 code2.extend(argseq)        # append sequence
                 code2.append(func.upper())  # append opcode
         elif (opcode.startswith(':is_positive_') or
-            opcode.startswith(':negative_') or
-            opcode.startswith(':divide_by_ten_')):
+              opcode.startswith(':negative_') or
+              opcode.startswith(':divide_by_ten_')):
             while not code[i].startswith('RETURN_VALUE'):
                 i += 1
             i += 1
@@ -298,6 +299,10 @@ def interpreter(code):
             tos = stack.pop()
             tos1 = stack.pop()
             stack.append(tos1 // tos)
+        elif opc == 'UNARY_NOT':
+            tos = stack.pop()
+            assert tos in (0, 1)
+            stack.append(1 - tos)
         elif opc == 'COMPARE_OP':
             tos = stack.pop()
             tos1 = stack.pop()
