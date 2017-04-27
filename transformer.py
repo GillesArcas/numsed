@@ -104,10 +104,10 @@ def signed_eq(x, y):
         if is_positive(y):
             return x == y
         else:
-            return False
+            return 0
     else:
         if is_positive(y):
-            return False
+            return 0
         else:
             return negative(x) == negative(y)
 
@@ -119,12 +119,27 @@ def signed_lt(x, y):
         if is_positive(y):
             return x < y
         else:
-            return True
+            return 0
     else:
         if is_positive(y):
-            return True
+            return 1
         else:
-            return negative(x) < negative(y)
+            return negative(x) > negative(y)
+
+def signed_lte(x, y):
+    if is_positive(x):
+        if is_positive(y):
+            return x <= y
+        else:
+            return 0
+    else:
+        if is_positive(y):
+            return 1
+        else:
+            return negative(x) >= negative(y)
+
+def signed_gt(x, y):
+    return not signed_lte(x, y)
 
 def signed_gte(x, y):
     return not signed_lt(x, y)
@@ -229,19 +244,19 @@ def signed_div(x, y):
             abs_y = negative(y)
             q = euclide(x, abs_y)
             r = x - abs_y * q
-            if r > 0:
-                return negative(q + 1)
+            if r == 0:
+                return negative(q)
             else:
-                return q
+                return negative(q + 1)
     else:
         abs_x = negative(x)
         if is_positive(y):
             q = euclide(abs_x, y)
             r = abs_x - y * q
-            if r > 0:
-                return negative(q + 1)
+            if r == 0:
+                return negative(q)
             else:
-                return q
+                return negative(q + 1)
         else:
             abs_y = negative(y)
             q = euclide(abs_x, abs_y)
@@ -325,6 +340,10 @@ def transform_positive(script_in, script_out, do_exec):
         builtin.append(signed_sub)
         builtin.append(signed_mult)
         builtin.append(signed_div)
+    if signed_noteq in builtin:
+        builtin.append(signed_eq)
+    if signed_gte in builtin:
+        builtin.append(signed_lt)
     builtin += [is_positive, negative, divide_by_ten]
 
     # add builtin functions to code to compile
