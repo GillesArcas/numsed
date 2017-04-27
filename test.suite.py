@@ -167,3 +167,13 @@ n = -5
 p = m % n
 print p
 ---
+# loop on adding values
+m = -10
+while m <= 10:
+    n = -10
+    while n <= 10:
+        p = m + n
+        print p
+        n += 1
+    m += 1
+---
