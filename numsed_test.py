@@ -1,9 +1,9 @@
+import subprocess
+import random
 from numsed import (normalize,
                  STARTUP, MAKE_CONTEXT, POP_CONTEXT, PUSH, POP,
                  LOAD_GLOBAL, STORE_GLOBAL, DELETE_GLOBAL, LOAD_FAST, STORE_FAST,
                  CMP, FULLADD, FULLSUB, UADD, USUB, FULLMUL, MULBYDIGIT, UMUL)
-import subprocess
-import random
 
 
 def random_ndigits(p):
