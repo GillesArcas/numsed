@@ -44,7 +44,8 @@ def run_test(test):
     # compare
     status, diff = list_compare('ref', 'res', ref.splitlines(), res.splitlines())
     if not status:
-        print diff
+        for _ in diff:
+            print _
 
     return status
 
@@ -54,6 +55,13 @@ def list_compare(tag1, tag2, list1, list2):
     maxlen = max(len(list1), len(list2))
     list1.extend([''] * (maxlen - len(list1)))
     list2.extend([''] * (maxlen - len(list2)))
+
+    # with open('list1.txt', 'w') as f:
+    #     for line in list1:
+    #         print>>f, line
+    # with open('list2.txt', 'w') as f:
+    #     for line in list2:
+    #         print>>f, line
 
     diff = list()
     res = True
