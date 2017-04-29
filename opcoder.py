@@ -194,15 +194,20 @@ def inline_helper_opcodes(code):
     sequence of opcodes.
     """
 
-    # TODO: check in and out
-    # TODO: remove also initial LOAD_CONST
-
     code2 = []
     i = 0
     while i < len(code):
         opcode = code[i]
         i += 1
-        if opcode.startswith('LOAD_GLOBAL'):
+        if opcode.startswith('LOAD_CONST'):
+            func = opcode.split()[1]
+            if (func.startswith('is_positive_') or
+                func.startswith('negative_') or
+                func.startswith('divide_by_ten_')):
+                i += 2
+            else:
+                code2.append(opcode)
+        elif opcode.startswith('LOAD_GLOBAL'):
             func = opcode.split()[1]
             if func not in ('is_positive', 'negative', 'divide_by_ten'):
                 code2.append(opcode)
