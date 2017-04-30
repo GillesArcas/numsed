@@ -126,9 +126,8 @@ def LOAD_CONST(const):
 
 def STARTUP():
     snippet = '''
-        x
-        s/.*/-/
-        x
+        s/.*/@/
+        h
         b start
         :NameError
         s/.*/NameError: name & is not defined/
@@ -158,10 +157,10 @@ def LOAD_GLOBAL(name):
     # TOS = val(name)
     snippet = r'''                      # PS: ?         HS: ?;v;x?
         g                               # PS: ?;v;x?    HS: ?;v;x?
-        /-[^|]*;name;/! { s/.*/name/; b NameError }
+        /@[^|]*;name;/! { s/.*/name/; b NameError }
                                         # branch to error if var undefined
-        s/-[^|]*;name;([^;]*).*/\1;&/   # PS: x;?;v;x?  HS: ?;v;x?
-        h                               # PS: ?         HS: x;?;v;x?
+        s/[^@]*@[^|]*;name;([^;|]*).*/\1;&/   # PS: x;?;v;x?  HS: ?;v;x?
+        h                               # PS: x;?;v;x?  HS: x;?;v;x?
     '''
     return snippet.replace('name', name)
 
@@ -170,7 +169,7 @@ def STORE_GLOBAL(name):
     # name = POP() (cf cpython/ceval.c)
     snippet = r'''                      # PS: ?         HS: x;X
         g                               # PS: x;X       HS: ?
-        s/([^;]*;)([^-]*-)/\2;name;\1/  # PS: X;v;x     HS: ?
+        s/([^;]*;)([^@]*@)/\2;name;\1/  # PS: X;v;x     HS: ?
         h                               # PS: ?         HS: X;v;x
     '''
     return DELETE_GLOBAL(name) + snippet.replace('name', name)
@@ -181,10 +180,10 @@ def STORE_GLOBAL(name):
         g                               # PS: x;X       HS: ?
         t reset_t
         :reset_t
-        s/^([^;]*);([^-]*-[^|]*;name;)[^;]*/\2\1/
+        s/^([^;]*);([^@]*@[^|]*;name;)[^;]*/\2\1/
                                         # PS: X;v;x     HS: ?
         t next
-        s/^([^;]*);([^-]*-)/\2;name;\1/ # PS: X;v;x     HS: ?
+        s/^([^;]*);([^@]*@)/\2;name;\1/ # PS: X;v;x     HS: ?
         :next
         h                               # PS: ?         HS: X;v;x
     '''
@@ -193,7 +192,7 @@ def STORE_GLOBAL(name):
 def DELETE_GLOBAL(name):
     snippet = r'''                      # PS: ?         HS: x;X
         g                               # PS: x;X       HS: ?
-        s/(-[^|]*);name;[^;|]*(.*)/\1\2/
+        s/(@[^|]*);name;[^;|]*(.*)/\1\2/
                                         # PS: x;X'      HS: ? (del ;var;val in PS)
         h                               # PS: ?         HS: x;X';v;x
     '''
@@ -663,9 +662,9 @@ def make_sed_module(source, trace=False):
 # -- Generate sed script and run ---------------------------------------------
 
 
-def make_sed_and_run(source):
+def make_sed_and_run(source, trace=False):
 
-    sed = make_sed_module(source, trace=False)
+    sed = make_sed_module(source, trace=trace)
 
     name_script = 'test.sed'
     name_input = 'test.input'
@@ -676,7 +675,7 @@ def make_sed_and_run(source):
     with open(name_input, 'w') as f:
         print>>f, '0'
 
-    com = 'sed -r -f %s %s' % (name_script, name_input)
+    com = 'sed -n -r -f %s %s' % (name_script, name_input)
 
     # TODO: check sed in path
     res = subprocess.check_output(com).splitlines()
@@ -742,12 +741,12 @@ def parse_command_line():
     parser.add_argument('-h', help='show this help message', action='store_true', dest='do_help')
     parser.add_argument('-H', help='open html help page', action='store_true', dest='do_helphtml')
     parser.add_argument("-v", help="version", action="store_true", dest="version")
-    parser.add_argument("-dis", help="disassemble", action="store_true", dest="disassemble")
-    parser.add_argument("-ops", help="numsed intermediate opcodes", action="store_true", dest="opcodes")
-    parser.add_argument("-opsrun", help="run numsed intermediate opcodes", action="store_true", dest="runopcodes")
-    parser.add_argument("-sed", help="generate sed script", action="store_true", dest="sed")
-    parser.add_argument("-run", help="generate sed script and run", action="store_true", dest="run")
-    parser.add_argument("-test", help="test", action="store_true", dest="test")
+    parser.add_argument("--dis", help="disassemble", action="store_true", dest="disassemble")
+    parser.add_argument("--opcode", help="numsed intermediate opcode", action="store_true", dest="opcode")
+    parser.add_argument("--oprun", help="run numsed intermediate opcode", action="store_true", dest="runopcode")
+    parser.add_argument("--sed", help="generate sed script", action="store_true", dest="sed")
+    parser.add_argument("--run", help="generate sed script and run", action="store_true", dest="run")
+    parser.add_argument("--test", help="test", action="store_true", dest="test")
     parser.add_argument("source", nargs='?', help=argparse.SUPPRESS, default=sys.stdin)
 
     args = parser.parse_args()
@@ -769,14 +768,14 @@ def main():
         return
     elif args.disassemble:
         opcoder.disassemble(args.source, trace=True)
-    elif args.opcodes:
+    elif args.opcode:
         opcoder.make_opcode_module(args.source, trace=True)
-    elif args.runopcodes:
+    elif args.runopcode:
         make_opcode_and_run(args.source, trace=False)
     elif args.sed:
         make_sed_module(args.source, trace=True)
     elif args.run:
-        make_sed_and_run(args.source)
+        make_sed_and_run(args.source, trace=False)
     elif args.test:
         test()
     else:
