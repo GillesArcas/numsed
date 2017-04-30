@@ -19,7 +19,7 @@ def testlines(name):
                 lines.append(line)
 
 
-def run_test(test):
+def run_test(test, mode):
     # save script
     with open('tmp.py', 'w') as f:
         f.writelines(test)
@@ -28,17 +28,21 @@ def run_test(test):
     ref = subprocess.check_output('python tmp.py')
     print ref
 
-    mode = 2
-    if mode == 1:
+    if mode == 'transform':
         # transform
         transformer.transform('tmp.py', 'tmp_transformed.py', do_assert=True)
 
         # run transformed script and store results
         res = subprocess.check_output('python tmp_transformed.py')
         print res
-    if mode == 2:
+
+    if mode == 'opcode':
         #numsed.make_opcode_and_run('tmp.py', trace=False)
-        res = subprocess.check_output('python numsed.py -opsrun tmp.py')
+        res = subprocess.check_output('python numsed.py --oprun tmp.py')
+        print res
+
+    if mode == 'sed':
+        res = subprocess.check_output('python numsed.py --run tmp.py')
         print res
 
     # compare
@@ -74,10 +78,11 @@ def list_compare(tag1, tag2, list1, list2):
 
 
 def main():
+    mode = 'sed'
     status = True
     for test in testlines(sys.argv[1]):
         print test
-        status = status and run_test(test)
+        status = status and run_test(test, mode)
     if status:
         print 'ALL TESTS OK'
     else:
