@@ -191,6 +191,26 @@ while n >= -10:
     print n
     n -= 1
 ---
+# double loop
+m = -10
+while m <= 10:
+    n = -10
+    while n <= m:
+        print m
+        print n
+        n += 1
+    m += 1
+---
+# double loop
+m = 10
+while m >= -10:
+    n = 10
+    while n >= m:
+        print m
+        print n
+        n -= 1
+    m -= 1
+---
 # loop on adding values
 m = -10
 while m <= 10:
@@ -242,4 +262,74 @@ while m <= 10:
             print p
         n += 1
     m += 1
+---
+# test all comparison operators
+m = -5
+while m <= 5:
+    n = -5
+    while n <= 5:
+        print 1 if m == n else 0
+        print 1 if m != n else 0
+        print 1 if m <  n else 0
+        print 1 if m <= n else 0
+        print 1 if m >  n else 0
+        print 1 if m >= n else 0
+        n += 1
+    m += 1
+---    
+# function
+def foo(n):
+    return n + 10
+    
+n = 42
+p = foo(n)
+print p
+---
+# function
+def foo(n):
+    return n + 10
+    
+def bar(n):
+    return n * 2
+    
+n = 42
+p = foo(bar(n))
+print p
+---
+# recursive function
+def fac(n):
+    if n == 1:
+        return 1
+    else:
+        return n * fac(n - 1)
+    
+n = 10
+p = fac(n)
+print p
+---
+# recursive function
+def fib(n):
+    if n <= 1:
+        return 1
+    else:
+        return fib(n - 1) + fib(n - 2)
+    
+print fib(10)
+---
+# mutual recursive functions
+def even(n):
+    if n == 0:
+        return 1
+    else:
+        return odd(n - 1)
+    
+def odd(n):
+    if n == 0:
+        return 0
+    else:
+        return even(n - 1)
+    
+n = 10
+print even(10)
+print odd(10)
 ---
