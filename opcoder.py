@@ -42,8 +42,30 @@ def disassemble(source, trace=False):
 # -- Disassemble to numsed opcodes -------------------------------------------
 
 
+def make_opcode_module(source, trace=False):
+
+    if 1 == 1:
+        global BINARY_ADD, BINARY_MULTIPLY
+        def BINARY_ADD(): return 'BINARY_ADD'
+        def BINARY_MULTIPLY(): return 'BINARY_MULTIPLY'
+
+    # transform to positive form
+    transformer.transform(source, '~.py')
+
+    # disassemble
+    dis_code = disassemble('~.py', trace=False)
+
+    # simplify dis code
+    dis_code = prepared_dis_code(dis_code)
+
+    # convert dis codes to numsed codes
+    newcode3, function_labels, return_labels = opcodes(dis_code, trace)
+
+    # return list of instructions
+    return newcode3, function_labels, return_labels
+
+
 def opcodes(dis_code, trace=False):
-    # normalize disassembly labels and opcode arguments
     newcode = []
     newcode.append('STARTUP')
 
@@ -52,15 +74,11 @@ def opcodes(dis_code, trace=False):
     # add dummy pointer address to be taken by final RETURN_VALUE
     newcode.append('LOAD_CONST 1000000')
 
-    for line in dis_code:
-        if line.strip():
-            label, instr, arg = parse_dis_instruction(line)
-            if label:
-                newcode.append(':%s' % label)
-            if arg:
-                newcode.append('%s %s' % (instr, arg))
-            else:
-                newcode.append(instr)
+    # normalize disassembly labels and opcode arguments
+    newcode.extend(dis_code)
+
+    # inline helper functions (is_positive, negative, divide_by_ten)
+    newcode = inline_helper_opcodes(newcode)
 
     # create list of function labels and list of return labels
     function_labels = []
@@ -98,43 +116,15 @@ def opcodes(dis_code, trace=False):
         else:
             newcode3.append(instr)
 
-    # print '[', '-' * 40
-    # for instr in newcode3:
-    #     print instr
-    # print ']', '-' * 40
-
     # # TODO: ici ?
     # list_macros = ('BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY')
     # newcode3 = normalize('\n'.join(newcode3), macros=list_macros)
     # newcode3 = newcode3.splitlines()
 
-    # inline helper functions (is_positive, negative, divide_by_ten)
-    newcode3 = inline_helper_opcodes(newcode3)
-
     # trace if requested
     if trace:
         for instr in newcode3:
             print instr
-
-    # return list of instructions
-    return newcode3, function_labels, return_labels
-
-
-def make_opcode_module(source, trace=False):
-
-    if 1 == 1:
-        global BINARY_ADD, BINARY_MULTIPLY
-        def BINARY_ADD(): return 'BINARY_ADD'
-        def BINARY_MULTIPLY(): return 'BINARY_MULTIPLY'
-
-    # transform to positive form
-    transformer.transform(source, '~.py')
-
-    # disassemble
-    dis_code = disassemble('~.py', trace=False)
-
-    # convert dis codes to numsed codes
-    newcode3, function_labels, return_labels = opcodes(dis_code, trace)
 
     # return list of instructions
     return newcode3, function_labels, return_labels
@@ -146,6 +136,30 @@ def new_label():
     r = 'label%d' % label_counter
     label_counter += 1
     return r
+
+
+# -- Preparing dis code ------------------------------------------------------
+
+
+def prepared_dis_code(dis_code):
+    """
+    Keep only required labels.
+    Put labels on their own lines.
+    Remove relative jumps and keep explicit labels.
+    Keep only explicit arguments.
+    Replace reference to function objects by labels.
+    """
+    newcode = []
+    for line in dis_code:
+        if line.strip():
+            label, instr, arg = parse_dis_instruction(line)
+            if label:
+                newcode.append(':%s' % label)
+            if arg:
+                newcode.append('%s %s' % (instr, arg))
+            else:
+                newcode.append(instr)
+    return newcode
 
 
 def parse_dis_instruction(s):
@@ -173,6 +187,9 @@ def parse_dis_instruction(s):
         arg = arg.strip()
 
     return label, instr, arg
+
+
+# -- Other code transformations ----------------------------------------------
 
 
 def inline_helper_opcodes(code):
@@ -216,12 +233,12 @@ def inline_helper_opcodes(code):
                 while not code[i].startswith('CALL_FUNCTION'):
                     argseq.append(code[i])
                     i += 1
-                i += 2                      # skip call and return label
+                i += 1                      # skip call and return label
                 code2.extend(argseq)        # append sequence
                 code2.append(func.upper())  # append opcode
-        elif (opcode.startswith(':is_positive_') or
-              opcode.startswith(':negative_') or
-              opcode.startswith(':divide_by_ten_')):
+        elif (opcode.startswith('FUNCTION is_positive_') or
+              opcode.startswith('FUNCTION negative_') or
+              opcode.startswith('FUNCTION divide_by_ten_')):
             while not code[i].startswith('RETURN_VALUE'):
                 i += 1
             i += 1
