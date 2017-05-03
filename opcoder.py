@@ -144,9 +144,30 @@ def opcodes(dis_code, trace=False):
 label_counter = 0
 def new_label():
     global label_counter
-    r = 'label%d' % label_counter
+    r = 'return%d' % label_counter
     label_counter += 1
     return r
+
+
+# -- Reading opcode ----------------------------------------------------------
+
+
+def read_opcode_module(source, trace=False):
+    with open(source) as f:
+        opcode = f.readlines()
+
+    function_labels = []
+    return_labels = []
+
+    for instr in opcode:
+        if re.match(r':\w+_[0_9A-Z]{8}', instr):
+            function_labels.append(instr[1:].strip())
+        elif re.match(r':return\d+', instr):
+            return_labels.append(instr[1:].strip())
+        else:
+            pass
+
+    return opcode, function_labels, return_labels
 
 
 # -- Preparing dis code ------------------------------------------------------
