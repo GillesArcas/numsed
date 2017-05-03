@@ -116,6 +116,17 @@ def opcodes(dis_code, trace=False):
         else:
             newcode3.append(instr)
 
+    # rename jump opcodes as all are absolute
+    tmp = []
+    for instr in newcode3:
+        if instr.startswith('JUMP_'):
+            x = instr.split()
+            label = x[1]
+            tmp.append('JUMP ' + label)
+        else:
+            tmp.append(instr)
+    newcode3 = tmp
+
     # # TODO: ici ?
     # list_macros = ('BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY')
     # newcode3 = normalize('\n'.join(newcode3), macros=list_macros)
@@ -342,7 +353,7 @@ def interpreter(code):
                 stack.append(tos1 >= tos)
             else:
                 raise Exception('numsed: unknown compare operator: %s' % arg)
-        elif opc == 'JUMP_ABSOLUTE':
+        elif opc == 'JUMP':
             instr_pointer = labels[arg]
         elif opc == 'POP_JUMP_IF_TRUE':
             tos = stack.pop()
@@ -352,9 +363,6 @@ def interpreter(code):
             tos = stack.pop()
             if not tos:
                 instr_pointer = labels[arg]
-        elif opc == 'JUMP_FORWARD':
-            # TODO: should be JUMP
-            instr_pointer = labels[arg]
         elif opc == 'PRINT_ITEM':
             tos = stack.pop()
             print tos,
@@ -400,5 +408,7 @@ def interpreter(code):
         elif opc == 'DIVIDE_BY_TEN':
             tos = stack.pop()
             stack.append(tos // 10)
+        elif opc == 'TRACE':
+            pass
         else:
             raise Exception('numsed: Unknown opcode: %s' % opc)
