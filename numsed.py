@@ -1,9 +1,10 @@
+from __future__ import print_function
+
 import argparse
 import sys
 import os
 import re
 import subprocess
-import inspect
 from StringIO import StringIO  # Python2
 #from io import StringIO  # Python3
 
@@ -31,7 +32,7 @@ def normalize(snippet, labels=None, replace=None, macros=None, functions=None):
             snippet = snippet.replace(label, new_label())
 
     if replace:
-        for sfrom,sto in replace:
+        for sfrom, sto in replace:
             snippet = snippet.replace(sfrom, sto)
 
     if macros:
@@ -43,9 +44,10 @@ def normalize(snippet, labels=None, replace=None, macros=None, functions=None):
                 if not m.group(1):
                     return globals()[macro]()
                 else:
-                    return globals()[macro](m.group(1))
+                    args= m.group(1).split()
+                    return globals()[macro](*args)
 
-            snippet = re.sub(r'%s *([^; #\n]*)' % macro, repl, snippet)
+            snippet = re.sub(r'%s *([^;#\n]*)' % macro, repl, snippet)
 
     if functions:
         # TODO
@@ -58,7 +60,7 @@ def normalize(snippet, labels=None, replace=None, macros=None, functions=None):
 label_counter = 0
 def new_label():
     global label_counter
-    r = 'label%d' % label_counter
+    r = 'labelX%d' % label_counter
     label_counter += 1
     return r
 
@@ -84,12 +86,6 @@ def POP():
         '''
     return snippet
 
-def ROT_THREE():
-    # TODO
-    snippet = '''
-        '''
-    return snippet
-
 def PUSH2():
     snippet = r'''                      # PS: M;N       HS: X
         G                               # PS: M;N\nX    HS: X
@@ -106,6 +102,14 @@ def POP2():
         x                               # PS: M;N;X     HS: X
         s/(^[^;]*;[^;]*).*/\1/          # PS: M;N       HS: X
         '''
+    return snippet
+
+def SWAP():
+    snippet = r'''                      # PS: ?         HS: M;N;X
+        x                               # PS: M;N;X     HS: ?
+        s/^([^;]*;)([^;]*;)/\2\1/       # PS: N;M;X     HS: ?
+        x                               # PS: ?         HS: N;M;X
+    '''
     return snippet
 
 
@@ -164,15 +168,6 @@ def LOAD_GLOBAL(name):
     '''
     return snippet.replace('name', name)
 
-def STORE_GLOBAL(name):
-    # TODO: remove
-    # name = POP() (cf cpython/ceval.c)
-    snippet = r'''                      # PS: ?         HS: x;X
-        g                               # PS: x;X       HS: ?
-        s/([^;]*;)([^@]*@)/\2;name;\1/  # PS: X;v;x     HS: ?
-        h                               # PS: ?         HS: X;v;x
-    '''
-    return DELETE_GLOBAL(name) + snippet.replace('name', name)
 
 def STORE_GLOBAL(name):
     # name = POP() (cf cpython/ceval.c)
@@ -242,55 +237,42 @@ def MAKE_FUNCTION(x):
     return ''
 
 
-def CALL_FUNCTION(argc):
-    # TODO: return address to be handled
+def CALL_FUNCTION(argc, return_label):
+
     if int(argc) >= 256:
         # do not handle keyword parameters
-        print '[%s]' % argc
+        print('[%s]' % argc)
         raise Exception('numsed: keyword parameters not handled')
     # argc parameters on top of stack above name of function
     # first, swap parameters and name
-    snippet = '''
-        s/(([^;];){argc})([^;];)/\3\2/
-        BRANCH_ON_NAME(function_labels)
-        '''
-    return normalize(snippet, replace=(('argc', argc),))
+    snippet = r'''
+        x
+        s/^(([^;]+;){argc})([^;]+;)/\3\1return_label;/
+        x
+        POP
+        ''' + BRANCH_ON_NAME(function_labels)
+    return normalize(snippet, replace=(('argc', argc),('return_label', return_label)), macros=('POP',))
 
 
 def RETURN_VALUE():
-    return BRANCH_ON_NAME(return_labels)
-    #return 's/.*//'
+    snippet = 'SWAP\n' + 'POP\n' + BRANCH_ON_NAME(return_labels)
+    return normalize(snippet, macros=('SWAP', 'POP'))
 
 
 def BRANCH_ON_NAME(labels):
     snippet = '''                       # HS: label;X
-        s/^//                           # force a substitution to enable t
+        s/^//                           # force a substitution to reset t flag
         t test_return                   # t to next line to reset t flag
         :test_return
     '''
     snippet = normalize(snippet, labels=('test_return',))
 
-    snippet += '\n'.join(('s/^%s;//;t %s' % (label, label) for label in labels))
+    snippet += '\n'.join(('s/^%s$//;t %s' % (label, label) for label in labels))
 
     return snippet
 
 
-# -- Printing ----------------------------------------------------------------
-
-
-def PRINT_ITEM():
-    snippet = r'''
-                                        # PS: ?         HS: N;X
-        POP                             # PS: N         HS: X
-        p
-     '''
-    return normalize(snippet, macros=('POP',))
-
-def PRINT_NEWLINE():
-    return ''
-
-
-# -- Compare operators -------------------------------------------------------
+# -- Compare operators and jumps ---------------------------------------------
 
 
 def UNARY_NOT():
@@ -321,28 +303,55 @@ def CMP():
     '''
     return normalize(snippet, labels=('loop', 'gt', 'lt', 'end'))
 
+
 def COMPARE_OP(opname):
-    if opname == 'EQ':
-        snippet = 'POP2; CMP; y/<=>/010/; PUSH'
-    elif opname == 'NE':
-        snippet = 'POP2; CMP; y/<=>/101/; PUSH'
-    elif opname == 'LT':
-        snippet = 'POP2; CMP; y/<=>/100/; PUSH'
-    elif opname == 'LE':
-        snippet = 'POP2; CMP; y/<=>/110/; PUSH'
-    elif opname == 'GT':
-        snippet = 'POP2; CMP; y/<=>/001/; PUSH'
-    elif opname == 'GE':
-        snippet = 'POP2; CMP; y/<=>/011/; PUSH'
-    return snippet
+    snippet = '''
+        POP2
+        CMP
+        y/<=>/xyz/
+        PUSH
+    '''
+    conv = {'==': '010', '!=': '101', '<': '100', '<=': '110', '>': '001', '>=': '001'}
+    snippet = snippet.replace('xyz', conv[opname])
+    return normalize(snippet, macros=('POP2', 'CMP', 'PUSH'))
+
 
 def POP_JUMP_IF_TRUE(target):
-    snippet = 'LOAD_TOP; /^1$/b ' + target
-    return snippet
+    snippet = 'POP; /^1$/b ' + target
+    return normalize(snippet, macros=('POP',))
+
 
 def POP_JUMP_IF_FALSE(target):
-    snippet = 'LOAD_TOP; /^0$/b ' + target
-    return snippet
+    snippet = 'POP; /^0$/b ' + target
+    return normalize(snippet, macros=('POP',))
+
+
+def JUMP(target):
+    return 'b ' + target
+
+
+def SETUP_LOOP(_):
+    return 'TRACE setup_llop'
+
+
+def POP_BLOCK():
+    return ''
+
+
+# -- Printing ----------------------------------------------------------------
+
+
+def PRINT_ITEM():
+    snippet = r'''
+        TRACE print
+                                        # PS: ?         HS: N;X
+        POP                             # PS: N         HS: X
+        p
+     '''
+    return normalize(snippet, macros=('POP',))
+
+def PRINT_NEWLINE():
+    return ''
 
 
 # - Addition and subtraction -------------------------------------------------
@@ -466,12 +475,16 @@ def BINARY_SUBTRACT():
     Implements TOS = TOS1 - TOS on unsigned integers (R = N - M).
     """
     snippet = r'''                      # PS: ?         HS: M;N;X
+        SWAP
         POP2                            # PS: M;N;      HS: X
-       #SWAP                            # PS: N;M;      HS: X (swap required ?) ou en 1ere ligne
         USUB                            # PS: R         HS: X
         PUSH                            # PS: R         HS: R;X
      '''
-    return normalize(snippet, macros=('POP2', 'USUB', 'PUSH'))
+    return normalize(snippet, macros=('SWAP', 'POP2', 'USUB', 'PUSH'))
+
+
+INPLACE_ADD = BINARY_ADD
+INPLACE_SUBTRACT = BINARY_SUBTRACT
 
 
 # -- Multiplication ----------------------------------------------------------
@@ -571,21 +584,6 @@ def BINARY_FLOOR_DIVIDE():
     return ''
 
 
-# -- Division ----------------------------------------------------------------
-
-
-def UDIVxxx():
-    # TODO: remove
-    print euclide.func_code.co_varnames
-    print euclide.func_code.co_varnames[:euclide.func_code.co_argcount]
-    old_stdout = sys.stdout
-    result = StringIO()
-    sys.stdout = result
-    dis.dis(euclide)
-    sys.stdout = old_stdout
-    return result.getvalue()
-
-
 # -- Helper opcodes ----------------------------------------------------------
 
 
@@ -603,8 +601,8 @@ def NEGATIVE():
     snippet = r'''                      # PS: ?         HS: N;X
         g                               # PS: N;X       HS: N;X
         s/^-/!/                         # use marker to avoid another substitution
-        s/^+/-/                         #
-        s/^[0-9]/-\1/                   #
+        s/^\+/-/                        #
+        s/^[0-9]/-&/                    #
         s/^!//                          # remove marker
         h                               # PS: R;X       HS: R;X  R = -N
         '''
@@ -619,6 +617,21 @@ def DIVIDE_BY_TEN():
         h                               # PS: R;X       HS: R;X  R = N // 10
         '''
     return snippet
+
+
+# -- Debug -------------------------------------------------------------------
+
+
+def TRACE(msg):
+    snippet = '''
+        i msg
+        p
+        x
+        p
+        x
+    '''
+    #return ''
+    return snippet.replace('msg', msg)
 
 
 # -- Generate opcodes and run ------------------------------------------------
@@ -644,16 +657,21 @@ def make_sed_module(source, trace=False):
 
     list_macros = ('STARTUP', 'MAKE_FUNCTION', 'CALL_FUNCTION', 'BRANCH_ON_NAME',
                    'MAKE_CONTEXT', 'POP_CONTEXT',
-                   'LOAD_CONST', 'LOAD_NAME', 'STORE_NAME',
+                   'LOAD_CONST', 'LOAD_GLOBAL', 'LOAD_NAME', 'STORE_NAME',
                    'LOAD_FAST', 'STORE_FAST',
                    'BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY',
+                   'INPLACE_ADD', 'INPLACE_SUBTRACT',
+                   'COMPARE_OP',
+                   'POP_JUMP_IF_TRUE', 'POP_JUMP_IF_FALSE', 'JUMP', # beware of order
+                   'SETUP_LOOP', 'POP_BLOCK',
                    'RETURN_VALUE',
-                   'PRINT_ITEM', 'PRINT_NEWLINE')
+                   'PRINT_ITEM', 'PRINT_NEWLINE',
+                   'IS_POSITIVE', 'NEGATIVE', 'DIVIDE_BY_TEN', 'TRACE')
 
     y = normalize('\n'.join(opcodes), macros=list_macros)
     # trace if requested
     if trace:
-        print y
+        print(y)
 
     # return string
     return y
@@ -670,17 +688,17 @@ def make_sed_and_run(source, trace=False):
     name_input = 'test.input'
 
     with open(name_script, 'w') as f:
-        print>>f, sed
+        print(sed, file=f)
 
     with open(name_input, 'w') as f:
-        print>>f, '0'
+        print('0', file=f)
 
     com = 'sed -n -r -f %s %s' % (name_script, name_input)
 
     # TODO: check sed in path
     res = subprocess.check_output(com).splitlines()
     for line in res:
-        print line
+        print(line)
 
 
 # -- Tests -------------------------------------------------------------------
