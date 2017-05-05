@@ -163,6 +163,11 @@ def STARTUP():
         b start
         :NameError
         s/.*/NameError: name & is not defined/
+        p
+        q
+        :UnknownLabel
+        s/.*/UnknownLabel: label & is not defined/
+        p
         q
         :start
     '''
