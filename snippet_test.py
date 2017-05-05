@@ -1,6 +1,6 @@
 import subprocess
 import random
-from numsed import (normalize,
+from sedcode import (normalize,
                  STARTUP, MAKE_CONTEXT, POP_CONTEXT, PUSH, POP,
                  LOAD_GLOBAL, STORE_GLOBAL, DELETE_GLOBAL, LOAD_FAST, STORE_FAST,
                  CMP, FULLADD, FULLSUB, UADD, USUB, FULLMUL, MULBYDIGIT, UMUL)
@@ -23,20 +23,25 @@ def func_context_0():
     snippet_begin = '1 {' + STARTUP() + '}\n'
     snippet_end = ''
     def pattern_store(n, s):
-        # must be a function not a constant, to generate different labels
-        # in STORE_GLOBAL
-        x = ('%d {' % n, PUSH(), STORE_GLOBAL(s), LOAD_GLOBAL(s), POP(), '}\n')
-        return '\n'.join(x)
+        snippet = '''
+            n { PUSH
+                STORE_GLOBAL s
+                LOAD_GLOBAL s
+                POP
+              }
+        '''
+        return normalize(snippet, replace=(('n', str(n)), ('s', s)))
     def pattern_load(n, s):
         x = ('%d {' % n, LOAD_GLOBAL(s), POP(), '}\n')
         return '\n'.join(x)
     snippet = '\n'.join([snippet_begin] +
-                        [pattern_store(n, s) for n,s in zip(range(1, nvars+1), lvars)] +
-                        [pattern_load(n, s)  for n,s in zip(range(nvars+01, nvars+11), lvars)] +
-                        [pattern_store(n, s) for n,s in zip(range(nvars+11, nvars+21), lvars)] +
-                        [pattern_load(n, s)  for n,s in zip(range(nvars+21, nvars+31), lvars)] +
+                        [pattern_store(n, s) for s, n in zip(lvars, range(1, nvars+1))] +
+                        [pattern_load(n, s)  for s, n in zip(lvars, range(nvars+01, nvars+11))] +
+                        [pattern_store(n, s) for s, n in zip(lvars, range(nvars+11, nvars+21))] +
+                        [pattern_load(n, s)  for s, n in zip(lvars, range(nvars+21, nvars+31))] +
                         [snippet_end])
     return snippet
+
 
 def test_context_0():
     # Input  PS:
@@ -150,11 +155,11 @@ def func_context_3():
         STORE_NAME z
         x
         '''
-    return normalize(snippet, macros=('STARTUP', 'LOAD_CONST', 'STORE_NAME'))
+    return normalize(snippet)
 
 def test_context_3():
     inplist = ['0']
-    outlist = ['-;z;3;y;2;x;1']
+    outlist = ['@;z;3;y;2;x;1']
     test_gen('func_context_3', func_context_3, inplist, outlist)
 
 
