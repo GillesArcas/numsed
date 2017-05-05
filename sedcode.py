@@ -7,44 +7,53 @@ def sedcode(opcode, function_labels_, return_labels_):
     function_labels = function_labels_
     return_labels = return_labels_
 
-    list_macros = ('STARTUP', 'MAKE_FUNCTION', 'CALL_FUNCTION', 'BRANCH_ON_NAME',
-                   'MAKE_CONTEXT', 'POP_CONTEXT',
-                   'LOAD_CONST', 'LOAD_GLOBAL', 'LOAD_NAME', 'STORE_NAME',
-                   'LOAD_FAST', 'STORE_FAST',
-                   'BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY',
-                   'INPLACE_ADD', 'INPLACE_SUBTRACT',
-                   'COMPARE_OP',
-                   'POP_JUMP_IF_TRUE', 'POP_JUMP_IF_FALSE', 'JUMP', # beware of order
-                   'SETUP_LOOP', 'POP_BLOCK',
-                   'RETURN_VALUE',
-                   'PRINT_ITEM', 'PRINT_NEWLINE',
-                   'IS_POSITIVE', 'NEGATIVE', 'DIVIDE_BY_TEN', 'TRACE')
-
     return normalize('\n'.join(opcode), macros=list_macros)
 
 
 def normalize(snippet, labels=None, replace=None, macros=None, functions=None):
+
+    if labels is None:
+        labels = []
+        for line in snippet:
+            m = re.match(r' *:(\S+)', line)
+            if m:
+                labels.append(m.group(1))
+
     if labels:
         for label in labels:
             snippet = snippet.replace(label, new_label())
 
     if replace:
         for sfrom, sto in replace:
-            snippet = snippet.replace(sfrom, sto)
+            snippet = re.sub(r'\b%s\b' % sfrom, sto, snippet)
 
-    if macros:
-        for macro in macros:
-            #snippet = snippet.replace(macro, globals()[macro]())
+    macros = ('STARTUP', 'MAKE_FUNCTION', 'CALL_FUNCTION', 'BRANCH_ON_NAME',
+                   'MAKE_CONTEXT', 'POP_CONTEXT',
+                   'LOAD_CONST', 'LOAD_GLOBAL', 'STORE_GLOBAL', 'LOAD_NAME', 'STORE_NAME',
+                   'LOAD_FAST', 'STORE_FAST',
+                   'BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY',
+                   'INPLACE_ADD', 'INPLACE_SUBTRACT',
+                   'COMPARE_OP',
+                   'JUMP', 'POP_JUMP_IF_TRUE', 'POP_JUMP_IF_FALSE',
+                   'SETUP_LOOP', 'POP_BLOCK',
+                   'RETURN_VALUE',
+                   'PRINT_ITEM', 'PRINT_NEWLINE',
+                   'IS_POSITIVE', 'NEGATIVE', 'DIVIDE_BY_TEN', 'TRACE')
 
-            def repl(m):
-                #print '(%s)' % m.group(1)
-                if not m.group(1):
-                    return globals()[macro]()
-                else:
-                    args= m.group(1).split()
-                    return globals()[macro](*args)
+    macros += ('PUSH', 'POP', 'POP2', 'SWAP', 'CMP', 'UADD', 'USUB', 'UMUL',
+               'FULLADD', 'FULLSUB', 'FULLMUL', 'MULBYDIGIT')
 
-            snippet = re.sub(r'%s *([^;#\n]*)' % macro, repl, snippet)
+    for macro in macros:
+        #snippet = snippet.replace(macro, globals()[macro]())
+
+        def repl(m):
+            if not m.group(1):
+                return globals()[macro]()
+            else:
+                args= m.group(1).split()
+                return globals()[macro](*args)
+
+        snippet = re.sub(r'\b%s\b *([^;#\n]*)' % macro, repl, snippet)
 
     if functions:
         # TODO
@@ -64,6 +73,21 @@ def new_label():
 
 # -- push/pop ---------------------------------------------------------------
 
+
+PUSH = r'''                             # PS: N         HS: X
+    G                                   # PS: N\nX      HS: X
+    s/\n/;/                             # PS: N;X       HS: X
+    h                                   # PS: N;X       HS: N;X
+    s/;.*//                             # PS: N         HS: N;X
+'''
+
+def PUSH():
+    return r'''                         # PS: N         HS: X
+        G                               # PS: N\nX      HS: X
+        s/\n/;/                         # PS: N;X       HS: X
+        h                               # PS: N;X       HS: N;X
+        s/;.*//                         # PS: N         HS: N;X
+    '''
 
 def PUSH():
     snippet = r'''                      # PS: N         HS: X
@@ -113,6 +137,12 @@ def SWAP():
 # -- Constants --------------------------------------------------------------
 
 
+LOAD_CONST = r'''                       # PS: ?         HS: X
+    g                                   # PS: X         HS: X
+    s/^/{const};/                       # PS: const;X   HS: X
+    h                                   # PS: const;X   HS: const;X
+'''
+
 def LOAD_CONST(const):
     snippet = r'''                      # PS: ?         HS: X
         g                               # PS: X         HS: X
@@ -127,8 +157,9 @@ def LOAD_CONST(const):
 
 def STARTUP():
     snippet = '''
+        x
         s/.*/@/
-        h
+        x
         b start
         :NameError
         s/.*/NameError: name & is not defined/
@@ -201,6 +232,7 @@ def LOAD_FAST(name):
         g                               # PS: ?;v;x?    HS: ?;v;x?
         /[|][^|]*;name;[^|]*/! s/.*/0;&/
                                         # PS: 0 if var undefined
+                                        # TODO: should be error
         s/.*[|][^|]*;name;([^;]*)[^|]*$/\1;&/
                                         # PS: x;?;v;x?  HS: ?;v;x?
         h                               # PS: ?         HS: x;?;v;x?
@@ -263,8 +295,8 @@ def BRANCH_ON_NAME(labels):
         :test_return
     '''
     snippet = normalize(snippet, labels=('test_return',))
-
     snippet += '\n'.join(('s/^%s$//;t %s' % (label, label) for label in labels))
+    snippet += '\nb UnknownLabel'
 
     return snippet
 
@@ -298,19 +330,22 @@ def CMP():
         s/.*/>/                         # PS: > if x > y
         :end                            # PS: <|=|>
     '''
-    return normalize(snippet, labels=('loop', 'gt', 'lt', 'end'))
+    return normalize(snippet)
 
 
 def COMPARE_OP(opname):
     snippet = '''
+        SWAP
         POP2
+        TRACE avantcmp
         CMP
+        TRACE aprescmp
         y/<=>/xyz/
         PUSH
     '''
     conv = {'==': '010', '!=': '101', '<': '100', '<=': '110', '>': '001', '>=': '001'}
     snippet = snippet.replace('xyz', conv[opname])
-    return normalize(snippet, macros=('POP2', 'CMP', 'PUSH'))
+    return normalize(snippet, macros=('SWAP', 'POP2', 'CMP', 'PUSH'))
 
 
 def POP_JUMP_IF_TRUE(target):
@@ -328,7 +363,7 @@ def JUMP(target):
 
 
 def SETUP_LOOP(_):
-    return 'TRACE setup_llop'
+    return ''
 
 
 def POP_BLOCK():
@@ -427,7 +462,7 @@ def UADD():
         s/^0(\d*);(\d*);(\d*);/\2\3\1/
         :exit                           # PS: R*
     '''
-    return normalize(snippet, labels=('loop', 'exit'), macros=('FULLADD',))
+    return normalize(snippet, labels=('loop', 'exit'))
 
 
 def USUB():
@@ -452,7 +487,7 @@ def USUB():
         s/^\d*;\d*;\d*;/NAN/            # PS: NAN*
         :end                            # PS: M-N|NAN
      '''
-    return normalize(snippet, labels=('loop', 'nan', 'end'), macros=('FULLSUB',))
+    return normalize(snippet, labels=('loop', 'nan', 'end'))
 
 
 def BINARY_ADD():
@@ -464,7 +499,7 @@ def BINARY_ADD():
         UADD                            # PS: R         HS: X
         PUSH                            # PS: R         HS: R;X
      '''
-    return normalize(snippet, macros=('POP2', 'UADD', 'PUSH'))
+    return normalize(snippet)
 
 def BINARY_SUBTRACT():
     """
@@ -476,7 +511,7 @@ def BINARY_SUBTRACT():
         USUB                            # PS: R         HS: X
         PUSH                            # PS: R         HS: R;X
      '''
-    return normalize(snippet, macros=('SWAP', 'POP2', 'USUB', 'PUSH'))
+    return normalize(snippet)
 
 
 INPLACE_ADD = BINARY_ADD
@@ -520,7 +555,7 @@ def MULBYDIGIT():
         s/;\d;;//                       # PS: RX
         s/^0*(\d)/\1/
     '''
-    return normalize(snippet, labels=('loop',), macros=('FULLMUL',))
+    return normalize(snippet, labels=('loop',))
 
 
 def UMUL(a, b):
@@ -550,7 +585,7 @@ def UMUL():
         s/(\d*);(\d*).*/\1\2/           # PS: RS
         s/^0*(.)/\1/                    # Normalize leading zeros
     '''
-    return normalize(snippet, labels=('loop',), macros=('UADD', 'MULBYDIGIT',))
+    return normalize(snippet, labels=('loop',))
 
 
 def BINARY_MULTIPLY():
@@ -561,18 +596,7 @@ def BINARY_MULTIPLY():
         UMUL                            # PS: R         HS: X
         PUSH                            # PS: R         HS: R;X
      '''
-    return normalize(snippet, macros=('POP2', 'UMUL', 'PUSH'))
-
-
-def BINARY_MULTIPLY():
-    snippet = r'''
-                                        # PS: ?         HS: M;N;X
-        POP2                            # PS: M;N;      HS: X
-        s/$/;/
-        UMUL                            # PS: R         HS: X
-        PUSH                            # PS: R         HS: R;X
-     '''
-    return normalize(snippet, macros=('POP2', 'UMUL', 'PUSH'))
+    return normalize(snippet)
 
 
 def BINARY_FLOOR_DIVIDE():
@@ -628,5 +652,3 @@ def TRACE(msg):
     '''
     #return ''
     return snippet.replace('msg', msg)
-
-
