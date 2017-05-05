@@ -160,7 +160,7 @@ def read_opcode_module(source, trace=False):
     return_labels = []
 
     for instr in opcode:
-        if re.match(r':\w+_[0_9A-Z]{8}', instr):
+        if re.match(r':\w+_[0-9A-Z]{8}', instr):
             function_labels.append(instr[1:].strip())
         elif re.match(r':return\d+', instr):
             return_labels.append(instr[1:].strip())
