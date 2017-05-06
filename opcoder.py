@@ -72,7 +72,7 @@ def opcodes(dis_code, trace=False):
     # add dummy context to be removed by final RETURN_VALUE
     newcode.append('MAKE_CONTEXT')
     # add dummy pointer address to be taken by final RETURN_VALUE
-    newcode.append('LOAD_CONST 1000000')
+    newcode.append('LOAD_CONST EndOfScript')
 
     # normalize disassembly labels and opcode arguments
     newcode.extend(dis_code)
