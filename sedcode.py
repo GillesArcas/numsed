@@ -10,7 +10,7 @@ def sedcode(opcode, function_labels_, return_labels_):
     return normalize('\n'.join(opcode))
 
 
-def normalize(snippet, replace=None, macros=None, functions=None):
+def normalize(snippet, replace=None, functions=None):
 
     labels = []
     for line in snippet.splitlines():
