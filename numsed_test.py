@@ -78,15 +78,19 @@ def list_compare(tag1, tag2, list1, list2):
 
 
 def main():
-    mode = 'sed'
-    status = True
-    for test in testlines(sys.argv[1]):
-        print test
-        status = status and run_test(test, mode)
-    if status:
-        print 'ALL TESTS OK'
+    if len(sys.argv) != 3 or sys.argv[1] not in ('transform', 'opcode', 'sed'):
+        print 'numsed_test.py transform|opcode|sed testsuite'
     else:
-        print 'One TEST failure'
+        mode = sys.argv[1]
+        testsuite = sys.argv[2]
+        status = True
+        for test in testlines(testsuite):
+            print test
+            status = status and run_test(test, mode)
+        if status:
+            print 'ALL TESTS OK'
+        else:
+            print 'One TEST failure'
 
 
 if __name__ == '__main__':
