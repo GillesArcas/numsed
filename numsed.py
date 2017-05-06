@@ -43,8 +43,6 @@ def make_sed_module(source, trace=False):
 
     if source.endswith('.py'):
         opcodes, function_labels, return_labels = opcoder.make_opcode_module(source, trace=False)
-        print(function_labels)
-        print(return_labels)
     elif source.endswith('.opc'):
         opcodes, function_labels, return_labels = opcoder.read_opcode_module(source, trace=False)
     else:
@@ -65,10 +63,10 @@ def make_sed_module(source, trace=False):
 
 def make_sed_and_run(source, trace=False):
 
-    sed = make_sed_module(source, trace=trace)
+    sed = make_sed_module(source, trace=False)
 
-    name_script = 'test.sed'
-    name_input = 'test.input'
+    name_script = 'tmp.sed'
+    name_input = 'tmp.input'
 
     with open(name_script, 'w') as f:
         print(sed, file=f)
