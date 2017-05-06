@@ -258,7 +258,7 @@ def STORE_FAST(name):
 def DELETE_FAST(name):
     snippet = r'''                      # PS: ?         HS: x;X
         g                               # PS: x;X       HS: ?
-        s/([|][^|]*);name;[^;|]*([^|]*)/\1\2/
+        s/([|][^|]*);name;[^;|]*([^|]*)$/\1\2/
                                         # PS: x;X'      HS: ? (del ;var;val in PS)
         h                               # PS: ?         HS: x;X';v;x
     '''
