@@ -198,13 +198,13 @@ def euclide(a, b):
     aux = b
 
     while aux <= a:
-        aux = aux * 2
+        aux *= 2
         n += 1
 
     while n > 0:
         aux = divide_by_ten(aux * 5) # i.e. aux = aux // 2
         n -= 1
-        q = q * 2
+        q *= 2
         if r >= aux:
             r -= aux
             q += 1
