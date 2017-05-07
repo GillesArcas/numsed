@@ -29,7 +29,6 @@ signed_func = {
     ast.Add: 'signed_add',
     ast.Sub: 'signed_sub',
     ast.Mult: 'signed_mult',
-    ast.Div: None,
     ast.FloorDiv: 'signed_div',
     ast.Mod: 'signed_mod',
     ast.Eq: 'signed_eq',
@@ -43,7 +42,6 @@ unsigned_func = {
     ast.Add: 'unsigned_add',
     ast.Sub: 'unsigned_sub',
     ast.Mult: 'unsigned_mult',
-    ast.Div: None,
     ast.FloorDiv: 'unsigned_div',
     ast.Mod: 'unsigned_mod',
     ast.Eq: 'unsigned_eq',
@@ -68,7 +66,10 @@ class NumsedAstTransformer(ast.NodeTransformer):
 
     def visit_BinOp(self, node):
         self.generic_visit(node)
-        return self.make_call(self.func[type(node.op)], [node.left, node.right])
+        if type(node.op) in self.func:
+            return self.make_call(self.func[type(node.op)], [node.left, node.right])
+        else:
+            raise Exception('Operator not handled: ' + str(type(node.op)))
 
     def visit_Compare(self, node):
         self.generic_visit(node)
@@ -187,14 +188,6 @@ def signed_sub(x, y):
                 return negative(abs_x - abs_y)
             else:
                 return abs_y - abs_x
-
-
-def signed_pos(x):
-    return x
-
-
-def signed_neg(x):
-    return negative(x)
 
 
 def euclide(a, b):
