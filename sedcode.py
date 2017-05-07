@@ -31,7 +31,6 @@ def normalize(snippet, replace=None, functions=None):
               'LOAD_CONST', 'LOAD_GLOBAL', 'STORE_GLOBAL', 'LOAD_NAME', 'STORE_NAME',
               'LOAD_FAST', 'STORE_FAST',
               'BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY',
-              'INPLACE_ADD', 'INPLACE_SUBTRACT',
               'COMPARE_OP', 'UNARY_NOT',
               'JUMP', 'POP_JUMP_IF_TRUE', 'POP_JUMP_IF_FALSE',
               'SETUP_LOOP', 'POP_BLOCK',
@@ -523,10 +522,6 @@ def BINARY_SUBTRACT():
         PUSH                            # PS: R         HS: R;X
      '''
     return normalize(snippet)
-
-
-INPLACE_ADD = BINARY_ADD
-INPLACE_SUBTRACT = BINARY_SUBTRACT
 
 
 # -- Multiplication ----------------------------------------------------------

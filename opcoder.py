@@ -127,6 +127,22 @@ def opcodes(dis_code, trace=False):
             tmp.append(instr)
     newcode3 = tmp
 
+    # replace INPLACE_* with BINARY_ equivalent
+    tmp = []
+    for instr in newcode3:
+        instr = re.sub('^INPLACE_', 'BINARY_', instr)
+        tmp.append(instr)
+    newcode3 = tmp
+
+    # clean long int representation (python2)
+    tmp = []
+    for instr in newcode3:
+        if re.match('LOAD_CONST +\d+L', instr):
+            tmp.append(instr[:-1])
+        else:
+            tmp.append(instr)
+    newcode3 = tmp
+
     # # TODO: ici ?
     # list_macros = ('BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY')
     # newcode3 = normalize('\n'.join(newcode3), macros=list_macros)
@@ -337,19 +353,19 @@ def interpreter(code):
             # TODO: NOP like
             tos = stack.pop()
             stack.append(+tos)
-        elif opc == 'BINARY_ADD' or opc == 'INPLACE_ADD':
+        elif opc == 'BINARY_ADD':
             tos = stack.pop()
             tos1 = stack.pop()
             stack.append(tos1 + tos)
-        elif opc == 'BINARY_SUBTRACT' or opc == 'INPLACE_SUBTRACT':
+        elif opc == 'BINARY_SUBTRACT':
             tos = stack.pop()
             tos1 = stack.pop()
             stack.append(tos1 - tos)
-        elif opc == 'BINARY_MULTIPLY' or opc == 'INPLACE_MULTIPLY':
+        elif opc == 'BINARY_MULTIPLY':
             tos = stack.pop()
             tos1 = stack.pop()
             stack.append(tos1 * tos)
-        elif opc == 'BINARY_FLOOR_DIVIDE' or opc == 'INPLACE_FLOOR_DIVIDE':
+        elif opc == 'BINARY_FLOOR_DIVIDE':
             tos = stack.pop()
             tos1 = stack.pop()
             stack.append(tos1 // tos)
