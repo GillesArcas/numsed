@@ -346,11 +346,9 @@ def interpreter(code):
             z = stack.pop()
             stack.extend([x, z, y])
         elif opc == 'UNARY_NEGATIVE':
-            # TODO: optimize
             tos = stack.pop()
             stack.append(-tos)
         elif opc == 'UNARY_POSITIVE':
-            # TODO: NOP like
             tos = stack.pop()
             stack.append(+tos)
         elif opc == 'BINARY_ADD':
