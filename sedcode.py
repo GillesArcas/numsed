@@ -32,7 +32,7 @@ def normalize(snippet, replace=None, functions=None):
               'LOAD_FAST', 'STORE_FAST',
               'BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY',
               'UNARY_POSITIVE', 'UNARY_NEGATIVE',
-              'COMPARE_OP', 'UNARY_NOT',
+              'COMPARE_OP', 'UNARY_NOT', 'BINARY_AND', 'BINARY_OR',
               'JUMP', 'POP_JUMP_IF_TRUE', 'POP_JUMP_IF_FALSE',
               'SETUP_LOOP', 'POP_BLOCK',
               'RETURN_VALUE',
@@ -307,6 +307,41 @@ def BRANCH_ON_NAME(labels):
     return snippet
 
 
+# -- Boolean operations ------------------------------------------------------
+
+
+def UNARY_NOT():
+    snippet = r'''
+        g
+        s/^0;/!;/                       # use marker to avoid another substitution
+        s/^\d+/0/
+        s/^!/1/
+        h
+    '''
+    return snippet
+
+def BINARY_AND():
+    snippet = r'''
+        SWAP
+        POP2
+        s/^0;[+-]?\d+;/0/
+        s/^[+-1-9]\d+;([+-]?\d+);/\1/
+        PUSH
+    '''
+    return normalize(snippet)
+
+def BINARY_OR():
+    snippet = r'''
+        SWAP
+        POP2
+        TRACE oror
+        s/^([+-1-9]\d+);[+-]?\d+;/\1/
+        s/^0;[+-]?\d+;/0/
+        PUSH
+    '''
+    return normalize(snippet)
+
+
 # -- Compare operators and jumps ---------------------------------------------
 
 
@@ -348,20 +383,9 @@ def COMPARE_OP(opname):
     return normalize(snippet)
 
 
-def UNARY_NOT():
-    snippet = '''
-        g
-        s/^0;/!;/                       # use marker to avoid another substitution
-        s/^\d+/0/
-        s/^!/1/
-        h
-    '''
-    return snippet
-
-
 def POP_JUMP_IF_TRUE(target):
-    snippet = 'POP; /^1$/b ' + target
-    return normalize(snippet, macros=('POP',))
+    snippet = 'POP; /^0$/!b ' + target
+    return normalize(snippet)
 
 
 def POP_JUMP_IF_FALSE(target):
