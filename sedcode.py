@@ -23,7 +23,7 @@ def normalize(snippet, replace=None, functions=None):
 
     if replace:
         for sfrom, sto in replace:
-            # TODO: had to remove stating \b cf CALL_FUNCTION
+            # TODO: had to remove starting \b cf CALL_FUNCTION
             snippet = re.sub(r'%s\b' % sfrom, sto, snippet)
 
     macros = ('STARTUP', 'MAKE_FUNCTION', 'CALL_FUNCTION', 'BRANCH_ON_NAME',
@@ -32,8 +32,9 @@ def normalize(snippet, replace=None, functions=None):
               'LOAD_FAST', 'STORE_FAST',
               'BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY',
               'UNARY_POSITIVE', 'UNARY_NEGATIVE',
-              'COMPARE_OP', 'UNARY_NOT', 'BINARY_AND', 'BINARY_OR',
+              'COMPARE_OP', 'UNARY_NOT', #'BINARY_AND', 'BINARY_OR',
               'JUMP', 'POP_JUMP_IF_TRUE', 'POP_JUMP_IF_FALSE',
+              'JUMP_IF_TRUE_OR_POP', 'JUMP_IF_FALSE_OR_POP',
               'SETUP_LOOP', 'POP_BLOCK',
               'RETURN_VALUE',
               'PRINT_ITEM', 'PRINT_NEWLINE',
@@ -392,6 +393,21 @@ def POP_JUMP_IF_FALSE(target):
     snippet = 'POP; /^0$/b ' + target
     return normalize(snippet)
 
+def JUMP_IF_TRUE_OR_POP(target):
+    snippet = '''
+        g
+        /^0;/!b target
+        POP
+    '''
+    return snippet.replace('target', target)
+
+def JUMP_IF_FALSE_OR_POP(target):
+    snippet = '''
+        g
+        /^0;/b target
+        POP
+    '''
+    return snippet.replace('target', target)
 
 def JUMP(target):
     return 'b ' + target
