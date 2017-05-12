@@ -119,7 +119,7 @@ def opcodes(dis_code, trace=False):
     # rename jump opcodes as all are absolute
     tmp = []
     for instr in newcode3:
-        if instr.startswith('JUMP_'):
+        if re.match('^JUMP_ABSOLUTE|JUMP_FORWARD', instr):
             x = instr.split()
             label = x[1]
             tmp.append('JUMP ' + label)
@@ -333,7 +333,6 @@ def interpreter(code):
             stack.append(names[arg])
         elif opc == 'STORE_NAME' or opc == 'STORE_GLOBAL':
             names[arg] = stack.pop()
-            #print names
         elif opc == 'LOAD_FAST':
             stack.append(varnames[-1][arg])
         elif opc == 'STORE_FAST':
@@ -398,6 +397,16 @@ def interpreter(code):
             tos = stack.pop()
             if not tos:
                 instr_pointer = labels[arg]
+        elif opc == 'JUMP_IF_TRUE_OR_POP':
+            if stack[-1]:
+                instr_pointer = labels[arg]
+            else:
+                tos = stack.pop()
+        elif opc == 'JUMP_IF_FALSE_OR_POP':
+            if not stack[-1]:
+                instr_pointer = labels[arg]
+            else:
+                tos = stack.pop()
         elif opc == 'PRINT_ITEM':
             tos = stack.pop()
             print tos,
