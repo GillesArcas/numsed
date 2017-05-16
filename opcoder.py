@@ -141,14 +141,6 @@ def opcodes(dis_code, trace=False):
     return newcode
 
 
-label_counter = 0
-def new_label():
-    global label_counter
-    r = 'return%d' % label_counter
-    label_counter += 1
-    return r
-
-
 # -- Reading opcode ----------------------------------------------------------
 
 
