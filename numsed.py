@@ -30,10 +30,15 @@ import sedcode
 # -- Generate opcodes and run ------------------------------------------------
 
 
-def make_opcode_and_run(source, trace=False):
+def run_opcode(source, trace=False, coverage=False):
+    if source.endswith('.py'):
+        opcodes, function_labels, return_labels = opcoder.make_opcode_module(source, trace=False)
+    elif source.endswith('.opc'):
+        opcodes, function_labels, return_labels = opcoder.read_opcode_module(source, trace=False)
+    else:
+        raise Exception('Invalid file type')
 
-    opcodes, function_labels, return_labels = opcoder.make_opcode_module(source, trace=trace)
-    opcoder.interpreter(opcodes)
+    opcoder.interpreter(opcodes, coverage)
 
 
 # -- Generate sed code -------------------------------------------------------
@@ -142,7 +147,8 @@ def parse_command_line():
     parser.add_argument("-v", help="version", action="store_true", dest="version")
     parser.add_argument("--dis", help="disassemble", action="store_true", dest="disassemble")
     parser.add_argument("--opcode", help="numsed intermediate opcode", action="store_true", dest="opcode")
-    parser.add_argument("--oprun", help="run numsed intermediate opcode", action="store_true", dest="runopcode")
+    parser.add_argument("--oprun", help="run numsed intermediate opcode", action="store_true", dest="oprun")
+    parser.add_argument("--opcoverage", help="run numsed intermediate opcode and display opcode coverage", action="store_true", dest="opcoverage")
     parser.add_argument("--sed", help="generate sed script", action="store_true", dest="sed")
     parser.add_argument("--run", help="generate sed script and run", action="store_true", dest="run")
     parser.add_argument("--test", help="test", action="store_true", dest="test")
@@ -169,8 +175,10 @@ def main():
         opcoder.disassemble(args.source, trace=True)
     elif args.opcode:
         opcoder.make_opcode_module(args.source, trace=True)
-    elif args.runopcode:
-        make_opcode_and_run(args.source, trace=False)
+    elif args.oprun:
+        run_opcode(args.source, trace=False)
+    elif args.opcoverage:
+        run_opcode(args.source, trace=False, coverage=True)
     elif args.sed:
         make_sed_module(args.source, trace=True)
     elif args.run:
