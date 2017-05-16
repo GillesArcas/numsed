@@ -72,7 +72,7 @@ def opcodes(dis_code, trace=False):
     # add dummy context to be removed by final RETURN_VALUE
     newcode.append('MAKE_CONTEXT')
     # add dummy pointer address to be taken by final RETURN_VALUE
-    newcode.append('LOAD_CONST EndOfScript')
+    newcode.append('LOAD_CONST end_of_script')
 
     # normalize disassembly labels and opcode arguments
     newcode.extend(dis_code)
@@ -298,7 +298,15 @@ def inline_helper_opcodes(code):
 # -- Opcode interpreter ------------------------------------------------------
 
 
-def interpreter(code):
+OPCODES = ('LOAD_CONST', 'LOAD_NAME', 'LOAD_GLOBAL', 'STORE_NAME', 'STORE_GLOBAL',
+           'LOAD_FAST', 'STORE_FAST', 'UNARY_NEGATIVE', 'UNARY_POSITIVE',
+           'BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY', 'BINARY_FLOOR_DIVIDE',
+           'COMPARE_OP', 'UNARY_NOT', 'JUMP', 'POP_JUMP_IF_TRUE', 'POP_JUMP_IF_FALSE',
+           'JUMP_IF_TRUE_OR_POP', 'JUMP_IF_FALSE_OR_POP', 'PRINT_ITEM', 'PRINT_NEWLINE',
+           'MAKE_FUNCTION', 'CALL_FUNCTION', 'RETURN_VALUE', 'SETUP_LOOP', 'POP_BLOCK',
+           'STARTUP', 'MAKE_CONTEXT', 'POP_CONTEXT', 'IS_POSITIVE', 'NEGATIVE', 'DIVIDE_BY_TEN')
+
+def interpreter(code, coverage=False):
 
     stack = list()
     names = dict()
@@ -314,9 +322,15 @@ def interpreter(code):
             labels[arg] = index
         opcodes.append((opc, arg))
 
+    counter = dict()
+    for x in OPCODES:
+        counter[x] = 0
+
     instr_pointer = 0
     while instr_pointer < len(opcodes):
         opc, arg = opcodes[instr_pointer]
+        if opc != ':':
+            counter[opc] += 1
         #print instr_pointer, opc, arg, stack
         instr_pointer += 1
         if False:
@@ -368,8 +382,7 @@ def interpreter(code):
             stack.append(tos1 // tos)
         elif opc == 'UNARY_NOT':
             tos = stack.pop()
-            assert tos in (0, 1)
-            stack.append(1 - tos)
+            stack.append(1 if tos == 0 else 0)
         elif opc == 'COMPARE_OP':
             tos = stack.pop()
             tos1 = stack.pop()
@@ -456,3 +469,7 @@ def interpreter(code):
             pass
         else:
             raise Exception('numsed: Unknown opcode: %s' % opc)
+
+    if coverage:
+        for x in OPCODES:
+            print '%-20s %10d' % (x, counter[x])
