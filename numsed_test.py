@@ -12,7 +12,7 @@ def testlines(name):
     with open(name) as f:
         lines = []
         for line in f:
-            if line.startswith('---'):
+            if line.startswith('# --'):
                 yield lines
                 lines = []
             else:
