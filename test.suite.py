@@ -231,6 +231,16 @@ while m >= -10:
         n -= 1
     m -= 1
 # --
+# break statement
+#m = -10
+#while m <= 10:
+#    n = -10
+#    while n <= m:
+#        if m + n == 21:
+#            break
+#        n += 1
+#    m += 1
+## --
 # loop on unary positive
 n = -10
 while n <= 10:

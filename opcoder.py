@@ -59,10 +59,10 @@ def make_opcode_module(source, trace=False):
     dis_code = prepared_dis_code(dis_code)
 
     # convert dis codes to numsed codes
-    newcode3, function_labels, return_labels = opcodes(dis_code, trace)
+    newcode3 = opcodes(dis_code, trace)
 
     # return list of instructions
-    return newcode3, function_labels, return_labels
+    return newcode3
 
 
 def opcodes(dis_code, trace=False):
@@ -80,68 +80,52 @@ def opcodes(dis_code, trace=False):
     # inline helper functions (is_positive, negative, divide_by_ten)
     newcode = inline_helper_opcodes(newcode)
 
-    # create list of function labels and list of return labels
-    function_labels = []
-    return_labels = []
-    newcode2 = []
-    for instr in newcode:
-        if instr.startswith('FUNCTION'):
-            name = instr.split()[1]
-            function_labels.append(name)
-            newcode2.append(instr)
-        elif instr.startswith('CALL_FUNCTION'):
-            label = new_label()
-            return_labels.append(label)
-            newcode2.append('%s %s' % (instr, label))
-            newcode2.append(':%s' % label)
-        else:
-            newcode2.append(instr)
-
     # handle function arguments and context
-    newcode3 = []
-    for instr in newcode2:
+    tmp = []
+    for instr in newcode:
         if instr.startswith('FUNCTION'):
             x = instr.split()
             name = x[1]
             args = x[2:]
-            newcode3.append(':%s' % name)
-            newcode3.append('MAKE_CONTEXT')
+            tmp.append(':%s' % name)
+            tmp.append('MAKE_CONTEXT')
             # arguments are pushed first one first by native python compiler,
             # and they have to be popped in reverse order
             for arg in reversed(args):
-                newcode3.append('STORE_FAST %s' % arg)
+                tmp.append('STORE_FAST %s' % arg)
         elif instr.startswith('RETURN_VALUE'):
-            newcode3.append('POP_CONTEXT')
-            newcode3.append(instr)
+            tmp.append('POP_CONTEXT')
+            tmp.append(instr)
         else:
-            newcode3.append(instr)
+            tmp.append(instr)
+    newcode = tmp
 
     # rename jump opcodes as all are absolute
     tmp = []
-    for instr in newcode3:
+    for instr in newcode:
         if re.match('^JUMP_ABSOLUTE|JUMP_FORWARD', instr):
             x = instr.split()
             label = x[1]
             tmp.append('JUMP ' + label)
         else:
             tmp.append(instr)
-    newcode3 = tmp
+    newcode = tmp
 
     # replace INPLACE_* with BINARY_ equivalent
     tmp = []
-    for instr in newcode3:
+    for instr in newcode:
         instr = re.sub('^INPLACE_', 'BINARY_', instr)
         tmp.append(instr)
-    newcode3 = tmp
+    newcode = tmp
 
     # clean long int representation (python2)
     tmp = []
-    for instr in newcode3:
+    for instr in newcode:
         if re.match('LOAD_CONST +\d+L', instr):
             tmp.append(instr[:-1])
         else:
             tmp.append(instr)
-    newcode3 = tmp
+    newcode = tmp
 
     # # TODO: ici ?
     # list_macros = ('BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY')
@@ -150,11 +134,11 @@ def opcodes(dis_code, trace=False):
 
     # trace if requested
     if trace:
-        for instr in newcode3:
+        for instr in newcode:
             print instr
 
     # return list of instructions
-    return newcode3, function_labels, return_labels
+    return newcode
 
 
 label_counter = 0
@@ -170,20 +154,7 @@ def new_label():
 
 def read_opcode_module(source, trace=False):
     with open(source) as f:
-        opcode = f.readlines()
-
-    function_labels = []
-    return_labels = []
-
-    for instr in opcode:
-        if re.match(r':\w+_[0-9A-Z]{8}', instr):
-            function_labels.append(instr[1:].strip())
-        elif re.match(r':return\d+', instr):
-            return_labels.append(instr[1:].strip())
-        else:
-            pass
-
-    return opcode, function_labels, return_labels
+        return f.readlines()
 
 
 # -- Preparing dis code ------------------------------------------------------

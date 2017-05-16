@@ -1,12 +1,15 @@
 import re
 
 
-def sedcode(opcode, function_labels_, return_labels_):
+def sedcode(opcode):
     global function_labels, return_labels
 
-    function_labels = function_labels_
-    #return_labels = return_labels_ + ['end_of_script']
+    function_labels = []
     return_labels = []
+
+    for instr in opcode:
+        if re.match(r':\w+_[0-9A-Z]{8}', instr):
+            function_labels.append(instr[1:].strip())
 
     sedcode = normalize('\n'.join(opcode))
     return_labels += ['end_of_script']
@@ -15,7 +18,7 @@ def sedcode(opcode, function_labels_, return_labels_):
     return sedcode
 
 
-def normalize(snippet, replace=None, functions=None):
+def normalize(snippet, replace=None):
 
     labels = []
     for line in snippet.splitlines():
@@ -297,7 +300,7 @@ def CALL_FUNCTION(argc, return_label):
     return snippet2
 
 
-def CALL_FUNCTION(argc, return_label):
+def CALL_FUNCTION(argc):
     if int(argc) >= 256:
         raise Exception('numsed: keyword parameters not handled (argc: %s)' % argc)
 
