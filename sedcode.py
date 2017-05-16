@@ -5,9 +5,14 @@ def sedcode(opcode, function_labels_, return_labels_):
     global function_labels, return_labels
 
     function_labels = function_labels_
-    return_labels = return_labels_ + ['EndOfScript']
+    #return_labels = return_labels_ + ['end_of_script']
+    return_labels = []
 
-    return normalize('\n'.join(opcode))
+    sedcode = normalize('\n'.join(opcode))
+    return_labels += ['end_of_script']
+    sedcode += '\n:return\n' + BRANCH_ON_NAME(return_labels)
+
+    return sedcode
 
 
 def normalize(snippet, replace=None, functions=None):
@@ -54,10 +59,6 @@ def normalize(snippet, replace=None, functions=None):
 
         snippet = re.sub(r'\b%s\b *([^;#\n]*)' % macro, repl, snippet)
 
-    if functions:
-        # TODO
-        pass
-
     snippet = snippet.replace('\\d', '[0-9]')
     return snippet
 
@@ -65,8 +66,15 @@ def normalize(snippet, replace=None, functions=None):
 label_counter = 0
 def new_label():
     global label_counter
-    r = 'labelX%d' % label_counter
+    r = 'label%d' % label_counter
     label_counter += 1
+    return r
+
+return_counter = 0
+def new_return():
+    global return_counter
+    r = 'return%d' % return_counter
+    return_counter += 1
     return r
 
 
@@ -160,7 +168,7 @@ def STARTUP():
         s/.*/@/
         x
         b.start
-        :EndOfScript
+        :end_of_script
         q
         :NameError
         s/.*/NameError: name & is not defined/
@@ -275,9 +283,8 @@ def MAKE_FUNCTION(x):
 
 def CALL_FUNCTION(argc, return_label):
     if int(argc) >= 256:
-        # do not handle keyword parameters
-        print('[%s]' % argc)
-        raise Exception('numsed: keyword parameters not handled')
+        raise Exception('numsed: keyword parameters not handled (argc: %s)' % argc)
+
     # argc parameters on top of stack above name of function
     # first, swap parameters and name
     snippet = r'''
@@ -290,8 +297,36 @@ def CALL_FUNCTION(argc, return_label):
     return snippet2
 
 
+def CALL_FUNCTION(argc, return_label):
+    if int(argc) >= 256:
+        raise Exception('numsed: keyword parameters not handled (argc: %s)' % argc)
+
+    return_label = new_return()
+    return_labels.append(return_label)
+
+    # argc parameters on top of stack above name of function
+    # first, swap parameters and name
+    snippet = r'''
+        x
+        s/^(([^;]+;){argc})([^;]+;)/\3\1return_label;/
+        x
+        POP
+        ''' + BRANCH_ON_NAME(function_labels) + '\n:' + return_label
+    snippet2 = normalize(snippet, replace=(('argc', argc),('return_label', return_label)))
+    return snippet2
+
+
 def RETURN_VALUE():
     snippet = 'SWAP\n' + 'POP\n' + BRANCH_ON_NAME(return_labels)
+    return normalize(snippet)
+
+
+def RETURN_VALUE():
+    snippet = '''
+        SWAP
+        POP
+        b return
+    '''
     return normalize(snippet)
 
 
