@@ -232,15 +232,35 @@ while m >= -10:
     m -= 1
 # --
 # break statement
-#m = -10
-#while m <= 10:
-#    n = -10
-#    while n <= m:
-#        if m + n == 21:
-#            break
-#        n += 1
-#    m += 1
-## --
+n = 0
+while n <= 10:
+    n += 1
+    if n == 8:
+        break
+    print n
+# --
+# break statement
+m = -10
+while m <= 10:
+    n = -10
+    while n <= 10:
+        print m
+        if m + n == 13:
+            break
+        n += 1
+    m += 1
+# --
+# break statement
+m = -10
+while m <= 10:
+    n = -10
+    while n <= 10:
+        print m
+        n += 1
+    if m + n == 13:
+        break
+    m += 1
+# --
 # loop on unary positive
 n = -10
 while n <= 10:

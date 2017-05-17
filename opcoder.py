@@ -127,6 +127,14 @@ def opcodes(dis_code, trace=False):
             tmp.append(instr)
     newcode = tmp
 
+    # handle break: find associated start of loop, retrieve label of end of loop
+    # and replace break with jump to end of loop
+    for instr_pointer, instr in enumerate(newcode):
+        if instr == 'BREAK_LOOP':
+            setup_loop = newcode[current_loop(newcode, instr_pointer)]
+            endblock_label = setup_loop.split(None, 1)[1]
+            newcode[instr_pointer] = 'JUMP ' + endblock_label
+
     # # TODO: ici ?
     # list_macros = ('BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY')
     # newcode3 = normalize('\n'.join(newcode3), macros=list_macros)
@@ -139,6 +147,21 @@ def opcodes(dis_code, trace=False):
 
     # return list of instructions
     return newcode
+
+
+def current_loop(opcode, instr_pointer):
+    pointer = instr_pointer
+    depth = 1
+    while depth > 0:
+        pointer -= 1
+        if opcode[pointer] == 'POP_BLOCK':
+            depth += 1
+        elif opcode[pointer].startswith('SETUP_LOOP'):
+            depth -= 1
+        else:
+            pass
+    assert opcode[pointer].startswith('SETUP_LOOP')
+    return pointer
 
 
 # -- Reading opcode ----------------------------------------------------------
