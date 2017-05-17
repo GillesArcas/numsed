@@ -321,6 +321,56 @@ while m <= 5:
         n += 1
     m += 1
 # --    
+# test comparison operator concatenation
+m = -2
+while m <= 2:
+    n = -2
+    while n <= 2:
+        p = -2
+        while p <= 2:
+            x = 0
+            k = 1
+            x += k if m == n == p else 0; k *= 2
+            x += k if m == n != p else 0; k *= 2
+            x += k if m == n <  p else 0; k *= 2
+            x += k if m == n <= p else 0; k *= 2
+            x += k if m == n >  p else 0; k *= 2
+            x += k if m == n >= p else 0; k *= 2
+            x += k if m != n == p else 0; k *= 2
+            x += k if m != n != p else 0; k *= 2
+            x += k if m != n <  p else 0; k *= 2
+            x += k if m != n <= p else 0; k *= 2
+            x += k if m != n >  p else 0; k *= 2
+            x += k if m != n >= p else 0; k *= 2
+            x += k if m <= n == p else 0; k *= 2
+            x += k if m <= n != p else 0; k *= 2
+            x += k if m <= n <  p else 0; k *= 2
+            x += k if m <= n <= p else 0; k *= 2
+            x += k if m <= n >  p else 0; k *= 2
+            x += k if m <= n >= p else 0; k *= 2
+            x += k if m <  n == p else 0; k *= 2
+            x += k if m <  n != p else 0; k *= 2
+            x += k if m <  n <  p else 0; k *= 2
+            x += k if m <  n <= p else 0; k *= 2
+            x += k if m <  n >  p else 0; k *= 2
+            x += k if m <  n >= p else 0; k *= 2
+            x += k if m >= n == p else 0; k *= 2
+            x += k if m >= n != p else 0; k *= 2
+            x += k if m >= n <  p else 0; k *= 2
+            x += k if m >= n <= p else 0; k *= 2
+            x += k if m >= n >  p else 0; k *= 2
+            x += k if m >= n >= p else 0; k *= 2
+            x += k if m >  n == p else 0; k *= 2
+            x += k if m >  n != p else 0; k *= 2
+            x += k if m >  n <  p else 0; k *= 2
+            x += k if m >  n <= p else 0; k *= 2
+            x += k if m >  n >  p else 0; k *= 2
+            x += k if m >  n >= p else 0; k *= 2
+            print x
+            p += 1
+        n += 1
+    m += 1
+# --    
 # and
 m = -2
 while m <= 2:
