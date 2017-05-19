@@ -373,7 +373,6 @@ def BINARY_OR():
     snippet = r'''
         SWAP
         POP2
-        TRACE oror
         s/^([+-1-9]\d+);[+-]?\d+;/\1/
         s/^0;[+-]?\d+;/0/
         PUSH
@@ -724,7 +723,7 @@ def NEGATIVE():
         s/^-/!/                         # use marker to avoid another substitution
         s/^\+/-/                        #
         s/^[0-9]/-&/                    #
-        s/^-0;/0;/
+        s/^-0;/0;/                      # handle N = -0
         s/^!//                          # remove marker
         h                               # PS: R;X       HS: R;X  R = -N
         '''
