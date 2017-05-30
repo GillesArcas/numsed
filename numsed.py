@@ -30,11 +30,11 @@ import sedcode
 # -- Generate opcodes and run ------------------------------------------------
 
 
-def run_opcode(source, trace=False, coverage=False):
+def run_opcode(source, transform=True, trace=False, coverage=False):
     if source.endswith('.py'):
-        opcodes = opcoder.make_opcode_module(source, trace=False)
+        opcodes = opcoder.make_opcode_module(source, transform, trace=False)
     elif source.endswith('.opc'):
-        opcodes = opcoder.read_opcode_module(source, trace=False)
+        opcodes = opcoder.read_opcode_module(source, transform, trace=False)
     else:
         raise Exception('Invalid file type')
 
@@ -146,6 +146,8 @@ def parse_command_line():
     parser.add_argument('-H', help='open html help page', action='store_true', dest='do_helphtml')
     parser.add_argument("-v", help="version", action="store_true", dest="version")
     parser.add_argument("--dis", help="disassemble", action="store_true", dest="disassemble")
+    parser.add_argument("--opfull", help="full intermediate opcode", action="store_true")
+    parser.add_argument("--opfullrun", help="run full intermediate opcode", action="store_true")
     parser.add_argument("--opcode", help="numsed intermediate opcode", action="store_true", dest="opcode")
     parser.add_argument("--oprun", help="run numsed intermediate opcode", action="store_true", dest="oprun")
     parser.add_argument("--opcoverage", help="run numsed intermediate opcode and display opcode coverage", action="store_true", dest="opcoverage")
@@ -173,6 +175,10 @@ def main():
         return
     elif args.disassemble:
         opcoder.disassemble(args.source, trace=True)
+    elif args.opfull:
+        opcoder.make_opcode_module(args.source, transform=False, trace=True)
+    elif args.opfullrun:
+        run_opcode(args.source, transform=False, trace=False)
     elif args.opcode:
         opcoder.make_opcode_module(args.source, trace=True)
     elif args.oprun:

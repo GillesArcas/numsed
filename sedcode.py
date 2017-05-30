@@ -84,21 +84,6 @@ def new_return():
 # -- push/pop ---------------------------------------------------------------
 
 
-PUSH = r'''                             # PS: N         HS: X
-    G                                   # PS: N\nX      HS: X
-    s/\n/;/                             # PS: N;X       HS: X
-    h                                   # PS: N;X       HS: N;X
-    s/;.*//                             # PS: N         HS: N;X
-'''
-
-def PUSH():
-    return r'''                         # PS: N         HS: X
-        G                               # PS: N\nX      HS: X
-        s/\n/;/                         # PS: N;X       HS: X
-        h                               # PS: N;X       HS: N;X
-        s/;.*//                         # PS: N         HS: N;X
-    '''
-
 def PUSH():
     snippet = r'''                      # PS: N         HS: X
         G                               # PS: N\nX      HS: X
@@ -144,14 +129,48 @@ def SWAP():
     return snippet
 
 
+# -- Stack ------------------------------------------------------------------
+
+
+def POP_TOP():
+    snippet = r'''
+        g
+        s/^[^;]+;//
+        h
+    '''
+    return snippet
+
+
+def DUP_TOP():
+    snippet = r'''
+        g
+        s/^([^;]+;)/\1\1/
+        h
+    '''
+    return snippet
+
+
+def ROT_TWO():
+    snippet = r'''                      # PS: ?         HS: M;N;X
+        g                               # PS: M;N;X     HS: ?
+        s/^([^;]*;)([^;]*;)/\2\1/       # PS: N;M;X     HS: ?
+        h                               # PS: ?         HS: N;M;X
+    '''
+    return snippet
+
+
+def ROT_THREE():
+    snippet = r'''                      # PS: ?         HS: M;N;P;X
+        g                               # PS: M;N;P;X   HS: ?
+        s/^([^;]*;)([^;]*;)([^;]*;)/\2\3\1/
+                                        # PS: N;P;M;X   HS: ?
+        h                               # PS: ?         HS: N;P;M;X
+    '''
+    return snippet
+
+
 # -- Constants --------------------------------------------------------------
 
-
-LOAD_CONST = r'''                       # PS: ?         HS: X
-    g                                   # PS: X         HS: X
-    s/^/{const};/                       # PS: const;X   HS: X
-    h                                   # PS: const;X   HS: const;X
-'''
 
 def LOAD_CONST(const):
     snippet = r'''                      # PS: ?         HS: X

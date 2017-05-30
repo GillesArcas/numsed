@@ -6,6 +6,7 @@ Generating and interpreting numsed opcodes.
 import sys
 import re
 import dis
+import shutil
 from StringIO import StringIO  # Python2
 #from io import StringIO  # Python3
 import transformer
@@ -42,7 +43,7 @@ def disassemble(source, trace=False):
 # -- Disassemble to numsed opcodes -------------------------------------------
 
 
-def make_opcode_module(source, trace=False):
+def make_opcode_module(source, transform=True, trace=False):
 
     if 1 == 1:
         global BINARY_ADD, BINARY_MULTIPLY
@@ -50,7 +51,10 @@ def make_opcode_module(source, trace=False):
         def BINARY_MULTIPLY(): return 'BINARY_MULTIPLY'
 
     # transform to positive form
-    transformer.transform(source, '~.py')
+    if transform:
+        transformer.transform(source, '~.py')
+    else:
+        shutil.copy(source, '~.py')
 
     # disassemble
     dis_code = disassemble('~.py', trace=False)
@@ -285,8 +289,10 @@ def inline_helper_opcodes(code):
 
 
 OPCODES = ('LOAD_CONST', 'LOAD_NAME', 'LOAD_GLOBAL', 'STORE_NAME', 'STORE_GLOBAL',
-           'LOAD_FAST', 'STORE_FAST', 'UNARY_NEGATIVE', 'UNARY_POSITIVE',
-           'BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY', 'BINARY_FLOOR_DIVIDE',
+           'LOAD_FAST', 'STORE_FAST',
+           'POP_TOP', 'DUP_TOP', 'ROT_TWO', 'ROT_THREE',
+           'UNARY_NEGATIVE', 'UNARY_POSITIVE',
+           'BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY', 'BINARY_FLOOR_DIVIDE', 'BINARY_MODULO',
            'COMPARE_OP', 'UNARY_NOT', 'JUMP', 'POP_JUMP_IF_TRUE', 'POP_JUMP_IF_FALSE',
            'JUMP_IF_TRUE_OR_POP', 'JUMP_IF_FALSE_OR_POP', 'PRINT_ITEM', 'PRINT_NEWLINE',
            'MAKE_FUNCTION', 'CALL_FUNCTION', 'RETURN_VALUE', 'SETUP_LOOP', 'POP_BLOCK',
@@ -337,6 +343,16 @@ def interpreter(code, coverage=False):
             stack.append(varnames[-1][arg])
         elif opc == 'STORE_FAST':
             varnames[-1][arg] = stack.pop()
+        elif opc == 'POP_TOP':
+            _ = stack.pop()
+        elif opc == 'DUP_TOP':
+            stack.append(stack[-1])
+        elif opc == 'ROT_TWO':
+            # stack in  = [... y x]
+            # stack out = [... x y]
+            x = stack.pop()
+            y = stack.pop()
+            stack.extend([x, y])
         elif opc == 'ROT_THREE':
             # stack in  = [... z y x]
             # stack out = [... x z y]
@@ -366,6 +382,10 @@ def interpreter(code, coverage=False):
             tos = stack.pop()
             tos1 = stack.pop()
             stack.append(tos1 // tos)
+        elif opc == 'BINARY_MODULO':
+            tos = stack.pop()
+            tos1 = stack.pop()
+            stack.append(tos1 % tos)
         elif opc == 'UNARY_NOT':
             tos = stack.pop()
             stack.append(1 if tos == 0 else 0)
