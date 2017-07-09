@@ -7,10 +7,9 @@ import sys
 import re
 import dis
 import shutil
-import inspect
-
 from StringIO import StringIO  # Python2
 #from io import StringIO  # Python3
+
 import transformer
 import numsed_lib
 
@@ -46,7 +45,7 @@ def disassemble(source, trace=False):
 # -- Disassemble to numsed opcodes -------------------------------------------
 
 
-def make_opcode_module(source, transform=True, link=True, trace=False):
+def make_opcode_module(source, transform=True, trace=False):
 
     if 1 == 1:
         global BINARY_ADD, BINARY_MULTIPLY
@@ -66,13 +65,13 @@ def make_opcode_module(source, transform=True, link=True, trace=False):
     dis_code = prepared_dis_code(dis_code)
 
     # convert dis codes to numsed codes
-    opcode = opcodes(dis_code, link, trace)
+    newcode3 = opcodes(dis_code, trace)
 
     # return list of instructions
-    return opcode
+    return newcode3
 
 
-def opcodes(dis_code, link=True, trace=False):
+def opcodes(dis_code, trace=False):
     newcode = []
     newcode.append('STARTUP')
 
