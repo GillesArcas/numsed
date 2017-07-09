@@ -45,7 +45,7 @@ def disassemble(source, trace=False):
 # -- Disassemble to numsed opcodes -------------------------------------------
 
 
-def make_opcode_module(source, transform=True, trace=False):
+def make_opcode(source, transform=True, trace=False):
 
     if 1 == 1:
         global BINARY_ADD, BINARY_MULTIPLY
@@ -173,7 +173,7 @@ def current_loop(opcode, instr_pointer):
 # -- Reading opcode ----------------------------------------------------------
 
 
-def read_opcode_module(source, trace=False):
+def read_opcode(source, trace=False):
     with open(source) as f:
         return f.readlines()
 

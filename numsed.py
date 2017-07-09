@@ -32,9 +32,9 @@ import sedcode
 
 def run_opcode(source, transform=True, trace=False, coverage=False):
     if source.endswith('.py'):
-        opcodes = opcoder.make_opcode_module(source, transform, trace=False)
+        opcodes = opcoder.make_opcode(source, transform, trace=False)
     elif source.endswith('.opc'):
-        opcodes = opcoder.read_opcode_module(source, transform, trace=False)
+        opcodes = opcoder.read_opcode(source, transform, trace=False)
     else:
         raise Exception('Invalid file type')
 
@@ -47,9 +47,9 @@ def run_opcode(source, transform=True, trace=False, coverage=False):
 def make_sed_module(source, trace=False):
 
     if source.endswith('.py'):
-        opcodes = opcoder.make_opcode_module(source, trace=False)
+        opcodes = opcoder.make_opcode(source, trace=False)
     elif source.endswith('.opc'):
-        opcodes = opcoder.read_opcode_module(source, trace=False)
+        opcodes = opcoder.read_opcode(source, trace=False)
     else:
         raise Exception('Invalid file type')
 
@@ -176,11 +176,11 @@ def main():
     elif args.disassemble:
         opcoder.disassemble(args.source, trace=True)
     elif args.opfull:
-        opcoder.make_opcode_module(args.source, transform=False, trace=True)
+        opcoder.make_opcode(args.source, transform=False, trace=True)
     elif args.opfullrun:
         run_opcode(args.source, transform=False, trace=False)
     elif args.opcode:
-        opcoder.make_opcode_module(args.source, trace=True)
+        opcoder.make_opcode(args.source, trace=True)
     elif args.oprun:
         run_opcode(args.source, trace=False)
     elif args.opcoverage:
