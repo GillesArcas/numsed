@@ -65,10 +65,10 @@ def make_opcode_module(source, transform=True, trace=False):
     dis_code = prepared_dis_code(dis_code)
 
     # convert dis codes to numsed codes
-    newcode3 = opcodes(dis_code, trace)
+    opcode = opcodes(dis_code, trace)
 
     # return list of instructions
-    return newcode3
+    return opcode
 
 
 def opcodes(dis_code, trace=False):
