@@ -261,6 +261,36 @@ while m <= 10:
         break
     m += 1
 # --
+# continue statement
+n = 0
+while n <= 10:
+    n += 1
+    if n == 8:
+        continue
+    print n
+# --
+# continue statement
+m = -10
+while m <= 10:
+    n = -10
+    while n <= 10:
+        print m
+        n += 1
+        if m + n == 13:
+            continue
+    m += 1
+# --
+# continue statement
+m = -10
+while m <= 10:
+    n = -10
+    while n <= 10:
+        print m
+        n += 1
+    m += 1
+    if m + n == 13:
+        continue
+# --
 # loop on unary positive
 n = -10
 while n <= 10:

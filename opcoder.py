@@ -7,9 +7,12 @@ import sys
 import re
 import dis
 import shutil
+import inspect
+
 from StringIO import StringIO  # Python2
 #from io import StringIO  # Python3
 import transformer
+import numsed_lib
 
 
 # -- Disassemble -------------------------------------------------------------
@@ -17,7 +20,7 @@ import transformer
 
 def disassemble(source, trace=False):
 
-     # compile
+    # compile
     with open(source) as f:
         script = f.read()
 
@@ -43,7 +46,7 @@ def disassemble(source, trace=False):
 # -- Disassemble to numsed opcodes -------------------------------------------
 
 
-def make_opcode_module(source, transform=True, trace=False):
+def make_opcode_module(source, transform=True, link=True, trace=False):
 
     if 1 == 1:
         global BINARY_ADD, BINARY_MULTIPLY
@@ -63,13 +66,13 @@ def make_opcode_module(source, transform=True, trace=False):
     dis_code = prepared_dis_code(dis_code)
 
     # convert dis codes to numsed codes
-    newcode3 = opcodes(dis_code, trace)
+    opcode = opcodes(dis_code, link, trace)
 
     # return list of instructions
-    return newcode3
+    return opcode
 
 
-def opcodes(dis_code, trace=False):
+def opcodes(dis_code, link=True, trace=False):
     newcode = []
     newcode.append('STARTUP')
 
@@ -104,7 +107,7 @@ def opcodes(dis_code, trace=False):
             tmp.append(instr)
     newcode = tmp
 
-    # rename jump opcodes as all are absolute
+    # rename jump opcodes
     tmp = []
     for instr in newcode:
         if re.match('^JUMP_ABSOLUTE|JUMP_FORWARD', instr):
