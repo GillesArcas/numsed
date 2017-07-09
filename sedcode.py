@@ -90,7 +90,7 @@ def PUSH():
         s/\n/;/                         # PS: N;X       HS: X
         h                               # PS: N;X       HS: N;X
         s/;.*//                         # PS: N         HS: N;X
-        '''
+    '''
     return snippet
 
 def POP():
@@ -99,7 +99,7 @@ def POP():
         s/^[^;]*;//                     # PS: X         HS: N;X
         x                               # PS: N;X       HS: X
         s/;.*//                         # PS: N         HS: X
-        '''
+    '''
     return snippet
 
 def PUSH2():
@@ -108,7 +108,7 @@ def PUSH2():
         s/\n/;/                         # PS: M;N;X     HS: X
         h                               # PS: M;N;X     HS: M;N;X
         s/^([^;]*;[^;]*);.*/\1/         # PS: M;N       HS: M;N;X
-        '''
+    '''
     return snippet
 
 def POP2():
@@ -117,7 +117,7 @@ def POP2():
         s/^[^;]*;[^;]*;//               # PS: X         HS: M;N;X
         x                               # PS: M;N;X     HS: X
         s/(^[^;]*;[^;]*).*/\1/          # PS: M;N       HS: X
-        '''
+    '''
     return snippet
 
 def SWAP():
@@ -227,7 +227,8 @@ def LOAD_GLOBAL(name):
         g                               # PS: ?;v;x?    HS: ?;v;x?
         /@[^|]*;name;/! { s/.*/name/; b NameError }
                                         # branch to error if var undefined
-        s/[^@]*@[^|]*;name;([^;|]*).*/\1;&/   # PS: x;?;v;x?  HS: ?;v;x?
+        s/[^@]*@[^|]*;name;([^;|]*).*/\1;&/
+                                        # PS: x;?;v;x?  HS: ?;v;x?
         h                               # PS: x;?;v;x?  HS: x;?;v;x?
     '''
     return snippet.replace('name', name)
@@ -421,7 +422,7 @@ def CMP():
         b.end
         :.gt
         s/.*/>/                         # PS: > if x > y
-        :.end                            # PS: <|=|>
+        :.end                           # PS: <|=|>
     '''
     return normalize(snippet)
 
@@ -481,8 +482,7 @@ def POP_BLOCK():
 
 
 def PRINT_ITEM():
-    snippet = r'''
-                                        # PS: ?         HS: N;X
+    snippet = r'''                      # PS: ?         HS: N;X
         POP                             # PS: N         HS: X
         p
      '''
