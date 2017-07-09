@@ -149,12 +149,8 @@ def transform_positive(script_in, script_out, do_exec):
     test_exec(tree, do_exec)
 
     builtin = numsed_ast_transformer.required_func
-    #print builtin
-    #for x in builtin:
-    #    print getattr(numsed_lib, x)
     builtin = [globals()[x] for x in builtin]
-    #builtin = [getattr(numsed_lib, x) for x in builtin]
-    #print builtin
+    
     if signed_div in builtin:
         builtin.append(euclide)
     if signed_mod in builtin:
