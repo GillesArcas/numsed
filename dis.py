@@ -13,7 +13,7 @@ del _opcodes_all
 _have_code = (types.MethodType, types.FunctionType, types.CodeType,
               types.ClassType, type)
 
-def dis(x=None):
+def dis(x=None, offset=0):
     """Disassemble classes, methods, functions, or code.
 
     With no argument, disassemble the last traceback.
@@ -40,7 +40,7 @@ def dis(x=None):
                     print "Sorry:", msg
                 print
     elif hasattr(x, 'co_code'):
-        disassemble(x)
+       disassemble(x, offset=offset)
     elif isinstance(x, str):
         disassemble_string(x)
     else:
