@@ -1,3 +1,6 @@
+import operator
+
+
 # -- Builtin functions -------------------------------------------------------
 
 
@@ -91,7 +94,7 @@ def signed_sub(x, y):
                 return abs_y - abs_x
 
 
-def euclide(a, b):
+def udiv(a, b):
     # http://compoasso.free.fr/primelistweb/page/prime/euclide.php
     r = a
     q = 0
@@ -132,11 +135,11 @@ def signed_mult(x, y):
 def signed_div(x, y):
     if is_positive(x):
         if is_positive(y):
-            q = euclide(x, y)
+            q = udiv(x, y)
             return q
         else:
             abs_y = negative(y)
-            q = euclide(x, abs_y)
+            q = udiv(x, abs_y)
             r = x - abs_y * q
             if r == 0:
                 return negative(q)
@@ -145,7 +148,7 @@ def signed_div(x, y):
     else:
         abs_x = negative(x)
         if is_positive(y):
-            q = euclide(abs_x, y)
+            q = udiv(abs_x, y)
             r = abs_x - y * q
             if r == 0:
                 return negative(q)
@@ -153,13 +156,23 @@ def signed_div(x, y):
                 return negative(q + 1)
         else:
             abs_y = negative(y)
-            q = euclide(abs_x, abs_y)
+            q = udiv(abs_x, abs_y)
             return q
 
 
 def signed_mod(x, y):
     q = signed_div(x, y)
     return signed_sub(x, signed_mult(y, q))
+
+
+def upow(base, exp):
+    result = 1
+    while exp:
+        if exp & 1: # odd primtive ?
+            result *= base
+        exp = divide_by_ten(exp * 5) # i.e. exp = exp // 2
+        base *= base
+    return result
 
 
 # -- Primitives --------------------------------------------------------------
