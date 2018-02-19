@@ -47,7 +47,7 @@ def run_opcode(source, transform=True, trace=False, coverage=False):
 def make_sed_module(source, trace=False):
 
     if source.endswith('.py'):
-        opcodes = opcoder.make_opcode(source, trace=False)
+        opcodes = opcoder.make_opcode(source, transform=True, trace=False)
     elif source.endswith('.opc'):
         opcodes = opcoder.read_opcode(source, trace=False)
     else:
@@ -146,13 +146,11 @@ def parse_command_line():
     parser.add_argument('-H', help='open html help page', action='store_true', dest='do_helphtml')
     parser.add_argument("-v", help="version", action="store_true", dest="version")
     parser.add_argument("--dis", help="disassemble", action="store_true", dest="disassemble")
-    parser.add_argument("--opfull", help="full intermediate opcode", action="store_true")
-    parser.add_argument("--opfullrun", help="run full intermediate opcode", action="store_true")
-    parser.add_argument("--opcode", help="numsed intermediate opcode", action="store_true", dest="opcode")
-    parser.add_argument("--oprun", help="run numsed intermediate opcode", action="store_true", dest="oprun")
+    parser.add_argument("--opsigned", help="signed intermediate opcode", action="store_true")
+    parser.add_argument("--opcode", help="numsed intermediate opcode", action="store_true")
     parser.add_argument("--opcoverage", help="run numsed intermediate opcode and display opcode coverage", action="store_true", dest="opcoverage")
     parser.add_argument("--sed", help="generate sed script", action="store_true", dest="sed")
-    parser.add_argument("--run", help="generate sed script and run", action="store_true", dest="run")
+    parser.add_argument("--run", help="run generated script", action="store_true", dest="run")
     parser.add_argument("--test", help="test", action="store_true", dest="test")
     parser.add_argument("source", nargs='?', help=argparse.SUPPRESS, default=sys.stdin)
 
@@ -175,20 +173,23 @@ def main():
         return
     elif args.disassemble:
         opcoder.disassemble(args.source, trace=True)
-    elif args.opfull:
-        opcoder.make_opcode(args.source, transform=False, trace=True)
-    elif args.opfullrun:
-        run_opcode(args.source, transform=False, trace=False)
+    elif args.opsigned:
+        if args.run:
+            run_opcode(args.source, transform=False, trace=False)
+        else:
+            opcoder.make_opcode(args.source, transform=False, trace=True)
     elif args.opcode:
-        opcoder.make_opcode(args.source, trace=True)
-    elif args.oprun:
-        run_opcode(args.source, trace=False)
+        if args.run:
+            run_opcode(args.source, transform=True, trace=False)
+        else:
+            opcoder.make_opcode(args.source, transform=True, trace=True)
     elif args.opcoverage:
-        run_opcode(args.source, trace=False, coverage=True)
+        run_opcode(args.source, transform=True, trace=False, coverage=True)
     elif args.sed:
-        make_sed_module(args.source, trace=True)
-    elif args.run:
-        make_sed_and_run(args.source, trace=False)
+        if args.run:
+            make_sed_and_run(args.source, trace=False)
+        else:
+            make_sed_module(args.source, trace=True)
     elif args.test:
         test()
     else:
