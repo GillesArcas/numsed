@@ -1,5 +1,5 @@
 """
-Prepare a python program (tiny subset) for compliation into sed.
+Prepare a python program (tiny subset) for compilation into sed.
 Transform into positive form:
 - all operators and binary comparisons are replaced with call to functions
   x + y --> signed_add(x, y), idem -, *, //, ==, !=, <, <=, >, >=
@@ -39,7 +39,7 @@ signed_func = {
     ast.Gt: 'signed_gt',
     ast.GtE: 'signed_gte'}
 
-unsigned_func = {
+unsigned_func = {  # assert_unsigned_func
     ast.Add: 'unsigned_add',
     ast.Sub: 'unsigned_sub',
     ast.Mult: 'unsigned_mult',
@@ -148,27 +148,27 @@ def transform_positive(script_in, script_out, do_exec):
     numsed_ast_transformer.visit(tree)
     test_exec(tree, do_exec)
 
-    builtin = numsed_ast_transformer.required_func
-    builtin = [globals()[x] for x in builtin]
-    
-    if signed_div in builtin:
-        builtin.append(euclide)
-    if signed_mod in builtin:
-        builtin.append(euclide)
-        builtin.append(signed_sub)
-        builtin.append(signed_mult)
-        builtin.append(signed_div)
-    if signed_noteq in builtin:
-        builtin.append(signed_eq)
-    if signed_gt in builtin:
-        builtin.append(signed_lte)
-    if signed_gte in builtin:
-        builtin.append(signed_lt)
-    builtin += [is_positive, negative, divide_by_ten]
+    builtins = numsed_ast_transformer.required_func
+    builtins = [globals()[x] for x in builtins]
 
-    # add builtin functions to code to compile
+    if signed_div in builtins:
+        builtins.append(udiv)
+    if signed_mod in builtins:
+        builtins.append(udiv)
+        builtins.append(signed_sub)
+        builtins.append(signed_mult)
+        builtins.append(signed_div)
+    if signed_noteq in builtins:
+        builtins.append(signed_eq)
+    if signed_gt in builtins:
+        builtins.append(signed_lte)
+    if signed_gte in builtins:
+        builtins.append(signed_lt)
+    builtins += [is_positive, negative, divide_by_ten]
+
+    # add builtins functions to code to compile
     script = ''
-    for func in builtin:
+    for func in builtins:
         script += '\n'
         script += ''.join(inspect.getsourcelines(func)[0])
     script += '\n'
@@ -185,10 +185,10 @@ def transform_assert(script_in, script_out, do_exec):
     numsed_ast_transformer.visit(tree)
     test_exec(tree, do_exec)
 
-    # add builtin functions to code to compile
-    builtin = numsed_ast_transformer.required_func
+    # add builtins functions to code to compile
+    builtins = numsed_ast_transformer.required_func
     script = ''
-    for func in builtin:
+    for func in builtins:
         script += '\n'
         script += make_unsigned_func(func)
     script += '\n'
