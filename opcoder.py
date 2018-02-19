@@ -17,7 +17,7 @@ import numsed_lib
 # -- Disassemble -------------------------------------------------------------
 
 
-def disassemble(source, trace=False):
+def disassemble(source, offset, trace=False):
 
     # compile
     with open(source) as f:
@@ -29,7 +29,7 @@ def disassemble(source, trace=False):
     old_stdout = sys.stdout
     result = StringIO()
     sys.stdout = result
-    dis.dis(code)
+    dis.dis(code, offset)
     sys.stdout = old_stdout
     code = result.getvalue().splitlines()
 
@@ -45,7 +45,7 @@ def disassemble(source, trace=False):
 # -- Disassemble to numsed opcodes -------------------------------------------
 
 
-def make_opcode(source, transform=True, trace=False):
+def make_opcode(source, offset=0, transform=True, trace=False):
 
     if 1 == 1:
         global BINARY_ADD, BINARY_MULTIPLY
@@ -59,7 +59,7 @@ def make_opcode(source, transform=True, trace=False):
         shutil.copy(source, '~.py')
 
     # disassemble
-    dis_code = disassemble('~.py', trace=False)
+    dis_code = disassemble('~.py', offset=1000, trace=False)
 
     # simplify dis code
     dis_code = prepared_dis_code(dis_code)
@@ -140,11 +140,6 @@ def opcodes(dis_code, trace=False):
             setup_loop = newcode[current_loop(newcode, instr_pointer)]
             endblock_label = setup_loop.split(None, 1)[1]
             newcode[instr_pointer] = 'JUMP ' + endblock_label
-
-    # # TODO: ici ?
-    # list_macros = ('BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY')
-    # newcode3 = normalize('\n'.join(newcode3), macros=list_macros)
-    # newcode3 = newcode3.splitlines()
 
     # trace if requested
     if trace:
