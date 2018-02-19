@@ -36,18 +36,18 @@ def run_test(test, mode):
         res = subprocess.check_output('python tmp_transformed.py')
         print res
 
-    if mode == 'opfull':
+    if mode == 'opsigned':
         #numsed.make_opcode_and_run('tmp.py', trace=False)
-        res = subprocess.check_output('python numsed.py --opfullrun tmp.py')
+        res = subprocess.check_output('python numsed.py --opsigned --run tmp.py')
         print res
 
     if mode == 'opcode':
         #numsed.make_opcode_and_run('tmp.py', trace=False)
-        res = subprocess.check_output('python numsed.py --oprun tmp.py')
+        res = subprocess.check_output('python numsed.py --opcode --run tmp.py')
         print res
 
     if mode == 'sed':
-        res = subprocess.check_output('python numsed.py --run tmp.py')
+        res = subprocess.check_output('python numsed.py --sed --run tmp.py')
         print res
 
     # compare
@@ -55,7 +55,7 @@ def run_test(test, mode):
     if not status:
         for _ in diff:
             print _
-
+    
     return status
 
 
@@ -83,8 +83,8 @@ def list_compare(tag1, tag2, list1, list2):
 
 
 def main():
-    if len(sys.argv) != 3 or sys.argv[1] not in ('transform', 'opfull', 'opcode', 'sed'):
-        print 'numsed_test.py transform|opfull|opcode|sed testsuite'
+    if len(sys.argv) != 3 or sys.argv[1] not in ('transform', 'opsigned', 'opcode', 'sed'):
+        print 'numsed_test.py transform|opsigned|opcode|sed testsuite'
     else:
         mode = sys.argv[1]
         testsuite = sys.argv[2]
