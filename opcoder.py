@@ -47,11 +47,6 @@ def disassemble(source, offset, trace=False):
 
 def make_opcode(source, offset=0, transform=True, trace=False):
 
-    if 1 == 1:
-        global BINARY_ADD, BINARY_MULTIPLY
-        def BINARY_ADD(): return 'BINARY_ADD'
-        def BINARY_MULTIPLY(): return 'BINARY_MULTIPLY'
-
     # transform to positive form
     if transform:
         transformer.transform(source, '~.py')
@@ -127,7 +122,7 @@ def opcodes(dis_code, trace=False):
     # clean long int representation (python2)
     tmp = []
     for instr in newcode:
-        if re.match('LOAD_CONST +\d+L', instr):
+        if re.match(r'LOAD_CONST +\d+L', instr):
             tmp.append(instr[:-1])
         else:
             tmp.append(instr)
@@ -168,7 +163,7 @@ def current_loop(opcode, instr_pointer):
 # -- Reading opcode ----------------------------------------------------------
 
 
-def read_opcode(source, trace=False):
+def read_opcode(source):
     with open(source) as f:
         return f.readlines()
 
