@@ -1,7 +1,14 @@
-import operator
+"""
+numsed library
+
+numsed opcodes include unsigned operators (+, -, *) and unsigned
+comparisons. This library provides functions implementing all
+arithmetic and comparison signed operators using only numsed
+operators.
+"""
 
 
-# -- Builtin functions -------------------------------------------------------
+# signed comparison operators
 
 
 def signed_eq(x, y):
@@ -50,6 +57,44 @@ def signed_gte(x, y):
     return not signed_lt(x, y)
 
 
+# unsigned arithmetic operators
+
+
+def udiv(a, b):
+    # http://compoasso.free.fr/primelistweb/page/prime/euclide.php
+    r = a
+    q = 0
+    n = 0
+    aux = b
+
+    while aux <= a:
+        aux *= 2
+        n += 1
+
+    while n > 0:
+        aux = divide_by_two(aux)
+        n -= 1
+        q *= 2
+        if r >= aux:
+            r -= aux
+            q += 1
+
+    return q
+
+
+def upow(base, exp):
+    result = 1
+    while exp:
+        if exp & 1: # odd primitive ?
+            result *= base
+        exp = divide_by_two(exp)
+        base *= base
+    return result
+
+
+# signed arithmetic operators
+
+
 def signed_add(x, y):
     if is_positive(x):
         if is_positive(y):
@@ -92,28 +137,6 @@ def signed_sub(x, y):
                 return negative(abs_x - abs_y)
             else:
                 return abs_y - abs_x
-
-
-def udiv(a, b):
-    # http://compoasso.free.fr/primelistweb/page/prime/euclide.php
-    r = a
-    q = 0
-    n = 0
-    aux = b
-
-    while aux <= a:
-        aux *= 2
-        n += 1
-
-    while n > 0:
-        aux = divide_by_ten(aux * 5) # i.e. aux = aux // 2
-        n -= 1
-        q *= 2
-        if r >= aux:
-            r -= aux
-            q += 1
-
-    return q
 
 
 def signed_mult(x, y):
@@ -165,26 +188,40 @@ def signed_mod(x, y):
     return signed_sub(x, signed_mult(y, q))
 
 
-def upow(base, exp):
-    result = 1
-    while exp:
-        if exp & 1: # odd primtive ?
-            result *= base
-        exp = divide_by_ten(exp * 5) # i.e. exp = exp // 2
-        base *= base
-    return result
+def signed_pow(base, exp):
+    if exp < 0:
+        raise Exception('Exponent should be positive')
+
+    if is_positive(base):
+        return upow(base, exp)
+    else:
+        return negative(upow(negative(base), exp))
+
+
+def divide_by_two(x):
+    return divide_by_ten(x * 5)
 
 
 # -- Primitives --------------------------------------------------------------
 
+"""
+Primitive functions are used in the definition of the library functions.
+However, they are handled separately:
+- they are not transformed,
+- they are added to positive forms. This enables to test the transformation,
+- they are removed when generating opcodes and replaced with dedicated
+  opcodes.
+"""
+
+
+PRIMITIVES = ('is_positive', 'negative', 'divide_by_ten')
+
 
 def is_positive(x):
-    return operator.ge(x, 0)
+    return x > 0
 
 def negative(x):
-    return operator.neg(x)
+    return -x
 
 def divide_by_ten(x):
-    return operator.floordiv(x, 10)
-
-
+    return x // 10
