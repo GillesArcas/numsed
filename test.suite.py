@@ -27,8 +27,8 @@ p = m * n
 print p
 # --
 # assign div
-m = 42
-n = 5
+m = 42234683543
+n = 557
 p = m // n
 print p
 # --
