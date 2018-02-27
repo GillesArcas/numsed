@@ -6,6 +6,9 @@ import types
 from opcode import *
 from opcode import __all__ as _opcodes_all
 
+IS64BITS = sys.maxsize > 2**32
+
+
 __all__ = ["dis", "disassemble", "distb", "disco",
            "findlinestarts", "findlabels"] + _opcodes_all
 del _opcodes_all
@@ -118,12 +121,12 @@ def disassemble(co, lasti=-1, offset=0):
 
     offset += i
     for func_code in functions:
-        print '\n', ' ' * 12, '%-27s %s_%08X %s' % ('-1 FUNCTION',
+        padded_id = ('%016X' if IS64BITS else '%08X') % id(func_code)
+        print '\n', ' ' * 12, '%-27s %s_%s %s' % ('-1 FUNCTION',
                                                   func_code.co_name,
-                                                  id(func_code),
+                                                  padded_id,
                                                   ' '.join(func_code.co_varnames[:func_code.co_argcount]))
         offset = disassemble(func_code, offset=offset)
-
     return offset
 
 
