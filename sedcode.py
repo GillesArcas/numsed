@@ -316,7 +316,7 @@ def CALL_FUNCTION(argc, return_label):
         x
         POP
         ''' + BRANCH_ON_NAME(function_labels)
-    snippet2 = normalize(snippet, replace=(('argc', argc),('return_label', return_label)))
+    snippet2 = normalize(snippet, replace=(('argc', argc), ('return_label', return_label)))
     return snippet2
 
 
@@ -732,7 +732,7 @@ def IS_POSITIVE():
         s/^[0-9+][^;]*/1/               # PS: 1;X       HS: N;X  if pos
         s/^-[^;]+/0/                    # PS: 0;X       HS: N;X  if neg
         h                               # PS: r;X       HS: r;X  r = 0 or 1
-        '''
+    '''
     return snippet
 
 
@@ -745,7 +745,7 @@ def NEGATIVE():
         s/^-0;/0;/                      # handle N = -0
         s/^!//                          # remove marker
         h                               # PS: R;X       HS: R;X  R = -N
-        '''
+    '''
     return snippet
 
 
@@ -755,7 +755,7 @@ def DIVIDE_BY_TEN():
         s/[0-9];/;/                     # remove last digit
         s/^;/0;/                        # R = 0 if single digit input
         h                               # PS: R;X       HS: R;X  R = N // 10
-        '''
+    '''
     return snippet
 
 
