@@ -32,9 +32,9 @@ import sedcode
 
 def run_opcode(source, transform=True, trace=False, coverage=False):
     if source.endswith('.py'):
-        opcodes = opcoder.make_opcode(source, transform, trace=False)
+        opcodes = opcoder.make_opcode(source, transform=transform, trace=False)
     elif source.endswith('.opc'):
-        opcodes = opcoder.read_opcode(source, transform, trace=False)
+        opcodes = opcoder.read_opcode(source)
     else:
         raise Exception('Invalid file type')
 
@@ -49,7 +49,7 @@ def make_sed_module(source, trace=False):
     if source.endswith('.py'):
         opcodes = opcoder.make_opcode(source, transform=True, trace=False)
     elif source.endswith('.opc'):
-        opcodes = opcoder.read_opcode(source, trace=False)
+        opcodes = opcoder.read_opcode(source)
     else:
         raise Exception('Invalid file type')
 
@@ -145,6 +145,7 @@ def parse_command_line():
     parser.add_argument('-h', help='show this help message', action='store_true', dest='do_help')
     parser.add_argument('-H', help='open html help page', action='store_true', dest='do_helphtml')
     parser.add_argument("-v", help="version", action="store_true", dest="version")
+    parser.add_argument("--positive", help="generate positive forme", action="store_true")
     parser.add_argument("--dis", help="disassemble", action="store_true", dest="disassemble")
     parser.add_argument("--opsigned", help="signed intermediate opcode", action="store_true")
     parser.add_argument("--opcode", help="numsed intermediate opcode", action="store_true")
@@ -165,31 +166,47 @@ def main():
         print(BRIEF)
         print(VERSION)
         return
+
     elif args.do_help:
         parser.print_help()
         return
+
     elif args.do_helphtml:
         do_helphtml()
         return
+
+    elif args.positive:
+        code = transformer.transform(args.source, '~.py')
+        if not args.run:
+            print(code)
+        else:
+            res = subprocess.check_output('python ~.py')
+            print(res)
+
     elif args.disassemble:
-        opcoder.disassemble(args.source, trace=True)
+        opcoder.disassemble(args.source, 0, trace=True)
+
     elif args.opsigned:
         if args.run:
             run_opcode(args.source, transform=False, trace=False)
         else:
             opcoder.make_opcode(args.source, transform=False, trace=True)
+
     elif args.opcode:
         if args.run:
             run_opcode(args.source, transform=True, trace=False)
         else:
             opcoder.make_opcode(args.source, transform=True, trace=True)
+
     elif args.opcoverage:
         run_opcode(args.source, transform=True, trace=False, coverage=True)
+
     elif args.sed:
         if args.run:
             make_sed_and_run(args.source, trace=False)
         else:
             make_sed_module(args.source, trace=True)
+
     elif args.test:
         test()
     else:
