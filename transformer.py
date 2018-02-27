@@ -97,6 +97,13 @@ class NumsedAstTransformer(ast.NodeTransformer):
         source = ast.Name(id=target.id, ctx=ast.Load())
         return ast.Assign(targets=[target], value=self.visit_BinOp(ast.BinOp(left=source, op=node.op, right=node.value)))
 
+    def visit_FunctionDef(self, node):
+        if node.name in PRIMITIVES:
+            return node
+        else:
+            self.generic_visit(node)
+            return node
+
 
 # -- Testing transformation --------------------------------------------------
 
@@ -126,49 +133,47 @@ def make_unsigned_func(name):
     return unsigned_func_pattern % (name, unsigned_op[name])
 
 
-# -- Tests -------------------------------------------------------------------
+# -- List of library functions -----------------------------------------------
 
 
 class NumsedAstVisitor(ast.NodeVisitor):
-    def generic_visit(self, node):
-        print type(node).__name__
-        ast.NodeVisitor.generic_visit(self, node)
 
-    #def visit_BinOp(self, node):
-    #    print ast.dump(node)
+    def __init__(self):
+        self.required_func = set()
+
+    def visit_Call(self, node):
+        self.generic_visit(node)
+        if type(node.func) is ast.Name:
+            self.required_func.add(node.func.id)
+
+
+def function_calls(libfuncs):
+    """
+    Argument is the list of library functions called in script
+    Output is the list of all library functions required in script
+    """
+    libfuncs2 = set()
+    while libfuncs:
+        func = libfuncs.pop()
+        libfuncs2.add(func)
+        textfunc = '\n'.join(inspect.getsourcelines(globals()[func])[0])
+        tree = ast.parse(textfunc)
+        numsed_ast_visitor = NumsedAstVisitor()
+        numsed_ast_visitor.visit(tree)
+        for func in numsed_ast_visitor.required_func:
+            if func not in libfuncs and func not in libfuncs2:
+                libfuncs.add(func)
+    return libfuncs2
 
 
 # -- Main --------------------------------------------------------------------
 
 
-def transform_positive(script_in, script_out, do_exec):
-    tree = ast.parse(open(script_in).read())
-    test_exec(tree, do_exec)
-    numsed_ast_transformer = NumsedAstTransformer(signed_func)
-    numsed_ast_transformer.visit(tree)
-    test_exec(tree, do_exec)
-
-    builtins = numsed_ast_transformer.required_func
-    builtins = [globals()[x] for x in builtins]
-
-    if signed_div in builtins:
-        builtins.append(udiv)
-    if signed_mod in builtins:
-        builtins.append(udiv)
-        builtins.append(signed_sub)
-        builtins.append(signed_mult)
-        builtins.append(signed_div)
-    if signed_noteq in builtins:
-        builtins.append(signed_eq)
-    if signed_gt in builtins:
-        builtins.append(signed_lte)
-    if signed_gte in builtins:
-        builtins.append(signed_lt)
-    builtins += [is_positive, negative, divide_by_ten]
-
+def save_new_script(tree, libfuncs, script_out):
     # add builtins functions to code to compile
     script = ''
-    for func in builtins:
+    # script += 'import operator\n\n'
+    for func in libfuncs:
         script += '\n'
         script += ''.join(inspect.getsourcelines(func)[0])
     script += '\n'
@@ -176,6 +181,20 @@ def transform_positive(script_in, script_out, do_exec):
 
     with open(script_out, 'w') as f:
         f.writelines(script)
+
+    return script
+
+
+def transform_positive(script_in, script_out, do_exec):
+    tree = ast.parse(open(script_in).read())
+    numsed_ast_transformer = NumsedAstTransformer(signed_func)
+    numsed_ast_transformer.visit(tree)
+
+    libfuncs = numsed_ast_transformer.required_func
+    libfuncs2 = function_calls(libfuncs)
+    libfuncs = [globals()[x] for x in libfuncs2]
+
+    return save_new_script(tree, libfuncs, script_out)
 
 
 def transform_assert(script_in, script_out, do_exec):
@@ -192,7 +211,7 @@ def transform_assert(script_in, script_out, do_exec):
         script += '\n'
         script += make_unsigned_func(func)
     script += '\n'
-    script += 'import operator\n\n'
+    # script += 'import operator\n\n'
     script += codegen.to_source(tree)
 
     with open(script_out, 'w') as f:
@@ -202,14 +221,15 @@ def transform_assert(script_in, script_out, do_exec):
 def test_exec(tree, do_exec):
     if do_exec:
         ast.fix_missing_locations(tree)
-        print ast.dump(tree)
+        print(ast.dump(tree))
         exec(compile(tree, filename="<ast>", mode="exec"))
 
 
 def transform(script_in, script_out, do_assert=False, do_exec=False):
-    transform_positive(script_in, script_out, do_exec)
+    code = transform_positive(script_in, script_out, do_exec)
     if do_assert:
-        transform_assert(script_out, script_out, do_exec)
+        code = transform_assert(script_out, script_out, do_exec)
+    return code
 
 
 # -- Main --------------------------------------------------------------------
