@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import sys
 import os
 import subprocess
@@ -26,7 +28,7 @@ def run_test(test, mode):
 
     # run script and store results
     ref = subprocess.check_output('python tmp.py')
-    print ref
+    print(ref)
 
     if mode == 'transform':
         # transform
@@ -34,28 +36,30 @@ def run_test(test, mode):
 
         # run transformed script and store results
         res = subprocess.check_output('python tmp_transformed.py')
-        print res
+        print(res)
 
     if mode == 'opsigned':
-        #numsed.make_opcode_and_run('tmp.py', trace=False)
+        #res = numsed.make_opcode_and_run('tmp.py', trace=False)
+        #res = numsed.run_opcode('tmp.py', transform=False)
+        #res = subprocess.check_output('python numsed.py --opsigned --run tmp.py')
         res = subprocess.check_output('python numsed.py --opsigned --run tmp.py')
-        print res
+        print(res)
 
     if mode == 'opcode':
         #numsed.make_opcode_and_run('tmp.py', trace=False)
         res = subprocess.check_output('python numsed.py --opcode --run tmp.py')
-        print res
+        print(res)
 
     if mode == 'sed':
         res = subprocess.check_output('python numsed.py --sed --run tmp.py')
-        print res
+        print(res)
 
     # compare
     status, diff = list_compare('ref', 'res', ref.splitlines(), res.splitlines())
     if not status:
         for _ in diff:
-            print _
-    
+            print(_)
+
     return status
 
 
@@ -84,18 +88,18 @@ def list_compare(tag1, tag2, list1, list2):
 
 def main():
     if len(sys.argv) != 3 or sys.argv[1] not in ('transform', 'opsigned', 'opcode', 'sed'):
-        print 'numsed_test.py transform|opsigned|opcode|sed testsuite'
+        print('numsed_test.py transform|opsigned|opcode|sed testsuite')
     else:
         mode = sys.argv[1]
         testsuite = sys.argv[2]
         status = True
         for test in testlines(testsuite):
-            print test
+            print(test)
             status = status and run_test(test, mode)
         if status:
-            print 'ALL TESTS OK'
+            print('ALL TESTS OK')
         else:
-            print 'One TEST failure'
+            print('One TEST failure')
 
 
 if __name__ == '__main__':

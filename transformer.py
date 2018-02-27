@@ -13,7 +13,7 @@ A testing mode of the transformer program generates code testing that arguments
 of operators and comparisons are positive.
 """
 
-from __future__ import division
+from __future__ import division, print_function
 
 import sys
 import inspect

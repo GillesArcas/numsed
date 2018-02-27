@@ -39,6 +39,7 @@ def run_opcode(source, transform=True, trace=False, coverage=False):
         raise Exception('Invalid file type')
 
     opcoder.interpreter(opcodes, coverage)
+    return '\n'.join(opcodes)
 
 
 # -- Generate sed code -------------------------------------------------------

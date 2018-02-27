@@ -1,5 +1,7 @@
 """Disassembler of Python byte code into mnemonics."""
 
+from __future__ import print_function
+
 import sys
 import types
 
@@ -36,12 +38,12 @@ def dis(x=None, offset=0):
         items.sort()
         for name, x1 in items:
             if isinstance(x1, _have_code):
-                print "Disassembly of %s:" % name
+                print("Disassembly of %s:" % name)
                 try:
                     dis(x1)
                 except TypeError, msg:
-                    print "Sorry:", msg
-                print
+                    print("Sorry:", msg)
+                print()
     elif hasattr(x, 'co_code'):
        disassemble(x, offset=offset)
     elif isinstance(x, str):
@@ -51,6 +53,7 @@ def dis(x=None, offset=0):
               "don't know how to disassemble %s objects" % \
               type(x).__name__
 
+'''
 def distb(tb=None):
     """Disassemble a traceback (default: last traceback)."""
     if tb is None:
@@ -60,6 +63,7 @@ def distb(tb=None):
             raise RuntimeError, "no last traceback to disassemble"
         while tb.tb_next: tb = tb.tb_next
     disassemble(tb.tb_frame.f_code, tb.tb_lasti)
+'''
 
 def disassemble(co, lasti=-1, offset=0):
     """Disassemble a code object."""
@@ -76,17 +80,17 @@ def disassemble(co, lasti=-1, offset=0):
         op = ord(c)
         if i in linestarts:
             if i > 0:
-                print
-            print "%3d" % linestarts[i],
+                print()
+            print("%3d" % linestarts[i], end=' ')
         else:
-            print '   ',
+            print('   ', end= ' ')
 
-        if i == lasti: print '-->',
-        else: print '   ',
-        if i in labels: print '>>',
-        else: print '  ',
-        print repr(offset + i).rjust(4),
-        print opname[op].ljust(20),
+        if i == lasti: print('-->', end=' ')
+        else: print('   ', end=' ')
+        if i in labels: print('>>', end=' ')
+        else: print('  ',  end=' ')
+        print(repr(offset + i).rjust(4), end=' ')
+        print(opname[op].ljust(20), end=' ')
         i = i+1
         if op >= HAVE_ARGUMENT:
             oparg = ord(code[i]) + ord(code[i+1])*256 + extended_arg
@@ -94,42 +98,41 @@ def disassemble(co, lasti=-1, offset=0):
             i = i+2
             if op == EXTENDED_ARG:
                 extended_arg = oparg*65536L
-            #if opname[op] == 'POP_JUMP_IF_FALSE':
             if op in hasjabs:
-                print repr(oparg + offset).rjust(5),
+                print(repr(oparg + offset).rjust(5), end=' ')
             else:
-                print repr(oparg).rjust(5),
+                print(repr(oparg).rjust(5), end=' ')
             if op in hasconst:
                 import types
                 if isinstance(co.co_consts[oparg], types.CodeType):
                     functions.append(co.co_consts[oparg])
                     #print disassemble(co.co_consts[oparg])
-                print '(' + repr(co.co_consts[oparg]) + ')',
+                print('(' + repr(co.co_consts[oparg]) + ')', end=' ')
             elif op in hasname:
-                print '(' + co.co_names[oparg] + ')',
+                print('(' + co.co_names[oparg] + ')', end=' ')
             elif op in hasjrel:
-                print '(to ' + repr(offset + i + oparg) + ')',
+                print('(to ' + repr(offset + i + oparg) + ')', end=' ')
             elif op in haslocal:
-                print '(' + co.co_varnames[oparg] + ')',
+                print('(' + co.co_varnames[oparg] + ')', end=' ')
             elif op in hascompare:
-                print '(' + cmp_op[oparg] + ')',
+                print('(' + cmp_op[oparg] + ')', end=' ')
             elif op in hasfree:
                 if free is None:
                     free = co.co_cellvars + co.co_freevars
-                print '(' + free[oparg] + ')',
-        print
+                print('(' + free[oparg] + ')', end=' ')
+        print()
 
     offset += i
     for func_code in functions:
         padded_id = ('%016X' if IS64BITS else '%08X') % id(func_code)
-        print '\n', ' ' * 12, '%-27s %s_%s %s' % ('-1 FUNCTION',
+        print('\n', ' ' * 12, '%-27s %s_%s %s' % ('-1 FUNCTION',
                                                   func_code.co_name,
                                                   padded_id,
-                                                  ' '.join(func_code.co_varnames[:func_code.co_argcount]))
+                                                  ' '.join(func_code.co_varnames[:func_code.co_argcount])))
         offset = disassemble(func_code, offset=offset)
     return offset
 
-
+"""
 def disassemble_string(code, lasti=-1, varnames=None, names=None,
                        constants=None):
     labels = findlabels(code)
@@ -169,6 +172,7 @@ def disassemble_string(code, lasti=-1, varnames=None, names=None,
             elif op in hascompare:
                 print '(' + cmp_op[oparg] + ')',
         print
+"""
 
 disco = disassemble                     # XXX For backwards compatibility
 
