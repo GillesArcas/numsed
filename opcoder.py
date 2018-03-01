@@ -2,7 +2,6 @@
 Generating and interpreting numsed opcodes.
 """
 
-
 import sys
 import re
 import dis
@@ -222,6 +221,10 @@ def parse_dis_instruction(s):
 # -- Other code transformations ----------------------------------------------
 
 
+def primitive_opcode(func):
+    return func.upper()
+
+
 def inline_helper_opcodes(code):
     """
     Detect following opcode sequences :
@@ -248,27 +251,23 @@ def inline_helper_opcodes(code):
         i += 1
         if opcode.startswith('LOAD_CONST'):
             func = opcode.split()[1]
-            if (func.startswith('is_positive_') or
-                func.startswith('negative_') or
-                func.startswith('divide_by_ten_')):
+            if any(func.startswith(_) for _ in numsed_lib.PRIMITIVES):
                 i += 2
             else:
                 code2.append(opcode)
         elif opcode.startswith('LOAD_GLOBAL'):
             func = opcode.split()[1]
-            if func not in ('is_positive', 'negative', 'divide_by_ten'):
+            if func not in numsed_lib.PRIMITIVES:
                 code2.append(opcode)
             else:
                 argseq = []
                 while not code[i].startswith('CALL_FUNCTION'):
                     argseq.append(code[i])
                     i += 1
-                i += 1                      # skip call and return label
-                code2.extend(argseq)        # append sequence
-                code2.append(func.upper())  # append opcode
-        elif (opcode.startswith('FUNCTION is_positive_') or
-              opcode.startswith('FUNCTION negative_') or
-              opcode.startswith('FUNCTION divide_by_ten_')):
+                i += 1                                # skip call and return label
+                code2.extend(argseq)                  # append sequence
+                code2.append(primitive_opcode(func))  # append opcode
+        elif any(opcode.startswith('FUNCTION ' + _) for _ in numsed_lib.PRIMITIVES):
             while not code[i].startswith('RETURN_VALUE'):
                 i += 1
             i += 1
