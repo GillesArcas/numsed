@@ -4,7 +4,7 @@ Generating and interpreting numsed opcodes.
 
 import sys
 import re
-import dis
+import mydis
 import shutil
 from StringIO import StringIO  # Python2
 #from io import StringIO  # Python3
@@ -28,7 +28,7 @@ def disassemble(source, offset, trace=False):
     old_stdout = sys.stdout
     result = StringIO()
     sys.stdout = result
-    dis.dis(code, offset)
+    mydis.dis(code, offset)
     sys.stdout = old_stdout
     code = result.getvalue().splitlines()
 
@@ -229,7 +229,7 @@ def inline_helper_opcodes(code):
     """
     Detect following opcode sequences :
 
-    LOAD_GLOBAL is_positive|negative|divide_by_ten
+    LOAD_GLOBAL is_positive|negative|is_odd|divide_by_two
     XXX
     CALL_FUNCTION 1 labelname
     :labelname
@@ -237,7 +237,7 @@ def inline_helper_opcodes(code):
     and replace with
 
     XXX
-    IS_POSITIVE|NEGATIVE|DIVIDE_BY_TEN
+    IS_POSITIVE|NEGATIVE|IS_ODD|DIVIDE_BY_TWO
 
     This assumes the helper functions are called with arguments made of
     variables, consts and operators, i.e. no call functions inside the XXX
@@ -283,11 +283,13 @@ OPCODES = ('LOAD_CONST', 'LOAD_NAME', 'LOAD_GLOBAL', 'STORE_NAME', 'STORE_GLOBAL
            'LOAD_FAST', 'STORE_FAST',
            'POP_TOP', 'DUP_TOP', 'ROT_TWO', 'ROT_THREE',
            'UNARY_NEGATIVE', 'UNARY_POSITIVE',
-           'BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY', 'BINARY_FLOOR_DIVIDE', 'BINARY_MODULO',
+           'BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY',
+           'BINARY_FLOOR_DIVIDE', 'BINARY_MODULO', 'BINARY_POWER',
            'COMPARE_OP', 'UNARY_NOT', 'JUMP', 'POP_JUMP_IF_TRUE', 'POP_JUMP_IF_FALSE',
            'JUMP_IF_TRUE_OR_POP', 'JUMP_IF_FALSE_OR_POP', 'PRINT_ITEM', 'PRINT_NEWLINE',
            'MAKE_FUNCTION', 'CALL_FUNCTION', 'RETURN_VALUE', 'SETUP_LOOP', 'POP_BLOCK',
-           'STARTUP', 'MAKE_CONTEXT', 'POP_CONTEXT', 'IS_POSITIVE', 'NEGATIVE', 'DIVIDE_BY_TEN')
+           'STARTUP', 'MAKE_CONTEXT', 'POP_CONTEXT',
+           'IS_POSITIVE', 'NEGATIVE', 'IS_ODD', 'DIVIDE_BY_TWO')
 
 def interpreter(code, coverage=False):
 
@@ -308,6 +310,8 @@ def interpreter(code, coverage=False):
     counter = dict()
     for x in OPCODES:
         counter[x] = 0
+
+    result = []
 
     instr_pointer = 0
     while instr_pointer < len(opcodes):
@@ -377,6 +381,10 @@ def interpreter(code, coverage=False):
             tos = stack.pop()
             tos1 = stack.pop()
             stack.append(tos1 % tos)
+        elif opc == 'BINARY_POWER':
+            tos = stack.pop()
+            tos1 = stack.pop()
+            stack.append(tos1 ** tos)
         elif opc == 'UNARY_NOT':
             tos = stack.pop()
             stack.append(1 if tos == 0 else 0)
@@ -420,8 +428,12 @@ def interpreter(code, coverage=False):
         elif opc == 'PRINT_ITEM':
             tos = stack.pop()
             print tos,
+            if not result:
+                result.append('')
+            result[-1] += '%d' % tos
         elif opc == 'PRINT_NEWLINE':
             print
+            result.append('')
         elif opc == 'MAKE_FUNCTION':
             if int(arg) >= 256:
                 raise Exception('numsed: keyword parameters not handled')
@@ -459,9 +471,12 @@ def interpreter(code, coverage=False):
         elif opc == 'NEGATIVE':
             tos = stack.pop()
             stack.append(-tos)
-        elif opc == 'DIVIDE_BY_TEN':
+        elif opc == 'IS_ODD':
             tos = stack.pop()
-            stack.append(tos // 10)
+            stack.append(tos % 2)
+        elif opc == 'DIVIDE_BY_TWO':
+            tos = stack.pop()
+            stack.append(tos // 2)
         elif opc == 'TRACE':
             pass
         else:
@@ -470,3 +485,5 @@ def interpreter(code, coverage=False):
     if coverage:
         for x in OPCODES:
             print '%-20s %10d' % (x, counter[x])
+
+    return result

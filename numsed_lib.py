@@ -85,7 +85,7 @@ def udiv(a, b):
 def upow(base, exp):
     result = 1
     while exp:
-        if exp & 1: # odd primitive ?
+        if is_odd(exp):
             result *= base
         exp = divide_by_two(exp)
         base *= base
@@ -190,16 +190,14 @@ def signed_mod(x, y):
 
 def signed_pow(base, exp):
     if exp < 0:
-        raise Exception('Exponent should be positive')
+        return 0
+        # raise Exception('Exponent should be positive')
 
     if is_positive(base):
         return upow(base, exp)
     else:
-        return negative(upow(negative(base), exp))
-
-
-def divide_by_two(x):
-    return divide_by_ten(x * 5)
+        r = upow(negative(base), exp)
+        return negative(r) if is_odd(exp) else r
 
 
 # -- Primitives --------------------------------------------------------------
@@ -211,10 +209,12 @@ However, they are handled separately:
 - they are added to positive forms. This enables to test the transformation,
 - they are removed when generating opcodes and replaced with dedicated
   opcodes.
+Note that current implementation imposes that there is no call of any function
+as an argument of a primitive function and here is no control to check that.
 """
 
 
-PRIMITIVES = ('is_positive', 'negative', 'divide_by_ten')
+PRIMITIVES = ('is_positive', 'negative', 'is_odd', 'divide_by_two')
 
 
 def is_positive(x):
@@ -223,5 +223,9 @@ def is_positive(x):
 def negative(x):
     return -x
 
-def divide_by_ten(x):
-    return x // 10
+def is_odd(x):
+    return x % 2
+
+def divide_by_two(x):
+    return x // 2
+

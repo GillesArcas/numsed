@@ -46,10 +46,10 @@ def normalize(snippet, replace=None):
               'SETUP_LOOP', 'POP_BLOCK',
               'RETURN_VALUE',
               'PRINT_ITEM', 'PRINT_NEWLINE',
-              'IS_POSITIVE', 'NEGATIVE', 'DIVIDE_BY_TEN', 'TRACE')
+              'IS_POSITIVE', 'NEGATIVE', 'IS_ODD', 'DIVIDE_BY_TWO', 'TRACE')
 
     macros += ('PUSH', 'POP', 'POP2', 'SWAP', 'CMP', 'UADD', 'USUB', 'UMUL',
-               'FULLADD', 'FULLSUB', 'FULLMUL', 'MULBYDIGIT')
+               'FULLADD', 'FULLSUB', 'FULLMUL', 'MULBYDIGIT', 'DIVBY2', 'ODD')
 
     for macro in macros:
 
@@ -757,6 +757,50 @@ def DIVIDE_BY_TEN():
         h                               # PS: R;X       HS: R;X  R = N // 10
     '''
     return snippet
+
+
+def DIVBY2():
+    snippet = r'''                      # PS: N;X
+        s/^[0-9]+;/0;&;/                # PS: 0;N;;X
+        :.loop
+        /^.;;/t.end
+                                        # PS: c;nN;R;X
+        s/;(.)/\1;/                     # PS: cn;N;R;X
+        s/(..)/\1!0000!0110!0201!0311!0402!0512!0603!0713!0804!0914!1005!1115!1206!1316!1407!1517!1608!1718!1809!1919/
+                                        # PS: cn!LUT;N;R;X
+        s/(..).*!\1(.)(.)[^;]*;([^;]*);([^;]*);/\2;\4;\5\3;/
+                                        # PS: r;N;Rq;X
+        b.loop
+        :.end                           # PS: c;;R;X
+        s/.;;0?(\d)/\1/                 # PS: R;X  R = N // 2
+    '''
+    return normalize(snippet)
+
+
+def DIVIDE_BY_TWO():
+    snippet = r'''                      # PS: ?         HS: N;X
+        g                               # PS: N;X       HS: N;X
+        DIVBY2                          # PS: R;X       HS: N;X
+        h                               # PS: R;X       HS: R;X  R = N // 2
+    '''
+    return normalize(snippet)
+
+
+def ODD():
+    snippet = r'''                      # PS: N;X
+        s/^\d*(\d)/\1!00!11!20!31!40!51!60!71!80!91/
+        s/^(.).*!\1(.)[^;]*/\2/         # PS: R;X  R = 0 if even, or 1 if odd
+    '''
+    return normalize(snippet)
+
+def IS_ODD():
+    snippet = r'''                      # PS: ?         HS: N;X
+        g                               # PS: N;X       HS: N;X
+        ODD
+        h                               # PS: R;X       HS: R;X  R = 0 if even, or 1 if odd
+    '''
+    return snippet
+
 
 
 # -- Debug -------------------------------------------------------------------

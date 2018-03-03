@@ -38,6 +38,12 @@ n = 5
 p = m % n
 print p
 # --
+# assign pow
+m = 42
+n = 5
+p = m ** n
+print p
+# --
 # assign expression
 m = 42
 n = 5
@@ -72,6 +78,12 @@ print m
 m = 42
 n = 5
 m %= n
+print m
+# --
+# augmented assign pow
+m = 42
+n = 5
+m **= n
 print m
 # --
 # augmented assign expression
@@ -357,6 +369,16 @@ while m <= 10:
         n += 1
     m += 1
 # --
+# loop on power
+m = -10
+while m <= 10:
+    n = 0
+    while n <= 10:
+        p = m ** n
+        print p
+        n += 1
+    m += 1
+# --
 # test all comparison operators
 m = -5
 while m <= 5:
@@ -370,7 +392,7 @@ while m <= 5:
         print 1 if m >= n else 0
         n += 1
     m += 1
-# --    
+# --
 # test comparison operator concatenation
 m = -2
 while m <= 2:
@@ -420,7 +442,7 @@ while m <= 2:
             p += 1
         n += 1
     m += 1
-# --    
+# --
 # and
 m = -2
 while m <= 2:
@@ -460,7 +482,7 @@ while m <= 2:
 # function
 def foo(n):
     return n + 10
-    
+
 n = 42
 p = foo(n)
 print p
@@ -468,10 +490,10 @@ print p
 # function
 def foo(n):
     return n + 10
-    
+
 def bar(n):
     return n * 2
-    
+
 n = 42
 p = foo(bar(n))
 print p
@@ -482,7 +504,7 @@ def fac(n):
         return 1
     else:
         return n * fac(n - 1)
-    
+
 n = 10
 p = fac(n)
 print p
@@ -493,7 +515,7 @@ def fib(n):
         return 1
     else:
         return fib(n - 1) + fib(n - 2)
-    
+
 print fib(10)
 # --
 # mutual recursive functions
@@ -502,14 +524,24 @@ def even(n):
         return 1
     else:
         return odd(n - 1)
-    
+
 def odd(n):
     if n == 0:
         return 0
     else:
         return even(n - 1)
-    
+
 n = 10
 print even(10)
 print odd(10)
+# --
+# global
+x = 0
+def foo():
+    global x
+    x = x + 1
+    return x
+
+print foo()
+print x
 # --

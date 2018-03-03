@@ -2,8 +2,9 @@ import subprocess
 import random
 from sedcode import (normalize,
                  STARTUP, MAKE_CONTEXT, POP_CONTEXT, PUSH, POP,
-                 LOAD_GLOBAL, STORE_GLOBAL, DELETE_GLOBAL, LOAD_FAST, STORE_FAST,
-                 CMP, FULLADD, FULLSUB, UADD, USUB, FULLMUL, MULBYDIGIT, UMUL)
+                 LOAD_GLOBAL, STORE_GLOBAL, DELETE_GLOBAL, LOAD_FAST,
+                 STORE_FAST, CMP, FULLADD, FULLSUB, UADD, USUB, FULLMUL,
+                 MULBYDIGIT, UMUL, DIVBY2, ODD)
 
 
 def random_ndigits(p):
@@ -13,7 +14,7 @@ def random_varname():
     return ''.join(random.sample('abcdefghijklmnopqrstuvwxyz', random.randint(1, 10)))
 
 def random_content():
-    x = [str(random.randint(0, 10 ** 10)) for n in range(random.randint(0, 10))]
+    x = [str(random.randint(0, 10 ** random.randint(0, 10))) for _ in range(random.randint(0, 10))]
     return ';'.join(x)
 
 
@@ -392,6 +393,45 @@ def test_umul_7():
     test_gen('UMUL_7', UMUL, inplist, outlist)
 
 
+def test_divby2_1():
+    # Input  PS: N;X
+    # Output PS: R;X  with R = N // 2
+    # N takes all values in [0, 99]
+    inplist = list()
+    outlist = list()
+    for n in range(0, 100):
+        s = random_content()
+        inplist.append('%d;%s' % (n, s))
+        outlist.append('%d;%s' % (n // 2, s))
+    test_gen('DIVBY2_1', DIVBY2, inplist, outlist)
+
+def test_divby2_2():
+    # Input  PS: N;X
+    # Output PS: R;X  with R = N // 2
+    # N takes 100 big integer values
+    inplist = list()
+    outlist = list()
+    for _ in range(0, 100):
+        n = random_ndigits(random.randint(100, 200))
+        s = random_content()
+        inplist.append('%d;%s' % (n, s))
+        outlist.append('%d;%s' % (n // 2, s))
+    test_gen('DIVBY2_2', DIVBY2, inplist, outlist)
+
+
+def test_odd():
+    # Input  PS: N;X
+    # Output PS: R;X  with R = N // 2
+    # N takes all values in [0, 99]
+    inplist = list()
+    outlist = list()
+    for n in range(0, 100):
+        s = random_content()
+        inplist.append('%d;%s' % (n, s))
+        outlist.append('%d;%s' % (n % 2, s))
+    test_gen('ODD_1', ODD, inplist, outlist)
+
+
 def test_gen(descr, func, inplist, outlist):
     with open('test.sed', 'w') as f:
         print>>f, func()
@@ -417,6 +457,9 @@ def test_gen(descr, func, inplist, outlist):
 
 
 def main():
+    test_divby2_1()
+    test_divby2_2()
+    test_odd()
     test_context_0()
     test_context_1()
     test_context_2()
@@ -438,5 +481,10 @@ def main():
     test_umul_5()
     test_umul_6()
     test_umul_7()
+    test_divby2_1()
+    test_divby2_2()
+    test_odd()
 
-main()
+
+if __name__ == "__main__":
+    main()
