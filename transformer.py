@@ -26,36 +26,14 @@ from numsed_lib import *
 # -- Transformer --------------------------------------------------------------
 
 
-signed_func = {
-    ast.Add: 'signed_add',
-    ast.Sub: 'signed_sub',
-    ast.Mult: 'signed_mult',
-    ast.FloorDiv: 'signed_div',
-    ast.Mod: 'signed_mod',
-    ast.Eq: 'signed_eq',
-    ast.NotEq: 'signed_noteq',
-    ast.Lt: 'signed_lt',
-    ast.LtE: 'signed_lte',
-    ast.Gt: 'signed_gt',
-    ast.GtE: 'signed_gte'}
-
-unsigned_func = {  # assert_unsigned_func
-    ast.Add: 'unsigned_add',
-    ast.Sub: 'unsigned_sub',
-    ast.Mult: 'unsigned_mult',
-    ast.FloorDiv: 'unsigned_div',
-    ast.Mod: 'unsigned_mod',
-    ast.Eq: 'unsigned_eq',
-    ast.NotEq: 'unsigned_noteq',
-    ast.Lt: 'unsigned_lt',
-    ast.LtE: 'unsigned_lte',
-    ast.Gt: 'unsigned_gt',
-    ast.GtE: 'unsigned_gte'}
-
-
 class NumsedAstTransformer(ast.NodeTransformer):
 
     def __init__(self, func):
+        """
+        func is a dict giving the functions replacing operators. Can be
+        the functions from library, or testing functions checking all
+        operands are positive.
+        """
         self.func = func
         self.required_func = set()
 
@@ -105,34 +83,6 @@ class NumsedAstTransformer(ast.NodeTransformer):
             return node
 
 
-# -- Testing transformation --------------------------------------------------
-
-
-unsigned_func_pattern = """
-def %s(x, y):
-    assert x >= 0, 'x < 0'
-    assert y >= 0, 'y < 0'
-    return x %s y
-"""
-
-unsigned_op = {
-    'unsigned_add': '+',
-    'unsigned_sub': '-',
-    'unsigned_mult': '*',
-    'unsigned_div': '//',
-    'unsigned_mod': '%',
-    'unsigned_eq': '==',
-    'unsigned_noteq': '!=',
-    'unsigned_lt': '<',
-    'unsigned_lte': '<=',
-    'unsigned_gt': '>',
-    'unsigned_gte': '>='}
-
-
-def make_unsigned_func(name):
-    return unsigned_func_pattern % (name, unsigned_op[name])
-
-
 # -- List of library functions -----------------------------------------------
 
 
@@ -166,23 +116,7 @@ def function_calls(libfuncs):
     return libfuncs2
 
 
-# -- Main --------------------------------------------------------------------
-
-
-def save_new_script(tree, libfuncs, script_out):
-    # add builtins functions to code to compile
-    script = ''
-    # script += 'import operator\n\n'
-    for func in libfuncs:
-        script += '\n'
-        script += ''.join(inspect.getsourcelines(func)[0])
-    script += '\n'
-    script += codegen.to_source(tree)
-
-    with open(script_out, 'w') as f:
-        f.writelines(script)
-
-    return script
+# -- Positive transformation -------------------------------------------------
 
 
 def transform_positive(script_in, script_out, do_exec):
@@ -194,28 +128,97 @@ def transform_positive(script_in, script_out, do_exec):
     libfuncs2 = function_calls(libfuncs)
     libfuncs = [globals()[x] for x in libfuncs2]
 
-    return save_new_script(tree, libfuncs, script_out)
+    return save_new_script(tree, libfuncs, getsourcetext, script_out)
 
 
-def transform_assert(script_in, script_out, do_exec):
-    tree = ast.parse(open(script_in).read())
-    test_exec(tree, do_exec)
-    numsed_ast_transformer = NumsedAstTransformer(unsigned_func)
-    numsed_ast_transformer.visit(tree)
-    test_exec(tree, do_exec)
+signed_func = {
+    ast.Add: 'signed_add',
+    ast.Sub: 'signed_sub',
+    ast.Mult: 'signed_mult',
+    ast.FloorDiv: 'signed_div',
+    ast.Mod: 'signed_mod',
+    ast.Eq: 'signed_eq',
+    ast.NotEq: 'signed_noteq',
+    ast.Lt: 'signed_lt',
+    ast.LtE: 'signed_lte',
+    ast.Gt: 'signed_gt',
+    ast.GtE: 'signed_gte'}
 
-    # add builtins functions to code to compile
-    builtins = numsed_ast_transformer.required_func
+
+def getsourcetext(func):
+    return ''.join(inspect.getsourcelines(func)[0])
+
+
+def save_new_script(tree, libfuncs, func_text, script_out):
+    # add library functions to code to compile
     script = ''
-    for func in builtins:
+    for func in libfuncs:
         script += '\n'
-        script += make_unsigned_func(func)
+        script += func_text(func)
     script += '\n'
-    # script += 'import operator\n\n'
     script += codegen.to_source(tree)
 
     with open(script_out, 'w') as f:
         f.writelines(script)
+
+    return script
+
+
+# -- Testing transformation --------------------------------------------------
+
+
+def transform_assert(script_in, script_out, do_exec):
+    tree = ast.parse(open(script_in).read())
+    numsed_ast_transformer = NumsedAstTransformer(unsigned_func)
+    numsed_ast_transformer.visit(tree)
+    test_exec(tree, do_exec)
+
+    libfuncs = numsed_ast_transformer.required_func
+
+    return save_new_script(tree, libfuncs, make_unsigned_func, script_out)
+
+
+unsigned_func = {  # assert_unsigned_func
+    ast.Add: 'unsigned_add',
+    ast.Sub: 'unsigned_sub',
+    ast.Mult: 'unsigned_mult',
+    ast.FloorDiv: 'unsigned_div',
+    ast.Mod: 'unsigned_mod',
+    ast.Eq: 'unsigned_eq',
+    ast.NotEq: 'unsigned_noteq',
+    ast.Lt: 'unsigned_lt',
+    ast.LtE: 'unsigned_lte',
+    ast.Gt: 'unsigned_gt',
+    ast.GtE: 'unsigned_gte'}
+
+
+unsigned_func_pattern = """
+def %s(x, y):
+    assert x >= 0, 'x < 0'
+    assert y >= 0, 'y < 0'
+    return x %s y
+"""
+
+
+def make_unsigned_func(name):
+
+    unsigned_op = {
+        'unsigned_add': '+',
+        'unsigned_sub': '-',
+        'unsigned_mult': '*',
+        'unsigned_div': '//',
+        'unsigned_mod': '%',
+        'unsigned_eq': '==',
+        'unsigned_noteq': '!=',
+        'unsigned_lt': '<',
+        'unsigned_lte': '<=',
+        'unsigned_gt': '>',
+        'unsigned_gte': '>='}
+
+    return unsigned_func_pattern % (name, unsigned_op[name])
+
+
+# -- Main --------------------------------------------------------------------
 
 
 def test_exec(tree, do_exec):
@@ -230,9 +233,6 @@ def transform(script_in, script_out, do_assert=False, do_exec=False):
     if do_assert:
         code = transform_assert(script_out, script_out, do_exec)
     return code
-
-
-# -- Main --------------------------------------------------------------------
 
 
 def main():
