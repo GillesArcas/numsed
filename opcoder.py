@@ -76,8 +76,8 @@ def opcodes(dis_code, trace=False):
     # add dummy pointer address to be taken by final RETURN_VALUE
     newcode.append('LOAD_CONST end_of_script')
 
-    # add print decl
-    newcode.extend(PRINT_DECL().splitlines())
+    # add print declaration
+    newcode.extend(PRINT_DECL())
 
     # normalize disassembly labels and opcode arguments
     newcode.extend(dis_code)
@@ -140,8 +140,8 @@ def opcodes(dis_code, trace=False):
             endblock_label = setup_loop.split(None, 1)[1]
             newcode[instr_pointer] = 'JUMP ' + endblock_label
 
-    # add print
-    newcode.extend(PRINT().splitlines())
+    # add print definition
+    newcode.extend(PRINT())
 
     # trace if requested
     if trace:
@@ -284,31 +284,26 @@ def inline_helper_opcodes(code):
     return code2
 
 
-def PRINT():
-    snippet = '''                       # PS: ?         HS: N;label;X
-        :print
-        PRINT_ITEM                      # PS: N         HS: label;X
-        LOAD_CONST 0                    # PS: N         HS: 0;label;X
-        RETURN_VALUE
-    '''
-    return snippet
+# print() is also a primitive but is handled as a function. Its opcode
+# snippets are inserted directly into opcodes in opcodes() function.
+
 
 def PRINT_DECL():
-    snippet = '''\
-LOAD_CONST               print
-MAKE_FUNCTION            0
-STORE_NAME               print'''
-    return snippet
+    return (
+        'LOAD_CONST               print',
+        'MAKE_FUNCTION            0',
+        'STORE_NAME               print'
+    )
 
 
 def PRINT():
-    snippet = '''\
-:print
-PRINT_ITEM
-PRINT_NEWLINE
-LOAD_CONST 0
-RETURN_VALUE'''
-    return snippet
+    return (                            # PS: ?         HS: N;label;X
+        ':print',
+        'PRINT_ITEM',                   # PS: N         HS: label;X
+        'PRINT_NEWLINE',
+        'LOAD_CONST 0',                 # PS: N         HS: 0;label;X
+        'RETURN_VALUE'
+    )
 
 
 # -- Opcode interpreter ------------------------------------------------------
