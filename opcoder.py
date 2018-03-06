@@ -2,6 +2,8 @@
 Generating and interpreting numsed opcodes.
 """
 
+from __future__ import print_function
+
 import sys
 import re
 import mydis
@@ -35,7 +37,7 @@ def disassemble(source, offset, trace=False):
     # trace if requested
     if trace:
         for instr in code:
-            print instr
+            print(instr)
 
     # return list of instructions
     return code
@@ -73,6 +75,9 @@ def opcodes(dis_code, trace=False):
     newcode.append('MAKE_CONTEXT')
     # add dummy pointer address to be taken by final RETURN_VALUE
     newcode.append('LOAD_CONST end_of_script')
+
+    # add print decl
+    newcode.extend(PRINT_DECL().splitlines())
 
     # normalize disassembly labels and opcode arguments
     newcode.extend(dis_code)
@@ -135,10 +140,13 @@ def opcodes(dis_code, trace=False):
             endblock_label = setup_loop.split(None, 1)[1]
             newcode[instr_pointer] = 'JUMP ' + endblock_label
 
+    # add print
+    newcode.extend(PRINT().splitlines())
+
     # trace if requested
     if trace:
         for instr in newcode:
-            print instr
+            print(instr)
 
     # return list of instructions
     return newcode
@@ -227,17 +235,17 @@ def primitive_opcode(func):
 
 def inline_helper_opcodes(code):
     """
-    Detect following opcode sequences :
+    Detect following opcode sequences:
 
-    LOAD_GLOBAL is_positive|negative|is_odd|divide_by_two
-    XXX
-    CALL_FUNCTION 1 labelname
-    :labelname
+        LOAD_GLOBAL is_positive|negative|is_odd|divide_by_two
+        XXX
+        CALL_FUNCTION 1 labelname
+        :labelname
 
-    and replace with
+    and replace with:
 
-    XXX
-    IS_POSITIVE|NEGATIVE|IS_ODD|DIVIDE_BY_TWO
+        XXX
+        IS_POSITIVE|NEGATIVE|IS_ODD|DIVIDE_BY_TWO
 
     This assumes the helper functions are called with arguments made of
     variables, consts and operators, i.e. no call functions inside the XXX
@@ -264,9 +272,9 @@ def inline_helper_opcodes(code):
                 while not code[i].startswith('CALL_FUNCTION'):
                     argseq.append(code[i])
                     i += 1
-                i += 1                                # skip call and return label
-                code2.extend(argseq)                  # append sequence
-                code2.append(primitive_opcode(func))  # append opcode
+                i += 1                                      # skip call and return label
+                code2.extend(argseq)                        # append sequence
+                code2.append(primitive_opcode(func))        # append opcode
         elif any(opcode.startswith('FUNCTION ' + _) for _ in numsed_lib.PRIMITIVES):
             while not code[i].startswith('RETURN_VALUE'):
                 i += 1
@@ -274,6 +282,33 @@ def inline_helper_opcodes(code):
         else:
             code2.append(opcode)
     return code2
+
+
+def PRINT():
+    snippet = '''                       # PS: ?         HS: N;label;X
+        :print
+        PRINT_ITEM                      # PS: N         HS: label;X
+        LOAD_CONST 0                    # PS: N         HS: 0;label;X
+        RETURN_VALUE
+    '''
+    return snippet
+
+def PRINT_DECL():
+    snippet = '''\
+LOAD_CONST               print
+MAKE_FUNCTION            0
+STORE_NAME               print'''
+    return snippet
+
+
+def PRINT():
+    snippet = '''\
+:print
+PRINT_ITEM
+PRINT_NEWLINE
+LOAD_CONST 0
+RETURN_VALUE'''
+    return snippet
 
 
 # -- Opcode interpreter ------------------------------------------------------
@@ -427,12 +462,12 @@ def interpreter(code, coverage=False):
                 tos = stack.pop()
         elif opc == 'PRINT_ITEM':
             tos = stack.pop()
-            print tos,
+            print(tos, end = '')
             if not result:
                 result.append('')
             result[-1] += '%d' % tos
         elif opc == 'PRINT_NEWLINE':
-            print
+            print()
             result.append('')
         elif opc == 'MAKE_FUNCTION':
             if int(arg) >= 256:
@@ -484,6 +519,6 @@ def interpreter(code, coverage=False):
 
     if coverage:
         for x in OPCODES:
-            print '%-20s %10d' % (x, counter[x])
+            print('%-20s %10d' % (x, counter[x]))
 
     return result

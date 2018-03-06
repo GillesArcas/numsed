@@ -4,11 +4,11 @@ import re
 def sedcode(opcode):
     global function_labels, return_labels
 
-    function_labels = []
+    function_labels = ['print']
     return_labels = []
 
     for instr in opcode:
-        if re.match(r':\w+_[0-9A-Z]{8}', instr):
+        if re.match(r':\w+_[0-9A-Z]{8}', instr):        # attention !!! c'est la syntaxe dis patche !!!
             function_labels.append(instr[1:].strip())
 
     sedcode = normalize('\n'.join(opcode))
@@ -48,7 +48,8 @@ def normalize(snippet, replace=None):
               'PRINT_ITEM', 'PRINT_NEWLINE',
               'IS_POSITIVE', 'NEGATIVE', 'IS_ODD', 'DIVIDE_BY_TWO', 'TRACE')
 
-    macros += ('PUSH', 'POP', 'POP2', 'SWAP', 'CMP', 'UADD', 'USUB', 'UMUL',
+    macros += ('PUSH', 'POP', 'POP2', 'SWAP', 'POP_TOP',
+               'CMP', 'UADD', 'USUB', 'UMUL',
                'FULLADD', 'FULLSUB', 'FULLMUL', 'MULBYDIGIT', 'DIVBY2', 'ODD')
 
     for macro in macros:
@@ -339,25 +340,25 @@ def CALL_FUNCTION(argc):
     return snippet2
 
 
-def RETURN_VALUE():
+def RETURN_VALUE_V1():
     snippet = 'SWAP\n' + 'POP\n' + BRANCH_ON_NAME(return_labels)
     return normalize(snippet)
 
 
 def RETURN_VALUE():
-    snippet = '''
-        SWAP
-        POP
+    snippet = '''                       # PS: ?         HS: R;label;X
+        SWAP                            # PS: ?         HS: label;R;X
+        POP                             # PS: label     HS: R;X
         b return
     '''
     return normalize(snippet)
 
 
 def BRANCH_ON_NAME(labels):
-    snippet = '''                       # HS: label;X
+    snippet = '''                       # PS: label
         s/^//                           # force a substitution to reset t flag
         t.test_return                   # t to next line to reset t flag
-        :.test_return
+        :.test_return                   # PS: label
     '''
     snippet = normalize(snippet)
     snippet += '\n'.join(('s/^%s$//;t %s' % (label, label) for label in labels))
