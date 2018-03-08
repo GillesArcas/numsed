@@ -5,8 +5,10 @@ import sys
 import os
 import re
 import subprocess
-from StringIO import StringIO  # Python2
-#from io import StringIO  # Python3
+try:
+    from StringIO import StringIO  # Python2
+except ImportError:
+    from io import StringIO  # Python3
 
 import transformer
 import opcoder
@@ -38,8 +40,8 @@ def run_opcode(source, transform=True, trace=False, coverage=False):
     else:
         raise Exception('Invalid file type')
 
-    opcoder.interpreter(opcodes, coverage)
-    return '\n'.join(opcodes)
+    return'\n'.join(opcoder.interpreter(opcodes, coverage))
+    #return '\n'.join(opcodes)
 
 
 # -- Generate sed code -------------------------------------------------------
@@ -83,20 +85,14 @@ def make_sed_and_run(source, trace=False):
     com = 'sed -n -r -f %s %s' % (name_script, name_input)
 
     # TODO: check sed in path
-    res = subprocess.check_output(com).splitlines()
-    for line in res:
+    res = subprocess.check_output(com)
+    res = res.decode('ascii') # py3
+    for line in res.splitlines():
         print(line)
 
 
 # -- Tests -------------------------------------------------------------------
 
-
-def tmp():
-    snippet = r'''
-        LOAD_NAME foo
-        STORE_NAME bar
-    '''
-    return normalize(snippet, macros=('LOAD_NAME', 'STORE_NAME'))
 
 def numsed_compile(fname):
     __import__(fname)
@@ -137,10 +133,10 @@ def do_helphtml():
 
 USAGE = '''
 numsed.py -h | -H | -v
-       -dis | -ops | -sed python-script
+       --positive|--dis|-opsigned|--opcode|--sed python-script [--run]
 '''
 
-def parse_command_line():
+def parse_command_line(argstring=None):
     parser = argparse.ArgumentParser(usage=USAGE, add_help=False)
 
     parser.add_argument('-h', help='show this help message', action='store_true', dest='do_help')
@@ -156,12 +152,15 @@ def parse_command_line():
     parser.add_argument("--test", help="test", action="store_true", dest="test")
     parser.add_argument("source", nargs='?', help=argparse.SUPPRESS, default=sys.stdin)
 
-    args = parser.parse_args()
+    if argstring is None:
+        args = parser.parse_args()
+    else:
+        args = parser.parse_args(argstring.split())
     return parser, args
 
 
-def main():
-    parser, args = parse_command_line()
+def numsed(argstring=None):
+    parser, args = parse_command_line(argstring)
 
     if args.version:
         print(BRIEF)
@@ -182,20 +181,21 @@ def main():
             print(code)
         else:
             res = subprocess.check_output('python ~.py')
+            res = res.decode('ascii') # py3
             print(res)
 
     elif args.disassemble:
-        opcoder.disassemble(args.source, 0, trace=True)
+        opcoder.disassemble(args.source, trace=True)
 
     elif args.opsigned:
         if args.run:
-            run_opcode(args.source, transform=False, trace=False)
+            return run_opcode(args.source, transform=False, trace=False)
         else:
             opcoder.make_opcode(args.source, transform=False, trace=True)
 
     elif args.opcode:
         if args.run:
-            run_opcode(args.source, transform=True, trace=False)
+            return run_opcode(args.source, transform=True, trace=False)
         else:
             opcoder.make_opcode(args.source, transform=True, trace=True)
 
@@ -215,27 +215,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
-
-
-# -- useless now
-
-
-def BINARY_ADD():
-    snippet = r'''
-                                        # PS: ?         HS: M;N;X
-        POP2                            # PS: M;N;      HS: X
-        LOAD_GLOBAL signed_add          # PS: M;N;      HS: signed_add;X
-        PUSH2                           # PS: ?         HS: M;N;signed_add;X
-        CALL_FUNCTION 2                 # PS: ?         HS: R;X
-     '''
-    return normalize(snippet, macros=('POP2', 'PUSH2', 'LOAD_GLOBAL', 'CALL_FUNCTION'), functions=('signed_add',))
-
-def BINARY_ADD():
-    snippet = r'''                      ## interpreted in opcodes, perhaps should not be described in sed
-                                        ##  # PS: ?         HS: M;N;X
-        LOAD_GLOBAL signed_add          ##  # PS: ?         HS: signed_add;M;N;X
-        ROT_THREE                       ##  # PS: ?         HS: M;N;signed_add;X
-        CALL_FUNCTION 2                 ##  # PS: ?         HS: R;X
-     '''
-    return snippet
+    numsed()
