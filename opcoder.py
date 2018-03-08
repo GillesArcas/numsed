@@ -6,10 +6,13 @@ from __future__ import print_function
 
 import sys
 import re
-import mydis
+import dis
+import types
 import shutil
-from StringIO import StringIO  # Python2
-#from io import StringIO  # Python3
+try:
+    from StringIO import StringIO  # Python2
+except ImportError:
+    from io import StringIO  # Python3
 
 import transformer
 import numsed_lib
@@ -18,19 +21,32 @@ import numsed_lib
 # -- Disassemble -------------------------------------------------------------
 
 
-def disassemble(source, offset, trace=False):
+IS64BITS = sys.maxsize > 2**32
+
+
+def disassemble(source, trace=False):
 
     # compile
     with open(source) as f:
         script = f.read()
 
-    code = compile(script, source, "exec")
-
-    # disassemble
     old_stdout = sys.stdout
     result = StringIO()
     sys.stdout = result
-    mydis.dis(code, offset)
+
+    code = compile(script, source, "exec")
+    dis.dis(code)
+
+    for oparg in code.co_consts:
+        if isinstance(oparg, types.CodeType):
+            func_code = oparg
+            padded_id = ('%016X' if IS64BITS else '%08X') % id(func_code)
+            print('\n', ' ' * 11, '%-29s %s_%s %s' % ('-1 FUNCTION',
+                                                  func_code.co_name,
+                                                  padded_id,
+                                                  ' '.join(func_code.co_varnames[:func_code.co_argcount])))
+            dis.disassemble(func_code)
+
     sys.stdout = old_stdout
     code = result.getvalue().splitlines()
 
@@ -41,6 +57,58 @@ def disassemble(source, offset, trace=False):
 
     # return list of instructions
     return code
+
+
+# -- Preparing dis code ------------------------------------------------------
+
+
+def prepared_dis_code(dis_code):
+    """
+    Keep only required labels.
+    Put labels on their own lines.
+    Remove relative jumps and keep explicit labels.
+    Keep only explicit arguments.
+    Replace reference to function objects by labels.
+    """
+    newcode = []
+    for line in dis_code:
+        if line.strip():
+            label, instr, arg = parse_dis_instruction(line)
+            if label:
+                newcode.append(':%s' % label)
+            if arg:
+                newcode.append('%s %s' % (instr, arg))
+            else:
+                newcode.append(instr)
+    # link_dis_code(newcode)
+    return newcode
+
+
+def parse_dis_instruction(s):
+    #  45 BINARY_MULTIPLY
+    #  59 JUMP_ABSOLUTE           27
+    #  46 STORE_FAST               5 (aux)
+    m = re.search(r'(\d+) (\w+) *(.*)', s)
+    label, instr, arg = m.group(1), m.group(2), m.group(3)
+
+    if '>>' not in s:
+        label = None
+
+    if not arg:
+        arg = None
+    elif 'code object' in arg:
+        # <code object foo at 030E7EC0, file "exemple01.py", line 1>
+        m = re.search('code object ([^ ]+) at (?:0x)?([^ ]+),', arg)
+        arg = '%s_%s' % (m.group(1), m.group(2))
+    elif '(' in arg:
+        m = re.search(r'\((.*)\)', arg)
+        arg = m.group(1)
+        if arg.startswith('to '):
+            arg = arg[3:]
+    else:
+        arg = arg.strip()
+
+    return label, instr, arg
 
 
 # -- Disassemble to numsed opcodes -------------------------------------------
@@ -55,7 +123,7 @@ def make_opcode(source, offset=0, transform=True, trace=False):
         shutil.copy(source, '~.py')
 
     # disassemble
-    dis_code = disassemble('~.py', offset=1000, trace=False)
+    dis_code = disassemble('~.py', trace=False)
 
     # simplify dis code
     dis_code = prepared_dis_code(dis_code)
@@ -73,8 +141,8 @@ def opcodes(dis_code, trace=False):
 
     # add dummy context to be removed by final RETURN_VALUE
     newcode.append('MAKE_CONTEXT')
-    # add dummy pointer address to be taken by final RETURN_VALUE
-    newcode.append('LOAD_CONST end_of_script')
+    # add dummy pointer address to be used& by final RETURN_VALUE
+    newcode.append('LOAD_CONST 1000000000') # end_of_script')
 
     # add print declaration
     newcode.extend(PRINT_DECL())
@@ -116,6 +184,9 @@ def opcodes(dis_code, trace=False):
             tmp.append(instr)
     newcode = tmp
 
+    # link
+    link_opcode(newcode)
+
     # replace INPLACE_* with BINARY_ equivalent
     tmp = []
     for instr in newcode:
@@ -139,6 +210,24 @@ def opcodes(dis_code, trace=False):
             setup_loop = newcode[current_loop(newcode, instr_pointer)]
             endblock_label = setup_loop.split(None, 1)[1]
             newcode[instr_pointer] = 'JUMP ' + endblock_label
+
+    # ignore some opcodes
+    tmp = []
+    for instr in newcode:
+        x = instr.split()
+        opc = x[0]
+        arg = x[1] if len(x) > 1 else None
+        if opc == 'EXTENDED_ARG':
+            pass # used in py3 for comparison operators, useless here, operators
+                 # have been written in argument position
+        elif opc == 'LOAD_CONST' and re.match(r"^'.*'$", arg):
+            pass # use in py3, the name of a function is pushed before MAKE_FUNCTION
+                 # there is no other string hanfled in numsed
+        elif opc == 'STORE_NAME' and arg in numsed_lib.PRIMITIVES:
+            pass # use in py3
+        else:
+            tmp.append(instr)
+    newcode = tmp
 
     # add print definition
     newcode.extend(PRINT())
@@ -173,57 +262,6 @@ def current_loop(opcode, instr_pointer):
 def read_opcode(source):
     with open(source) as f:
         return f.readlines()
-
-
-# -- Preparing dis code ------------------------------------------------------
-
-
-def prepared_dis_code(dis_code):
-    """
-    Keep only required labels.
-    Put labels on their own lines.
-    Remove relative jumps and keep explicit labels.
-    Keep only explicit arguments.
-    Replace reference to function objects by labels.
-    """
-    newcode = []
-    for line in dis_code:
-        if line.strip():
-            label, instr, arg = parse_dis_instruction(line)
-            if label:
-                newcode.append(':%s' % label)
-            if arg:
-                newcode.append('%s %s' % (instr, arg))
-            else:
-                newcode.append(instr)
-    return newcode
-
-
-def parse_dis_instruction(s):
-    #  45 BINARY_MULTIPLY
-    #  59 JUMP_ABSOLUTE           27
-    #  46 STORE_FAST               5 (aux)
-    m = re.search(r'(\d+) (\w+) *(.*)', s)
-    label, instr, arg = m.group(1), m.group(2), m.group(3)
-
-    if '>>' not in s:
-        label = None
-
-    if not arg:
-        arg = None
-    elif 'code object' in arg:
-        # <code object foo at 030E7EC0, file "exemple01.py", line 1>
-        m = re.search('code object ([^ ]+) at ([^ ]+),', arg)
-        arg = '%s_%s' % (m.group(1), m.group(2))
-    elif '(' in arg:
-        m = re.search(r'\((.*)\)', arg)
-        arg = m.group(1)
-        if arg.startswith('to '):
-            arg = arg[3:]
-    else:
-        arg = arg.strip()
-
-    return label, instr, arg
 
 
 # -- Other code transformations ----------------------------------------------
@@ -306,6 +344,34 @@ def PRINT():
     )
 
 
+def link_opcode(code):
+    # after disassembly of functions by dis-ing on module, labels in each
+    # function starts from 0. Update labels to have separate name spaces.
+
+    offset = 0
+    maxlabel = 0
+    for index, instr in enumerate(code):
+        if instr.strip() == '':
+            continue
+        if re.match(r':\w+_[0-9A-Z]{8}', instr):        # attention !!! c'est la syntaxe dis patche !!!
+            offset = maxlabel + 2
+            continue
+        if instr.startswith(':'):
+            label = offset + int(instr[1:])
+            code[index] = ':%d' % label
+            if label > maxlabel:
+                maxlabel = label
+
+        if instr_with_label(instr):
+            opc, arg = instr.split()
+            label = offset + int(arg)
+            code[index] = '%s %d' % (opc, label)
+
+
+def instr_with_label(instr):
+    return 'JUMP' in instr or instr.startswith('SETUP_LOOP')
+
+
 # -- Opcode interpreter ------------------------------------------------------
 
 
@@ -347,7 +413,8 @@ def interpreter(code, coverage=False):
     while instr_pointer < len(opcodes):
         opc, arg = opcodes[instr_pointer]
         if opc != ':':
-            counter[opc] += 1
+            if opc in OPCODES:
+                counter[opc] += 1
         #print instr_pointer, opc, arg, stack
         instr_pointer += 1
         if False:
