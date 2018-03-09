@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import re
 
 
@@ -188,7 +190,7 @@ def LOAD_CONST(const):
 def STARTUP():
     snippet = '''
         x
-        s/.*/@/
+        s/.*/end_of_script;@/
         x
         b.start
         :end_of_script

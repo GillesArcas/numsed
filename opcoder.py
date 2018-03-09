@@ -141,8 +141,6 @@ def opcodes(dis_code, trace=False):
 
     # add dummy context to be removed by final RETURN_VALUE
     newcode.append('MAKE_CONTEXT')
-    # add dummy pointer address to be used& by final RETURN_VALUE
-    newcode.append('LOAD_CONST 1000000000') # end_of_script')
 
     # add print declaration
     newcode.extend(PRINT_DECL())
@@ -402,6 +400,9 @@ def interpreter(code, coverage=False):
             opc, arg = opc[0], opc[1:]
             labels[arg] = index
         opcodes.append((opc, arg))
+
+    # add label for final RETURN_VALUE
+    stack.append(1000000000)
 
     counter = dict()
     for x in OPCODES:
