@@ -50,7 +50,7 @@ def normalize(snippet, replace=None):
               'PRINT_ITEM', 'PRINT_NEWLINE',
               'IS_POSITIVE', 'NEGATIVE', 'IS_ODD', 'DIVIDE_BY_TWO', 'TRACE')
 
-    macros += ('PUSH', 'POP', 'POP2', 'SWAP', 'POP_TOP',
+    macros += ('PUSH', 'POP', 'POP2', 'SWAP', 'POP_TOP', 'DUP_TOP',
                'CMP', 'UADD', 'USUB', 'UMUL',
                'FULLADD', 'FULLSUB', 'FULLMUL', 'MULBYDIGIT', 'DIVBY2', 'ODD')
 

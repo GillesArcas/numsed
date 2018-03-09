@@ -8,6 +8,25 @@ print(10000000000000000000)
 n = 42
 print(n)
 # --
+# assign variable
+m = 42
+n = m
+print(n)
+# --
+# chained assignment
+m = n = 42
+print(m)
+print(n)
+m = n = p = 42
+print(m)
+print(n)
+print(p)
+m = n = p = q = 42
+print(m)
+print(n)
+print(p)
+print(q)
+# --
 # assign add
 m = 42
 n = 5
