@@ -17,13 +17,158 @@ from __future__ import division, print_function
 
 import sys
 import inspect
+import types
 import operator
 import ast
 import codegen
+import numsed_lib
 from numsed_lib import *
 
 
-# -- Transformer --------------------------------------------------------------
+# -- Syntax checking Transformer ---------------------------------------------
+
+
+class NumsedCheckAstVisitor(ast.NodeVisitor):
+
+    def __init__(self, source_functions):
+        # list of functions defined in lib
+        self.lib_functions = {x[0] for x in inspect.getmembers(numsed_lib, inspect.isfunction)}
+        self.lib_functions.add('print')
+
+        self.defined_functions = source_functions.union(self.lib_functions)
+
+        self.inside_funcdef = False
+
+    def visit_Module(self, node):
+        for _ in node.body: self.visit(_)
+
+    def visit_Assign(self, node):
+        for _ in node.targets: self.visit(_)
+        self.visit(node.value)
+
+    def visit_AugAssign(self, node):
+        self.visit(node.target)
+        self.visit(node.value)
+
+    def visit_Expr(self, node):
+        self.visit(node.value)
+
+    def visit_Name(self, node):
+        pass
+
+    def visit_Num(self, node):
+        if not isinstance(node.n, int) and not isinstance(node.n, long):
+            check_error('not an integer', node.n, node)
+
+    def visit_UnaryOp(self, node):
+        if type(node.op) not in [ast.UAdd, ast.USub, ast.Not]:
+            check_error('unknown operator', node.op, node)
+        self.visit(node.operand)
+
+    def visit_BinOp(self, node):
+        if type(node.op) not in signed_func:
+            check_error('unknown operator', type(node.op), node)
+        self.visit(node.left)
+        self.visit(node.right)
+
+    def visit_Print(self, node):
+        if len(node.values) != 1 or node.dest is not None or  node.nl is False:
+            check_error('incorrect print', node.func.id, node)
+        else:
+            self.visit(node.values[0])
+
+    def visit_Call(self, node):
+        if type(node.func) is ast.Name:
+            if node.func.id not in self.defined_functions:
+                check_error('function is not defined', node.func.id, node)
+            elif node.func.id == 'print' and len(node.args) != 1:
+                check_error('print admits only one argument', node.func.id, node)
+            else:
+                for _ in node.args: self.visit(_)
+        else:
+            check_error('callable not handled', node.func, node)
+
+    def visit_Compare(self, node):
+        for op in node.ops:
+            if type(op) not in (ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE):
+                check_error('comparator not handled', type(op), node)
+            else:
+                self.visit(node.left)
+                for _ in node.comparators: self.visit(_)
+
+    def visit_BoolOp(self, node):
+        for _ in node.values: self.visit(_)
+
+    def visit_IfExp(self, node):
+        self.visit(node.test)
+        self.visit(node.body)
+        self.visit(node.orelse)
+
+    def visit_If(self, node):
+        self.visit(node.test)
+        for _ in node.body: self.visit(_)
+        for _ in node.orelse: self.visit(_)
+
+    def visit_While(self, node):
+        self.visit(node.test)
+        for _ in node.body: self.visit(_)
+        for _ in node.orelse: self.visit(_)
+
+    def visit_Break(self, node):
+        pass
+
+    def visit_Continue(self, node):
+        pass
+
+    def visit_Return(self, node):
+        self.visit(node.value)
+
+    def visit_Global(self, node):
+        pass
+
+    def visit_FunctionDef(self, node):
+        if self.inside_funcdef:
+            check_error('no nested function definitions', node.name, node)
+        if node.name in self.lib_functions:
+            check_error('not allowed to redefine functions', node.name, node)
+        if node.args.vararg is not None:
+            check_error('no vararg', node.args.vararg, node)
+        if node.args.kwarg is not None:
+            check_error('no kwarg', node.args.kwarg, node)
+        if len(node.args.defaults) > 0:
+            check_error('no defaults', node.args.defaults, node)
+        self.inside_funcdef = True
+        for _ in node.body: self.visit(_)
+        self.inside_funcdef = False
+
+    def generic_visit(self, node):
+        # print(node)
+        # print(dir(node))
+        # print(ast.dump(node))
+        check_error('construct is not handled', type(node), node)
+
+
+def check(source):
+    # compile for syntax verification
+    with open(source) as f:
+        script = f.read()
+        code = compile(script, source, "exec")
+
+    # list of functions defined in source
+    source_functions = {x.co_name for x in code.co_consts if isinstance(x, types.CodeType)}
+
+    tree = ast.parse(script)
+    #print(ast.dump(tree))
+    numsed_check_ast_visitor = NumsedCheckAstVisitor(source_functions)
+    numsed_check_ast_visitor.visit(tree)
+
+
+def check_error(msg, arg, node):
+    print('numsed: line %d col %d: %s : %s' % (node.lineno, node.col_offset, msg, arg))
+    exit(1)
+
+
+# -- Transformer -------------------------------------------------------------
 
 
 class NumsedAstTransformer(ast.NodeTransformer):
@@ -232,6 +377,7 @@ def test_exec(tree, do_exec):
 
 
 def transform(script_in, script_out, do_assert=False, do_exec=False):
+    check(script_in)
     code = transform_positive(script_in, script_out, do_exec)
     if do_assert:
         code = transform_assert(script_out, script_out, do_exec)
