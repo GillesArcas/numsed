@@ -15,7 +15,10 @@ def sedcode(opcode):
 
     sedcode = normalize('\n'.join(opcode))
     return_labels += ['end_of_script']
+    sedcode += '\n:call_function\n' + BRANCH_ON_NAME(function_labels)
     sedcode += '\n:return\n' + BRANCH_ON_NAME(return_labels)
+
+    sedcode = prettyprint(sedcode)
 
     return sedcode
 
@@ -61,7 +64,7 @@ def normalize(snippet, replace=None):
                 return globals()[macro]()
             else:
                 args = m.group(1).split()
-                return globals()[macro](*args)
+                return ('# %s\n' % macro) + globals()[macro](*args)
 
         snippet = re.sub(r'\b%s\b *([^;#\n]*)' % macro, repl, snippet)
 
@@ -82,6 +85,21 @@ def new_return():
     r = 'return%d' % return_counter
     return_counter += 1
     return r
+
+
+def prettyprint(sedcode):
+    sedcode2 = []
+    for instr in sedcode.splitlines():
+        instr = instr.strip()
+        if instr.startswith(':'):
+            pass
+        else:
+            instr = '    ' + instr
+        m = re.match('^([^#]*)(#.*)', instr)
+        if m:
+            instr = '%-40s%s' % (m.group(1).rstrip(), m.group(2))
+        sedcode2.append(instr)
+    return '\n'.join(sedcode2)
 
 
 # -- push/pop ---------------------------------------------------------------
@@ -307,22 +325,6 @@ def MAKE_FUNCTION(x):
     return ''
 
 
-def CALL_FUNCTION(argc, return_label):
-    if int(argc) >= 256:
-        raise Exception('numsed: keyword parameters not handled (argc: %s)' % argc)
-
-    # argc parameters on top of stack above name of function
-    # first, swap parameters and name
-    snippet = r'''
-        x
-        s/^(([^;]+;){argc})([^;]+;)/\3\1return_label;/
-        x
-        POP
-        ''' + BRANCH_ON_NAME(function_labels)
-    snippet2 = normalize(snippet, replace=(('argc', argc), ('return_label', return_label)))
-    return snippet2
-
-
 def CALL_FUNCTION(argc):
     if int(argc) >= 256:
         raise Exception('numsed: keyword parameters not handled (argc: %s)' % argc)
@@ -337,14 +339,12 @@ def CALL_FUNCTION(argc):
         s/^(([^;]+;){argc})([^;]+;)/\3\1return_label;/
         x
         POP
-        ''' + BRANCH_ON_NAME(function_labels) + '\n:' + return_label
-    snippet2 = normalize(snippet, replace=(('argc', argc),('return_label', return_label)))
-    return snippet2
-
-
-def RETURN_VALUE_V1():
-    snippet = 'SWAP\n' + 'POP\n' + BRANCH_ON_NAME(return_labels)
-    return normalize(snippet)
+        #x;p;x
+        b call_function
+        :return_label
+    '''
+    snippet = normalize(snippet, replace=(('argc', argc),('return_label', return_label)))
+    return snippet
 
 
 def RETURN_VALUE():
