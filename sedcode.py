@@ -445,13 +445,20 @@ def COMPARE_OP(opname):
 
 
 def POP_JUMP_IF_TRUE(target):
-    snippet = 'POP; /^0$/!b ' + target
-    return normalize(snippet)
+    snippet = '''
+        POP
+        /^0$/!b target
+    '''
+    return snippet.replace('target', target)
 
 
 def POP_JUMP_IF_FALSE(target):
-    snippet = 'POP; /^0$/b ' + target
-    return normalize(snippet)
+    snippet = '''
+        POP
+        /^0$/b target
+    '''
+    return snippet.replace('target', target)
+
 
 def JUMP_IF_TRUE_OR_POP(target):
     snippet = '''
@@ -461,6 +468,7 @@ def JUMP_IF_TRUE_OR_POP(target):
     '''
     return snippet.replace('target', target)
 
+
 def JUMP_IF_FALSE_OR_POP(target):
     snippet = '''
         g
@@ -468,6 +476,7 @@ def JUMP_IF_FALSE_OR_POP(target):
         POP
     '''
     return snippet.replace('target', target)
+
 
 def JUMP(target):
     return 'b ' + target
