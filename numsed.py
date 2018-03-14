@@ -3,12 +3,6 @@ from __future__ import print_function
 import argparse
 import sys
 import os
-import re
-import subprocess
-try:
-    from StringIO import StringIO  # Python2
-except ImportError:
-    from io import StringIO  # Python3
 
 import transformer
 import opcoder
@@ -29,75 +23,8 @@ import sedcode
 # http://faster-cpython-zh.readthedocs.io/en/latest/registervm.html
 
 
-# -- Generate opcodes and run ------------------------------------------------
-
-
-def run_opcode(source, transform=True, trace=False, coverage=False):
-    if source.endswith('.py'):
-        opcodes = opcoder.make_opcode(source, transform=transform, trace=False)
-    elif source.endswith('.opc'):
-        opcodes = opcoder.read_opcode(source)
-    else:
-        raise Exception('Invalid file type')
-
-    return'\n'.join(opcoder.interpreter(opcodes, coverage))
-    #return '\n'.join(opcodes)
-
-
-# -- Generate sed code -------------------------------------------------------
-
-
-def make_sed_module(source, trace=False):
-
-    if source.endswith('.py'):
-        opcodes = opcoder.make_opcode(source, transform=True, trace=False)
-    elif source.endswith('.opc'):
-        opcodes = opcoder.read_opcode(source)
-    else:
-        raise Exception('Invalid file type')
-
-    sed = sedcode.sedcode(opcodes)
-
-    # trace if requested
-    if trace:
-        print(sed)
-
-    # return string
-    return sed
-
-
-# -- Generate sed script and run ---------------------------------------------
-
-
-def make_sed_and_run(source, trace=False):
-
-    sed = make_sed_module(source, trace=False)
-
-    name_script = 'tmp.sed'
-    name_input = 'tmp.input'
-
-    with open(name_script, 'w') as f:
-        print(sed, file=f)
-
-    with open(name_input, 'w') as f:
-        print('0', file=f)
-
-    com = 'sed -n -r -f %s %s' % (name_script, name_input)
-
-    # TODO: check sed in path
-    res = subprocess.check_output(com)
-    res = res.decode('ascii') # py3
-    for line in res.splitlines():
-        print(line)
-
-
 # -- Tests -------------------------------------------------------------------
 
-
-def numsed_compile(fname):
-    __import__(fname)
-    #functions_list = [obj for name,obj in inspect.getmembers(sys.modules[fname])
-    #                 if inspect.isfunction(obj)]
 
 def test():
     #import exemple01
@@ -133,7 +60,7 @@ def do_helphtml():
 
 USAGE = '''
 numsed.py -h | -H | -v
-       --positive|--dis|-opsigned|--opcode|--sed python-script [--run]
+numsed.py <format> <transformation> <action> python-script
 '''
 
 def parse_command_line(argstring=None):
@@ -142,13 +69,27 @@ def parse_command_line(argstring=None):
     parser.add_argument('-h', help='show this help message', action='store_true', dest='do_help')
     parser.add_argument('-H', help='open html help page', action='store_true', dest='do_helphtml')
     parser.add_argument("-v", help="version", action="store_true", dest="version")
-    parser.add_argument("--positive", help="generate positive forme", action="store_true")
-    parser.add_argument("--dis", help="disassemble", action="store_true", dest="disassemble")
-    parser.add_argument("--opsigned", help="signed intermediate opcode", action="store_true")
-    parser.add_argument("--opcode", help="numsed intermediate opcode", action="store_true")
-    parser.add_argument("--opcoverage", help="run numsed intermediate opcode and display opcode coverage", action="store_true", dest="opcoverage")
-    parser.add_argument("--sed", help="generate sed script", action="store_true", dest="sed")
-    parser.add_argument("--run", help="run generated script", action="store_true", dest="run")
+
+    agroup = parser.add_argument_group('Formats')
+    xgroup = agroup.add_mutually_exclusive_group()
+    xgroup.add_argument("--ast", help="generate abstract syntax tree", action="store_true")
+    xgroup.add_argument("--script", help="generate python script", action="store_true")
+    xgroup.add_argument("--disassembly", help="generate disassembly", action="store_true")
+    xgroup.add_argument("--opcode", help="generate numsed intermediate opcode", action="store_true")
+    xgroup.add_argument("--sed", help="generate sed script", action="store_true")
+
+    agroup = parser.add_argument_group('Transformations')
+    xgroup = agroup.add_mutually_exclusive_group()
+    xgroup.add_argument("--literal", help="no program transformation", action="store_true")
+    xgroup.add_argument("--unsigned", help="replace division, modulo and power by functions", action="store_true")
+    xgroup.add_argument("--signed", help="replace all operators by functions", action="store_true")
+
+    agroup = parser.add_argument_group('Actions')
+    xgroup = agroup.add_mutually_exclusive_group()
+    xgroup.add_argument("--run", help="run generated script", action="store_true", dest="run")
+    xgroup.add_argument("--trace", help="trace generated script", action="store_true", dest="trace")
+    xgroup.add_argument("--coverage", help="run numsed intermediate opcode and display opcode coverage", action="store_true", dest="coverage")
+
     parser.add_argument("--test", help="test", action="store_true", dest="test")
     parser.add_argument("source", nargs='?', help=argparse.SUPPRESS, default=sys.stdin)
 
@@ -157,6 +98,29 @@ def parse_command_line(argstring=None):
     else:
         args = parser.parse_args(argstring.split())
     return parser, args
+
+
+def transformation(args):
+    if args.literal:
+        return transformer.LITERAL
+    elif args.unsigned:
+        return transformer.UNSIGNED
+    else:
+        return transformer.SIGNED
+
+
+def numsed_maker(args):
+    if args.ast:
+        return transformer.AstTarget
+    if args.script:
+        return transformer.ScriptTarget
+    if args.disassembly:
+        return opcoder.DisTarget
+    if args.opcode:
+        return opcoder.OpcodeTarget
+    if args.sed:
+        return sedcode.SedTarget
+    return None
 
 
 def numsed(argstring=None):
@@ -175,43 +139,20 @@ def numsed(argstring=None):
         do_helphtml()
         return
 
-    elif args.positive:
-        code = transformer.transform(args.source, '~.py')
-        if not args.run:
-            print(code)
-        else:
-            res = subprocess.check_output('python ~.py')
-            res = res.decode('ascii') # py3
-            print(res)
-
-    elif args.disassemble:
-        opcoder.disassemble(args.source, trace=True)
-
-    elif args.opsigned:
-        if args.run:
-            return run_opcode(args.source, transform=False, trace=False)
-        else:
-            opcoder.make_opcode(args.source, transform=False, trace=True)
-
-    elif args.opcode:
-        if args.run:
-            return run_opcode(args.source, transform=True, trace=False)
-        else:
-            opcoder.make_opcode(args.source, transform=True, trace=True)
-
-    elif args.opcoverage:
-        run_opcode(args.source, transform=True, trace=False, coverage=True)
-
-    elif args.sed:
-        if args.run:
-            make_sed_and_run(args.source, trace=False)
-        else:
-            make_sed_module(args.source, trace=True)
-
     elif args.test:
         test()
+
     else:
-        raise Exception()
+        maker = numsed_maker(args)
+        target = maker(args.source, transformation(args))
+        if args.run:
+            x = target.run()
+        elif args.coverage:
+            x = target.coverage()
+        else:
+            x = target.trace()
+        print(x)
+        return x
 
 
 if __name__ == "__main__":

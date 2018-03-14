@@ -18,14 +18,21 @@ from __future__ import division, print_function
 import sys
 import inspect
 import types
-import operator
 import ast
+import subprocess
 import codegen
 import numsed_lib
 from numsed_lib import *
+try:
+    from StringIO import StringIO  # Python2
+except ImportError:
+    from io import StringIO  # Python3
 
 
-# -- Syntax checking Transformer ---------------------------------------------
+LITERAL, UNSIGNED, SIGNED = range(3)
+
+
+# -- Syntax checking visitor -------------------------------------------------
 
 
 class NumsedCheckAstVisitor(ast.NodeVisitor):
@@ -79,12 +86,15 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
 
     def visit_Call(self, node):
         if type(node.func) is ast.Name:
-            if node.func.id not in self.defined_functions:
+            if False and node.func.id not in self.defined_functions:
                 check_error('function is not defined', node.func.id, node)
             elif node.func.id == 'print' and len(node.args) != 1:
                 check_error('print admits only one argument', node.func.id, node)
             else:
                 for _ in node.args: self.visit(_)
+        elif type(node.func) is ast.Call:
+            self.visit(node.func)
+            for _ in node.args: self.visit(_)
         else:
             check_error('callable not handled', node.func, node)
 
@@ -158,7 +168,6 @@ def check(source):
     source_functions = {x.co_name for x in code.co_consts if isinstance(x, types.CodeType)}
 
     tree = ast.parse(script)
-    #print(ast.dump(tree))
     numsed_check_ast_visitor = NumsedCheckAstVisitor(source_functions)
     numsed_check_ast_visitor.visit(tree)
 
@@ -168,7 +177,52 @@ def check_error(msg, arg, node):
     exit(1)
 
 
-# -- Transformer -------------------------------------------------------------
+# -- Unsigned transformer ----------------------------------------------------
+
+
+class UnsignedTransformer(ast.NodeTransformer):
+
+    def __init__(self, func):
+        """
+        func is a dict giving the functions replacing operators. Can be
+        the functions from library, or testing functions checking all
+        operands are positive.
+        """
+        self.func = func
+        self.required_func = set()
+
+    def make_call(self, func, args):
+        self.required_func.add(func)
+        return ast.Call(func=ast.Name(id=func, ctx=ast.Load()),
+                        args=args,
+                        keywords=[], starargs=None, kwargs=None)
+
+    def visit_BinOp(self, node):
+        self.generic_visit(node)
+        if type(node.op) in self.func:
+            return self.make_call(self.func[type(node.op)], [node.left, node.right])
+
+    def visit_AugAssign(self, node):
+        # AugAssign(target=Name(id='x', ctx=Store()), op=Add(), value=Num(n=1)),
+        # Assign(targets=[Name(id='x', ctx=Store())], value=BinOp(left=Name(id='x', ctx=Load()), op=Add(), right=Num(n=1)))])
+        # self.generic_visit(node)
+        if type(node.op) in self.func:
+            target = node.target
+            source = ast.Name(id=target.id, ctx=ast.Load())
+            return ast.Assign(targets=[target], value=self.visit_BinOp(ast.BinOp(left=source, op=node.op, right=node.value)))
+        else:
+            self.generic_visit(node)
+            return node
+
+    def visit_FunctionDef(self, node):
+        if node.name in PRIMITIVES:
+            return node
+        else:
+            self.generic_visit(node)
+            return node
+
+
+# -- Signed transformer ------------------------------------------------------
 
 
 class NumsedAstTransformer(ast.NodeTransformer):
@@ -258,13 +312,34 @@ def function_calls(libfuncs):
         for func in numsed_ast_visitor.required_func:
             if func not in libfuncs and func not in libfuncs2:
                 libfuncs.add(func)
-    return libfuncs2
+    return sorted(list(libfuncs2))
+
+
+# -- Unsigned transformation -------------------------------------------------
+
+
+def transform_unsigned(script_in, script_out):
+    tree = ast.parse(open(script_in).read())
+    numsed_ast_transformer = UnsignedTransformer(Unsigned_func)
+    numsed_ast_transformer.visit(tree)
+
+    libfuncs = numsed_ast_transformer.required_func
+    libfuncs2 = function_calls(libfuncs)
+    libfuncs = [globals()[x] for x in libfuncs2]
+
+    return save_new_script(tree, libfuncs, getsourcetext, script_out)
+
+
+Unsigned_func = {
+    ast.FloorDiv: 'udiv',
+    ast.Mod: 'umod',
+    ast.Pow: 'upow'}
 
 
 # -- Positive transformation -------------------------------------------------
 
 
-def transform_positive(script_in, script_out, do_exec):
+def transform_positive(script_in, script_out):
     tree = ast.parse(open(script_in).read())
     numsed_ast_transformer = NumsedAstTransformer(signed_func)
     numsed_ast_transformer.visit(tree)
@@ -295,6 +370,18 @@ def getsourcetext(func):
     return ''.join(inspect.getsourcelines(func)[0])
 
 
+def make_new_script(tree, libfuncs, func_text):
+    # add library functions to code to compile
+    script = ''
+    for func in libfuncs:
+        script += '\n'
+        script += func_text(func)
+    script += '\n'
+    script += codegen.to_source(tree)
+
+    return script
+
+
 def save_new_script(tree, libfuncs, func_text, script_out):
     # add library functions to code to compile
     script = ''
@@ -313,11 +400,10 @@ def save_new_script(tree, libfuncs, func_text, script_out):
 # -- Testing transformation --------------------------------------------------
 
 
-def transform_assert(script_in, script_out, do_exec):
+def transform_assert(script_in, script_out):
     tree = ast.parse(open(script_in).read())
     numsed_ast_transformer = NumsedAstTransformer(unsigned_func)
     numsed_ast_transformer.visit(tree)
-    test_exec(tree, do_exec)
 
     libfuncs = numsed_ast_transformer.required_func
 
@@ -366,31 +452,117 @@ def make_unsigned_func(name):
     return unsigned_func_pattern % (name, unsigned_op[name])
 
 
+# -- AST pretty print --------------------------------------------------------
+#
+# adapted from http://code.activestate.com/recipes/533146-ast-pretty-printer/
+
+
+def pprint_ast(astree, indent='  ', stream=sys.stdout):
+    "Pretty-print an AST to the given output stream."
+    rec_node(astree, 0, indent, stream.write)
+    stream.write('\n')
+
+
+def rec_node(node, level, indent, write):
+    "Recurse through a node, pretty-printing it."
+    pfx = indent * level
+    if isinstance(node, (ast.Name, ast.Num)):
+        print(pfx, ast.dump(node), sep='', end='')
+
+    elif isinstance(node, ast.AST):
+        print(pfx, node.__class__.__name__, '(', sep='', end='')
+
+        if any(isinstance(child, ast.AST) for child in ast.iter_child_nodes(node)):
+            for i, child in enumerate(ast.iter_child_nodes(node)):
+                if i != 0:
+                    print(',', end='')
+                print()
+                rec_node(child, level+1, indent, write)
+            print()
+            print(pfx, sep='', end='')
+        else:
+            # None of the children as nodes, simply join their repr on a single line.
+            print(', '.join(repr(child) for child in ast.iter_child_nodes(node)), sep='', end='')
+
+        print(')', sep='', end='')
+    else:
+        print(pfx, repr(node), sep='', end='')
+
+
 # -- Main --------------------------------------------------------------------
 
 
-def test_exec(tree, do_exec):
-    if do_exec:
-        ast.fix_missing_locations(tree)
-        print(ast.dump(tree))
-        exec(compile(tree, filename="<ast>", mode="exec"))
+class ListStream:
+    def __enter__(self):
+        self.result = StringIO()
+        sys.stdout = self.result
+        return self
+    def __exit__(self, ext_type, exc_value, traceback):
+        sys.stdout = sys.__stdout__
+    def stringlist(self):
+        return self.result.getvalue().splitlines()
+    def singlestring(self):
+        return self.result.getvalue()
+
+
+class AstTarget:
+    def __init__(self, source, transformation):
+        check(source)
+        self.transformation = transformation
+        self.tree = ast.parse(open(source).read())
+        if transformation == LITERAL:
+            pass
+        elif transformation == UNSIGNED:
+            numsed_ast_transformer = UnsignedTransformer(Unsigned_func)
+            numsed_ast_transformer.visit(self.tree)
+        elif transformation == SIGNED:
+            numsed_ast_transformer = NumsedAstTransformer(signed_func)
+            numsed_ast_transformer.visit(self.tree)
+        else:
+            pass
+
+    def trace(self):
+        with ListStream() as x:
+            pprint_ast(self.tree)
+        return x.singlestring()
+
+    def run(self):
+        with ListStream() as x:
+            ast.fix_missing_locations(self.tree)
+            exec(compile(self.tree, filename="<ast>", mode="exec"))
+        return x.singlestring()
+
+
+class ScriptTarget:
+    def __init__(self, source, transformation):
+        check(source)
+        self.transformation = transformation
+        if transformation == LITERAL:
+            self.code = open(source).read()
+            open('~.py', 'wt').write(self.code)
+        elif transformation == UNSIGNED:
+            self.code = transform_unsigned(source, '~.py')
+        elif transformation == SIGNED:
+            self.code = transform_positive(source, '~.py')
+        else:
+            self.code = ''
+    def trace(self):
+        return self.code
+    def run(self):
+        if self.transformation == SIGNED:
+            code = transform_assert('~.py', '~.py')
+        res = subprocess.check_output('python ~.py')
+        res = res.decode('ascii') # py3
+        return res
 
 
 def transform(script_in, script_out, do_assert=False, do_exec=False):
     check(script_in)
-    code = transform_positive(script_in, script_out, do_exec)
+    code = transform_positive(script_in, script_out)
     if do_assert:
-        code = transform_assert(script_out, script_out, do_exec)
+        code = transform_assert(script_out, script_out)
     return code
 
 
-def main():
-    script_in = sys.argv[1]
-    script_out = sys.argv[2]
-    do_assert = False
-    do_exec = True
-    transform(script_in, script_out, do_assert, do_exec)
-
-
 if __name__ == "__main__":
-    main()
+    pass

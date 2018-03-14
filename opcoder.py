@@ -21,20 +21,32 @@ import numsed_lib
 # -- Disassemble -------------------------------------------------------------
 
 
+class DisTarget:
+    def __init__(self, source, transformation):
+        script_trans = transformer.ScriptTarget(source, transformation)
+        with open('~.py', 'wt') as f:
+            f.write(script_trans.trace())
+        self.code = disassemble('~.py')
+    def trace(self):
+        return self.code
+    def run(self):
+        pass
+
+
 IS64BITS = sys.maxsize > 2**32
 
 
-def disassemble(source, trace=False):
+def disassemble(source):
 
     # compile
     with open(source) as f:
         script = f.read()
+        code = compile(script, source, "exec")
 
     old_stdout = sys.stdout
     result = StringIO()
     sys.stdout = result
 
-    code = compile(script, source, "exec")
     dis.dis(code)
 
     for oparg in code.co_consts:
@@ -49,11 +61,6 @@ def disassemble(source, trace=False):
 
     sys.stdout = old_stdout
     code = result.getvalue().splitlines()
-
-    # trace if requested
-    if trace:
-        for instr in code:
-            print(instr)
 
     # return list of instructions
     return code
@@ -114,7 +121,23 @@ def parse_dis_instruction(s):
 # -- Disassemble to numsed opcodes -------------------------------------------
 
 
-def make_opcode(source, offset=0, transform=True, trace=False):
+class OpcodeTarget:
+    def __init__(self, source, transformation):
+        x = DisTarget(source, transformation)
+        dis_code = x.trace()
+        self.opcode = make_opcode_new(dis_code)
+
+    def trace(self):
+        return self.opcode
+
+    def run(self):
+        return'\n'.join(interpreter(self.opcode, coverage=False))
+
+    def coverage(self):
+        return'\n'.join(interpreter(self.opcode, coverage=True))
+
+
+def make_opcode(source, transform=True, trace=False):
 
     # transform to positive form
     if transform:
@@ -123,13 +146,25 @@ def make_opcode(source, offset=0, transform=True, trace=False):
         shutil.copy(source, '~.py')
 
     # disassemble
-    dis_code = disassemble('~.py', trace=False)
+    dis_code = disassemble('~.py')
 
     # simplify dis code
     dis_code = prepared_dis_code(dis_code)
 
     # convert dis codes to numsed codes
     opcode = opcodes(dis_code, trace)
+
+    # return list of instructions
+    return opcode
+
+
+def make_opcode_new(dis_code):
+
+    # simplify dis code
+    dis_code = prepared_dis_code(dis_code)
+
+    # convert dis codes to numsed codes
+    opcode = opcodes(dis_code, trace=False)
 
     # return list of instructions
     return opcode
@@ -525,10 +560,10 @@ def interpreter(code, coverage=False):
                 tos = stack.pop()
         elif opc == 'PRINT_ITEM':
             tos = stack.pop()
-            print(tos, end = '')
+            print(tos, end='')
             if not result:
                 result.append('')
-            result[-1] += '%d' % tos
+            result[-1] += '%s' % tos
         elif opc == 'PRINT_NEWLINE':
             print()
             result.append('')
@@ -541,7 +576,7 @@ def interpreter(code, coverage=False):
             # argc parameters on top of stack above name of function
             # first, add return address and swap parameters and name
             args = list()
-            for i in range(int(arg)):
+            for _ in range(int(arg)):
                 args.append(stack.pop())
             func = stack.pop()
             stack.append(instr_pointer)
@@ -583,5 +618,6 @@ def interpreter(code, coverage=False):
     if coverage:
         for x in OPCODES:
             print('%-20s %10d' % (x, counter[x]))
-
-    return result
+        return ''
+    else:
+        return result

@@ -21,7 +21,7 @@ def testlines(name):
                 lines.append(line)
 
 
-def run_test(test, mode):
+def run_test(test, maker, args):
     # save script
     with open('tmp.py', 'w') as f:
         f.writelines(test)
@@ -31,33 +31,8 @@ def run_test(test, mode):
     ref = ref.decode('ascii') # py3
     print(ref)
 
-    if mode == 'transform':
-        # transform
-        transformer.transform('tmp.py', 'tmp_transformed.py', do_assert=True)
-
-        # run transformed script and store results
-        res = subprocess.check_output('python tmp_transformed.py')
-        res = res.decode('ascii') # py3
-        ###print(res)
-
-    if mode == 'opsigned':
-        #res = numsed.make_opcode_and_run('tmp.py', trace=False)
-        #res = numsed.run_opcode('tmp.py', transform=False)
-        #res = subprocess.check_output('python numsed.py --opsigned --run tmp.py')
-        res = numsed.numsed('--opsigned --run tmp.py')
-        #res = subprocess.check_output('python numsed.py --opsigned --run tmp.py')
-        print(res)
-
-    if mode == 'opcode':
-        #numsed.make_opcode_and_run('tmp.py', trace=False)
-        #res = subprocess.check_output('python numsed.py --opcode --run tmp.py')
-        res = numsed.numsed('--opcode --run tmp.py')
-        print(res)
-
-    if mode == 'sed':
-        res = subprocess.check_output('python numsed.py --sed --run tmp.py')
-        res = res.decode('ascii') # py3
-        print(res)
+    target = maker('tmp.py', numsed.transformation(args))
+    res = target.run()
 
     # compare
     status, diff = list_compare('ref', 'res', ref.splitlines(), res.splitlines())
@@ -91,23 +66,15 @@ def list_compare(tag1, tag2, list1, list2):
     return res, diff
 
 
-def main(mode, testsuite):
-    if mode in ('transform', 'opsigned', 'opcode', 'sed'):
-        status = True
-        for test in testlines(testsuite):
-            print(test)
-            status = status and run_test(test, mode)
-        print('ALL TESTS OK' if status else 'One TEST failure')
-    else:
-        status = all(main(mode, testsuite) for mode in ('transform', 'opsigned', 'opcode', 'sed'))
-        print('ALL MODES OK' if status else 'ONE MODE FAILURE')
-    return status
+def main():
+    parser, args = numsed.parse_command_line(None)
+    maker = numsed.numsed_maker(args)
+    status = True
+    for test in testlines(args.source):
+        print(test)
+        status = status and run_test(test, maker, args)
+    print('ALL TESTS OK' if status else 'ONE TEST FAILURE')
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 3 or sys.argv[1] not in ('transform', 'opsigned', 'opcode', 'sed') + ('all',):
-        print('numsed_test.py transform|opsigned|opcode|sed|all testsuite')
-    else:
-        mode = sys.argv[1]
-        testsuite = sys.argv[2]
-        main(mode, testsuite)
+    main()

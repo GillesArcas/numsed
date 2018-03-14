@@ -82,6 +82,11 @@ def udiv(a, b):
     return q
 
 
+def umod(a, b):
+    q = udiv(a, b)
+    return a - q * b
+
+
 def upow(base, exp):
     result = 1
     while exp:
@@ -210,7 +215,7 @@ However, they are handled separately:
 - they are removed when generating opcodes and replaced with dedicated
   opcodes.
 Note that current implementation imposes that there is no call of any function
-as an argument of a primitive function and here is no control to check that.
+as an argument of a primitive function and there is no control to check that.
 """
 
 
