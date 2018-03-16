@@ -86,9 +86,10 @@ def parse_command_line(argstring=None):
 
     agroup = parser.add_argument_group('Actions')
     xgroup = agroup.add_mutually_exclusive_group()
-    xgroup.add_argument("--run", help="run generated script", action="store_true", dest="run")
-    xgroup.add_argument("--trace", help="trace generated script", action="store_true", dest="trace")
-    xgroup.add_argument("--coverage", help="run numsed intermediate opcode and display opcode coverage", action="store_true", dest="coverage")
+    xgroup.add_argument("--run", help="run generated script", action="store_true")
+    xgroup.add_argument("--trace", help="trace generated script", action="store_true")
+    xgroup.add_argument("--coverage", help="run numsed intermediate opcode and display opcode coverage", action="store_true")
+    xgroup.add_argument("--testing", help="run conversion and compare with original python script", action="store_true")
 
     parser.add_argument("--test", help="test", action="store_true", dest="test")
     parser.add_argument("source", nargs='?', help=argparse.SUPPRESS, default=sys.stdin)
@@ -111,15 +112,15 @@ def transformation(args):
 
 def numsed_maker(args):
     if args.ast:
-        return transformer.AstTarget
+        return transformer.AstConversion
     if args.script:
-        return transformer.ScriptTarget
+        return transformer.ScriptConversion
     if args.disassembly:
-        return opcoder.DisTarget
+        return opcoder.DisassemblyConversion
     if args.opcode:
-        return opcoder.OpcodeTarget
+        return opcoder.OpcodeConversion
     if args.sed:
-        return sedcode.SedTarget
+        return sedcode.SedConversion
     return None
 
 
@@ -149,6 +150,8 @@ def numsed(argstring=None):
             x = target.run()
         elif args.coverage:
             x = target.coverage()
+        elif args.testing:
+            x = target.test()
         else:
             x = target.trace()
         print(x)

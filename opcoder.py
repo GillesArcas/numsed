@@ -9,28 +9,24 @@ import re
 import dis
 import types
 import shutil
-try:
-    from StringIO import StringIO  # Python2
-except ImportError:
-    from io import StringIO  # Python3
 
+import common
 import transformer
 import numsed_lib
 
 
-# -- Disassemble -------------------------------------------------------------
+# -- Disassembly -------------------------------------------------------------
 
 
-class DisTarget:
+class DisassemblyConversion(common.NumsedConversion):
     def __init__(self, source, transformation):
-        script_trans = transformer.ScriptTarget(source, transformation)
+        common.NumsedConversion.__init__(self, source, transformation)
+        script_trans = transformer.ScriptConversion(source, transformation)
         with open('~.py', 'wt') as f:
             f.write(script_trans.trace())
         self.code = disassemble('~.py')
     def trace(self):
-        return self.code
-    def run(self):
-        pass
+        return '\n'.join(self.code)
 
 
 IS64BITS = sys.maxsize > 2**32
@@ -43,24 +39,19 @@ def disassemble(source):
         script = f.read()
         code = compile(script, source, "exec")
 
-    old_stdout = sys.stdout
-    result = StringIO()
-    sys.stdout = result
+    with common.ListStream() as x:
+        dis.dis(code)
+        for oparg in code.co_consts:
+            if isinstance(oparg, types.CodeType):
+                func_code = oparg
+                padded_id = ('%016X' if IS64BITS else '%08X') % id(func_code)
+                print('\n', ' ' * 11, '%-29s %s_%s %s' % ('-1 FUNCTION',
+                                                    func_code.co_name,
+                                                    padded_id,
+                                                    ' '.join(func_code.co_varnames[:func_code.co_argcount])))
+                dis.disassemble(func_code)
 
-    dis.dis(code)
-
-    for oparg in code.co_consts:
-        if isinstance(oparg, types.CodeType):
-            func_code = oparg
-            padded_id = ('%016X' if IS64BITS else '%08X') % id(func_code)
-            print('\n', ' ' * 11, '%-29s %s_%s %s' % ('-1 FUNCTION',
-                                                  func_code.co_name,
-                                                  padded_id,
-                                                  ' '.join(func_code.co_varnames[:func_code.co_argcount])))
-            dis.disassemble(func_code)
-
-    sys.stdout = old_stdout
-    code = result.getvalue().splitlines()
+    code = x.stringlist()
 
     # return list of instructions
     return code
@@ -78,7 +69,7 @@ def prepared_dis_code(dis_code):
     Replace reference to function objects by labels.
     """
     newcode = []
-    for line in dis_code:
+    for line in dis_code.splitlines():
         if line.strip():
             label, instr, arg = parse_dis_instruction(line)
             if label:
@@ -87,7 +78,6 @@ def prepared_dis_code(dis_code):
                 newcode.append('%s %s' % (instr, arg))
             else:
                 newcode.append(instr)
-    # link_dis_code(newcode)
     return newcode
 
 
@@ -121,56 +111,35 @@ def parse_dis_instruction(s):
 # -- Disassemble to numsed opcodes -------------------------------------------
 
 
-class OpcodeTarget:
+class OpcodeConversion(common.NumsedConversion):
     def __init__(self, source, transformation):
-        x = DisTarget(source, transformation)
-        dis_code = x.trace()
-        self.opcode = make_opcode_new(dis_code)
+        common.NumsedConversion.__init__(self, source, transformation)
+        if source.endswith('.py'):
+            x = DisassemblyConversion(source, transformation)
+            dis_code = x.trace()
+            self.opcode = opcodes(dis_code)
+        elif source.endswith('.opc'):
+            with open(source) as f:
+                self.opcode = [_.rstrip() for _ in f.readlines()]
+        else:
+            raise Exception('Invalid file type')
 
     def trace(self):
-        return self.opcode
+        return '\n'.join(self.opcode)
 
     def run(self):
-        return'\n'.join(interpreter(self.opcode, coverage=False))
+        with common.ListStream() as x:
+            interpreter(self.opcode, coverage=False)
+        return x.singlestring()
 
     def coverage(self):
         return'\n'.join(interpreter(self.opcode, coverage=True))
 
 
-def make_opcode(source, transform=True, trace=False):
-
-    # transform to positive form
-    if transform:
-        transformer.transform(source, '~.py')
-    else:
-        shutil.copy(source, '~.py')
-
-    # disassemble
-    dis_code = disassemble('~.py')
-
+def opcodes(dis_code):
     # simplify dis code
     dis_code = prepared_dis_code(dis_code)
 
-    # convert dis codes to numsed codes
-    opcode = opcodes(dis_code, trace)
-
-    # return list of instructions
-    return opcode
-
-
-def make_opcode_new(dis_code):
-
-    # simplify dis code
-    dis_code = prepared_dis_code(dis_code)
-
-    # convert dis codes to numsed codes
-    opcode = opcodes(dis_code, trace=False)
-
-    # return list of instructions
-    return opcode
-
-
-def opcodes(dis_code, trace=False):
     newcode = []
     newcode.append('STARTUP')
 
@@ -265,11 +234,6 @@ def opcodes(dis_code, trace=False):
     # add print definition
     newcode.extend(PRINT())
 
-    # trace if requested
-    if trace:
-        for instr in newcode:
-            print(instr)
-
     # return list of instructions
     return newcode
 
@@ -287,14 +251,6 @@ def current_loop(opcode, instr_pointer):
             pass
     assert opcode[pointer].startswith('SETUP_LOOP')
     return pointer
-
-
-# -- Reading opcode ----------------------------------------------------------
-
-
-def read_opcode(source):
-    with open(source) as f:
-        return f.readlines()
 
 
 # -- Other code transformations ----------------------------------------------
@@ -621,3 +577,7 @@ def interpreter(code, coverage=False):
         return ''
     else:
         return result
+
+
+if __name__ == "__main__":
+    pass

@@ -21,12 +21,9 @@ import types
 import ast
 import subprocess
 import codegen
+import common
 import numsed_lib
 from numsed_lib import *
-try:
-    from StringIO import StringIO  # Python2
-except ImportError:
-    from io import StringIO  # Python3
 
 
 LITERAL, UNSIGNED, SIGNED = range(3)
@@ -201,6 +198,8 @@ class UnsignedTransformer(ast.NodeTransformer):
         self.generic_visit(node)
         if type(node.op) in self.func:
             return self.make_call(self.func[type(node.op)], [node.left, node.right])
+        else:
+            return node
 
     def visit_AugAssign(self, node):
         # AugAssign(target=Name(id='x', ctx=Store()), op=Add(), value=Num(n=1)),
@@ -458,13 +457,11 @@ def make_unsigned_func(name):
 
 
 def pprint_ast(astree, indent='  ', stream=sys.stdout):
-    "Pretty-print an AST to the given output stream."
     rec_node(astree, 0, indent, stream.write)
     stream.write('\n')
 
 
 def rec_node(node, level, indent, write):
-    "Recurse through a node, pretty-printing it."
     pfx = indent * level
     if isinstance(node, (ast.Name, ast.Num)):
         print(pfx, ast.dump(node), sep='', end='')
@@ -492,23 +489,10 @@ def rec_node(node, level, indent, write):
 # -- Main --------------------------------------------------------------------
 
 
-class ListStream:
-    def __enter__(self):
-        self.result = StringIO()
-        sys.stdout = self.result
-        return self
-    def __exit__(self, ext_type, exc_value, traceback):
-        sys.stdout = sys.__stdout__
-    def stringlist(self):
-        return self.result.getvalue().splitlines()
-    def singlestring(self):
-        return self.result.getvalue()
-
-
-class AstTarget:
+class AstConversion(common.NumsedConversion):
     def __init__(self, source, transformation):
+        common.NumsedConversion.__init__(self, source, transformation)
         check(source)
-        self.transformation = transformation
         self.tree = ast.parse(open(source).read())
         if transformation == LITERAL:
             pass
@@ -522,21 +506,28 @@ class AstTarget:
             pass
 
     def trace(self):
-        with ListStream() as x:
+        print(ast.dump(self.tree))
+        with common.ListStream() as x:
             pprint_ast(self.tree)
         return x.singlestring()
 
     def run(self):
-        with ListStream() as x:
+        with common.ListStream() as x:
             ast.fix_missing_locations(self.tree)
-            exec(compile(self.tree, filename="<ast>", mode="exec"))
+            code = compile(self.tree, filename="<ast>", mode="exec")
+            # giving a new namespace is necessary to avoid exec interfering
+            # with current context (x variable from with construct)
+            # giving global and local namespace (or equivalently only global
+            # namespace) is necessary to handle recursive function definitions
+            # see https://stackoverflow.com/questions/871887/using-exec-with-recursive-functions
+            exec(code, globals())
         return x.singlestring()
 
 
-class ScriptTarget:
+class ScriptConversion(common.NumsedConversion):
     def __init__(self, source, transformation):
+        common.NumsedConversion.__init__(self, source, transformation)
         check(source)
-        self.transformation = transformation
         if transformation == LITERAL:
             self.code = open(source).read()
             open('~.py', 'wt').write(self.code)

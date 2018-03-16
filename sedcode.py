@@ -3,18 +3,15 @@ from __future__ import print_function
 import re
 import subprocess
 
+import common
 import opcoder
 
 
-class SedTarget:
+class SedConversion(common.NumsedConversion):
     def __init__(self, source, transformation):
-        if source.endswith('.py'):
-            x = opcoder.OpcodeTarget(source, transformation)
-            opcodes = x.trace()
-        elif source.endswith('.opc'):
-            opcodes = opcoder.read_opcode(source)
-        else:
-            raise Exception('Invalid file type')
+        common.NumsedConversion.__init__(self, source, transformation)
+        x = opcoder.OpcodeConversion(source, transformation)
+        opcodes = x.trace().splitlines()
         self.sed = make_sed_header(source) + sedcode(opcodes)
 
     def trace(self):
@@ -65,21 +62,6 @@ def run_sed(sed):
 
 
 # -- Generate sed code -------------------------------------------------------
-
-
-def make_sed_module(source):
-
-    if source.endswith('.py'):
-        opcodes = opcoder.make_opcode(source, transform=True, trace=False)
-    elif source.endswith('.opc'):
-        opcodes = opcoder.read_opcode(source)
-    else:
-        raise Exception('Invalid file type')
-
-    sed = header + sedcode(opcodes)
-
-    # return string
-    return sed
 
 
 def sedcode(opcode):
