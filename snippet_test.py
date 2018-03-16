@@ -160,7 +160,7 @@ def func_context_3():
 
 def test_context_3():
     inplist = ['0']
-    outlist = ['@;z;3;y;2;x;1']
+    outlist = ['end_of_script;@;z;3;y;2;x;1']
     test_gen('func_context_3', func_context_3, inplist, outlist)
 
 
