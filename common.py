@@ -56,6 +56,20 @@ class ListStream:
         return self.result.getvalue()
 
 
+def testlines(name):
+    '''
+    yield each test in a test suite
+    '''
+    with open(name) as f:
+        lines = []
+        for line in f:
+            if line.startswith('#') and '---' in line:
+                yield lines
+                lines = []
+            else:
+                lines.append(line)
+
+
 def list_compare(tag1, tag2, list1, list2):
     # make sure both lists have same length
     maxlen = max(len(list1), len(list2))

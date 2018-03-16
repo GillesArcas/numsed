@@ -1,12 +1,21 @@
+"""
+numsed: compiling python to sed
+"""
+
 from __future__ import print_function
 
 import argparse
 import sys
 import os
+import webbrowser
 
+import common
 import transformer
 import opcoder
 import sedcode
+
+
+VERSION = '0.01'
 
 
 # AST
@@ -23,40 +32,14 @@ import sedcode
 # http://faster-cpython-zh.readthedocs.io/en/latest/registervm.html
 
 
-# -- Tests -------------------------------------------------------------------
-
-
-def test():
-    #import exemple01
-    #dis.dis(exemple01)
-    #numsed_compile('exemple01')
-    #print make_opcode_module(sys.argv[1])
-    #import inspect
-    #functions_list = [obj for name,obj in inspect.getmembers(sys.modules[__name__])
-    #                 if inspect.isfunction(obj)]
-    #print functions_list
-    #print dis.dis(euclide)
-    #print CMP()
-    #print euclide(17,3)
-    #print MULBYDIGIT()
-    #print 123456 * 567, UMUL(123456, 567)
-    #x = UDIV()
-    #print tmp()
-    #print dis.dis(signed_add)
-    #print inspect.getsourcelines(signed_add)
-    pass
-
-
-# -- Main --------------------------------------------------------------------
-
-
 def do_helphtml():
-    if os.path.isfile('numsed.html'):
-        helpfile = 'numsed.html'
+    if os.path.isfile('README.md'):
+        helpfile = 'README.md'
     else:
-        helpfile = r'http://numsed.godrago.net/numsed.html'
+        helpfile = r'https://github.com/GillesArcas/numsed/blob/master/README.md'
 
     webbrowser.open(helpfile, new=2)
+
 
 USAGE = '''
 numsed.py -h | -H | -v
@@ -89,9 +72,10 @@ def parse_command_line(argstring=None):
     xgroup.add_argument("--run", help="run generated script", action="store_true")
     xgroup.add_argument("--trace", help="trace generated script", action="store_true")
     xgroup.add_argument("--coverage", help="run numsed intermediate opcode and display opcode coverage", action="store_true")
-    xgroup.add_argument("--testing", help="run conversion and compare with original python script", action="store_true")
+    xgroup.add_argument("--test", help="run conversion and compare with original python script", action="store_true")
 
-    parser.add_argument("--test", help="test", action="store_true", dest="test")
+    parser.add_argument("--alltests", help="test", action="store_true")
+    parser.add_argument("--tests", help="misc tests", action="store_true")
     parser.add_argument("source", nargs='?', help=argparse.SUPPRESS, default=sys.stdin)
 
     if argstring is None:
@@ -124,38 +108,63 @@ def numsed_maker(args):
     return None
 
 
+def proceed(args, source):
+    maker = numsed_maker(args)
+    target = maker(source, transformation(args))
+    if args.run:
+        x = target.run()
+    elif args.coverage:
+        x = target.coverage()
+    elif args.test:
+        x = target.test()
+    else:
+        x = target.trace()
+    print(x)
+    return x
+
+
 def numsed(argstring=None):
     parser, args = parse_command_line(argstring)
 
     if args.version:
-        print(BRIEF)
+        print(__doc__)
         print(VERSION)
-        return
 
     elif args.do_help:
         parser.print_help()
-        return
 
     elif args.do_helphtml:
         do_helphtml()
-        return
 
-    elif args.test:
-        test()
+    elif args.tests:
+        tests()
+
+    elif args.alltests:
+        status = True
+        status = status and numsed('--ast    --literal  --test  ' + args.source)
+        status = status and numsed('--ast    --unsigned --trace ' + args.source)
+        status = status and numsed('--ast    --signed   --test  ' + args.source)
+        status = status and numsed('--script --literal  --test  ' + args.source)
+        status = status and numsed('--script --unsigned --trace ' + args.source)
+        status = status and numsed('--script --signed   --test  ' + args.source)
+        status = status and numsed('--opcode --literal  --test  ' + args.source)
+        status = status and numsed('--opcode --unsigned --trace ' + args.source)
+        status = status and numsed('--opcode --signed   --test  ' + args.source)
+        status = status and numsed('--sed    --signed   --test  ' + args.source)
+        print('ALL TESTS OK' if status else 'ONE TEST FAILURE')
 
     else:
-        maker = numsed_maker(args)
-        target = maker(args.source, transformation(args))
-        if args.run:
-            x = target.run()
-        elif args.coverage:
-            x = target.coverage()
-        elif args.testing:
-            x = target.test()
+        if not args.source.endswith('.suite.py'):
+            return proceed(args, args.source)
         else:
-            x = target.trace()
-        print(x)
-        return x
+            status = True
+            for test in common.testlines(args.source):
+                print(test)
+                with open('tmp.py', 'w') as f:
+                    f.writelines(test)
+                status = status and proceed(args, 'tmp.py')
+            print('ALL TESTS OK' if status else 'ONE TEST FAILURE')
+            return status
 
 
 if __name__ == "__main__":

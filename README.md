@@ -1,11 +1,13 @@
 # numsed
-Computing with sed
+Computing with sed: compiling python scripts into sed scripts
 
 [TOC]
 
 ## Description
 
 numsed compiles a tiny subset of python into sed scripts. This subset is sufficient to make any calculation using integer numbers. The compilation to sed uses python opcodes as intermediate format. These opcodes can be interpreted as independent programs and are replaced by sed snippets to obtain the final the script.
+
+numsed is compatible with python 2 and 3.
 
 ## Language
 
