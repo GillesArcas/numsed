@@ -1,5 +1,5 @@
 """
-Prepare a python program (tiny subset) for compilation into sed.
+Prepare a numsed python program for compilation into sed.
 Transform into positive form:
 - all operators and binary comparisons are replaced with call to functions
   x + y --> signed_add(x, y), idem -, *, //, ==, !=, <, <=, >, >=
@@ -125,6 +125,9 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         pass
 
     def visit_Continue(self, node):
+        pass
+
+    def visit_Pass(self, node):
         pass
 
     def visit_Return(self, node):
@@ -369,18 +372,6 @@ def getsourcetext(func):
     return ''.join(inspect.getsourcelines(func)[0])
 
 
-def make_new_script(tree, libfuncs, func_text):
-    # add library functions to code to compile
-    script = ''
-    for func in libfuncs:
-        script += '\n'
-        script += func_text(func)
-    script += '\n'
-    script += codegen.to_source(tree)
-
-    return script
-
-
 def save_new_script(tree, libfuncs, func_text, script_out):
     # add library functions to code to compile
     script = ''
@@ -545,14 +536,6 @@ class ScriptConversion(common.NumsedConversion):
         res = subprocess.check_output('python ~.py')
         res = res.decode('ascii') # py3
         return res
-
-
-def transform(script_in, script_out, do_assert=False, do_exec=False):
-    check(script_in)
-    code = transform_positive(script_in, script_out)
-    if do_assert:
-        code = transform_assert(script_out, script_out)
-    return code
 
 
 if __name__ == "__main__":
