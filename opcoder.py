@@ -44,17 +44,24 @@ def disassemble(source):
         for oparg in code.co_consts:
             if isinstance(oparg, types.CodeType):
                 func_code = oparg
-                padded_id = ('%016X' if IS64BITS else '%08X') % id(func_code)
-                print('\n', ' ' * 11, '%-29s %s_%s %s' % ('-1 FUNCTION',
-                                                    func_code.co_name,
-                                                    padded_id,
-                                                    ' '.join(func_code.co_varnames[:func_code.co_argcount])))
+                func_name = func_code.co_name
+                func_args = func_code.co_varnames[:func_code.co_argcount]
+                print('\n%12s%-29s %s %s' % ('', '-1 FUNCTION',
+                                             make_function_label(func_name),
+                                             ' '.join(func_args)))
                 dis.disassemble(func_code)
 
     code = x.stringlist()
 
     # return list of instructions
     return code
+
+
+def make_function_label(func):
+    return func + '.func'
+
+def is_function_label(x):
+    return re.match(r':\w+\.func', x)
 
 
 # -- Preparing dis code ------------------------------------------------------
@@ -94,9 +101,8 @@ def parse_dis_instruction(s):
     if not arg:
         arg = None
     elif 'code object' in arg:
-        # <code object foo at 030E7EC0, file "exemple01.py", line 1>
-        m = re.search('code object ([^ ]+) at (?:0x)?([^ ]+),', arg)
-        arg = '%s_%s' % (m.group(1), m.group(2))
+        m = re.search('code object (\w+)', arg)
+        arg = make_function_label(m.group(1))
     elif '(' in arg:
         m = re.search(r'\((.*)\)', arg)
         arg = m.group(1)
@@ -234,8 +240,8 @@ def opcodes(dis_code):
     # add print definition
     newcode.extend(PRINT())
 
-    # return list of instructions
-    return newcode
+    # return list of formated instructions
+    return pprint_opcode(newcode)
 
 
 def current_loop(opcode, instr_pointer):
@@ -284,14 +290,18 @@ def inline_helper_opcodes(code):
     while i < len(code):
         opcode = code[i]
         i += 1
-        if opcode.startswith('LOAD_CONST'):
-            func = opcode.split()[1]
-            if any(func.startswith(_) for _ in numsed_lib.PRIMITIVES):
+        if opcode.strip() == '':
+            continue
+        x = opcode.split()
+        opc = x[0]
+        arg = x[1] if len(x) > 1 else None
+        if opc == 'LOAD_CONST':
+            if any(arg.startswith(_) for _ in numsed_lib.PRIMITIVES):
                 i += 2
             else:
                 code2.append(opcode)
-        elif opcode.startswith('LOAD_GLOBAL'):
-            func = opcode.split()[1]
+        elif opc == 'LOAD_GLOBAL':
+            func = arg
             if func not in numsed_lib.PRIMITIVES:
                 code2.append(opcode)
             else:
@@ -302,8 +312,8 @@ def inline_helper_opcodes(code):
                 i += 1                                      # skip call and return label
                 code2.extend(argseq)                        # append sequence
                 code2.append(primitive_opcode(func))        # append opcode
-        elif any(opcode.startswith('FUNCTION ' + _) for _ in numsed_lib.PRIMITIVES):
-            while not code[i].startswith('RETURN_VALUE'):
+        elif opc == 'FUNCTION' and any(arg.startswith(_) for _ in numsed_lib.PRIMITIVES):
+            while not code[i].startswith('RETURN_VALUE'):   # ignore code from primitive
                 i += 1
             i += 1
         else:
@@ -342,7 +352,7 @@ def link_opcode(code):
     for index, instr in enumerate(code):
         if instr.strip() == '':
             continue
-        if re.match(r':\w+_[0-9A-Z]{8}', instr):        # attention !!! c'est la syntaxe dis patche !!!
+        if is_function_label(instr):
             offset = maxlabel + 2
             continue
         if instr.startswith(':'):
@@ -359,6 +369,25 @@ def link_opcode(code):
 
 def instr_with_label(instr):
     return 'JUMP' in instr or instr.startswith('SETUP_LOOP')
+
+
+def pprint_opcode(code):
+    newcode = []
+    for instr in code:
+        if instr.strip() == '':
+            continue
+        if instr.startswith(':'):
+            #newcode.append('')
+            newcode.append(instr)
+            continue
+        x = instr.split()
+        opcode = x[0]
+        arg = x[1] if len(x) > 1 else None
+        if arg is None:
+            newcode.append(instr)
+        else:
+            newcode.append('%-17s %s' % (opcode, arg))
+    return newcode
 
 
 # -- Opcode interpreter ------------------------------------------------------
@@ -385,6 +414,8 @@ def interpreter(code, coverage=False):
     labels = dict()
 
     for index, x in enumerate(code):
+        if x.strip() == '':
+            continue
         y = x.split() + [None]
         opc, arg = y[:2]
         if opc[0] == ':':

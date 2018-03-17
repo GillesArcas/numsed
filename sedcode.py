@@ -71,7 +71,7 @@ def sedcode(opcode):
     return_labels = []
 
     for instr in opcode:
-        if re.match(r':\w+_[0-9A-Z]{8}', instr):        # attention !!! c'est la syntaxe dis patche !!!
+        if opcoder.is_function_label(instr):
             function_labels.append(instr[1:].strip())
 
     sedcode = normalize('\n'.join(opcode))
