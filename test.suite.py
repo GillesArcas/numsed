@@ -447,10 +447,10 @@ while m <= 10:
     m += 1
 # ---
 # test all comparison operators
-m = -5
-while m <= 5:
-    n = -5
-    while n <= 5:
+m = -2
+while m <= 2:
+    n = -2
+    while n <= 2:
         print(1 if m == n else 0)
         print(1 if m != n else 0)
         print(1 if m <  n else 0)
@@ -525,6 +525,20 @@ while m <= 2:
     n = -2
     while n <= 2:
         print(1 if m or n else 0)
+        n += 1
+    m += 1
+# ---
+# test not
+m = -2
+while m <= 2:
+    n = -2
+    while n <= 2:
+        print(1 if not(m == n) else 0)
+        print(1 if not(m != n) else 0)
+        print(1 if not(m <  n) else 0)
+        print(1 if not(m <= n) else 0)
+        print(1 if not(m >  n) else 0)
+        print(1 if not(m >= n) else 0)
         n += 1
     m += 1
 # ---
