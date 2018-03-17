@@ -1,3 +1,6 @@
+# pass
+pass
+# ---
 # print constant
 print(42)
 # ---
@@ -226,7 +229,49 @@ while n >= -10:
     n -= 1
 # ---
 # while else
+n = 0
+while n < 10:
+    if n == 5:
+        break
+    n += 1
+else:
+    print(n)
+n = 0
+while n < 10:
+    if n == 15:
+        break
+    n += 1
+else:
+    print(n)
+# ---
+# while else
+def foo(x):
+    n = 0
+    while n < 10:
+        if n == x:
+            print(x)
+            break
+        n += 1
+    else:
+        print(0)
+    print(1)
 
+foo(5)
+foo(15)
+# ---
+# while else
+def foo(x):
+    n = 0
+    while n < 10:
+        if n == x:
+            return x
+        n += 1
+    else:
+        return 0
+    return 1
+
+print(foo(5))
+print(foo(15))        
 # ---
 # if elif else
 n = -10
