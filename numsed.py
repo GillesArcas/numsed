@@ -74,9 +74,8 @@ def parse_command_line(argstring=None):
     xgroup.add_argument("--coverage", help="run numsed intermediate opcode and display opcode coverage", action="store_true")
     xgroup.add_argument("--test", help="run conversion and compare with original python script", action="store_true")
 
-    parser.add_argument("--alltests", help="test", action="store_true")
-    parser.add_argument("--tests", help="misc tests", action="store_true")
-    parser.add_argument("source", nargs='?', help=argparse.SUPPRESS, default=sys.stdin)
+    parser.add_argument("--all", help="test", action="store_true")
+    parser.add_argument("source", nargs='?', help=argparse.SUPPRESS)
 
     if argstring is None:
         args = parser.parse_args()
@@ -90,22 +89,27 @@ def transformation(args):
         return transformer.LITERAL
     elif args.unsigned:
         return transformer.UNSIGNED
+    elif args.signed:
+        return transformer.SIGNED
     else:
+        # default to --signed
         return transformer.SIGNED
 
 
 def numsed_maker(args):
     if args.ast:
         return transformer.AstConversion
-    if args.script:
+    elif args.script:
         return transformer.ScriptConversion
-    if args.disassembly:
+    elif args.disassembly:
         return opcoder.DisassemblyConversion
-    if args.opcode:
+    elif args.opcode:
         return opcoder.OpcodeConversion
-    if args.sed:
+    elif args.sed:
         return sedcode.SedConversion
-    return None
+    else:
+        # default to --sed
+        return sedcode.SedConversion
 
 
 def proceed(args, source):
@@ -117,8 +121,11 @@ def proceed(args, source):
         x = target.coverage()
     elif args.test:
         x = target.test()
-    else:
+    elif args.trace:
         x = target.trace()
+    else:
+        # default to --run
+        x = target.run()
     print(x)
     return x
 
@@ -136,21 +143,25 @@ def numsed(argstring=None):
     elif args.do_helphtml:
         do_helphtml()
 
-    elif args.tests:
-        tests()
-
-    elif args.alltests:
-        status = True
-        status = status and numsed('--ast    --literal  --test  ' + args.source)
-        status = status and numsed('--ast    --unsigned --trace ' + args.source)
-        status = status and numsed('--ast    --signed   --test  ' + args.source)
-        status = status and numsed('--script --literal  --test  ' + args.source)
-        status = status and numsed('--script --unsigned --trace ' + args.source)
-        status = status and numsed('--script --signed   --test  ' + args.source)
-        status = status and numsed('--opcode --literal  --test  ' + args.source)
-        status = status and numsed('--opcode --unsigned --trace ' + args.source)
-        status = status and numsed('--opcode --signed   --test  ' + args.source)
-        status = status and numsed('--sed    --signed   --test  ' + args.source)
+    elif args.all:
+        # use --trace when -test is not relevant. This may catch some errors
+        # and complete coverage.
+        test_args = ('--ast    --literal  --test ',
+                     '--ast    --unsigned --trace',
+                     '--ast    --signed   --test ',
+                     '--script --literal  --test ',
+                     '--script --unsigned --trace',
+                     '--script --signed   --test ',
+                     '--dis    --literal  --trace',
+                     '--dis    --unsigned --trace',
+                     '--dis    --signed   --trace',
+                     '--opcode --literal  --test ',
+                     '--opcode --unsigned --trace',
+                     '--opcode --signed   --test ',
+                     '--sed    --literal  --trace',
+                     '--sed    --unsigned --trace',
+                     '--sed    --signed   --test ')
+        status = all(numsed('%s %s' % (x, args.source)) for x in test_args)
         print('ALL TESTS OK' if status else 'ONE TEST FAILURE')
 
     else:
