@@ -271,7 +271,7 @@ def foo(x):
     return 1
 
 print(foo(5))
-print(foo(15))        
+print(foo(15))
 # ---
 # if elif else
 n = -10
@@ -622,4 +622,54 @@ def foo():
 
 print(foo())
 print(x)
+# ---
+# First class function - assignment
+def foo(x):
+    x = x + 1
+    return x
+
+bar = foo
+print(bar(5))
+# ---
+# First class function - return result
+def foo(x):
+    return x + 1
+
+def bar(x):
+    return x // 2
+
+def foobar(x):
+    if x < 0:
+        return foo
+    else:
+        return bar
+
+x = foobar(-5)(-5)
+y = foobar(7)(7)
+
+print(x)
+print(y)
+# ---
+# First class function - arguments
+def foo(x):
+    return x + 1
+
+def bar(x):
+    return x // 2
+
+def foobar(f1, f2, n):
+    return f1(f2(n))
+
+print(foobar(foo, bar, 5))
+# ---
+# First class function - limitations
+def foo(): pass
+def bar(): pass
+if 0:
+    # this does not work
+    print(bar == foo)
+    print(foo < bar)
+    print(foo + bar)
+    # this cannot be compared with python
+    print(foo)
 # ---
