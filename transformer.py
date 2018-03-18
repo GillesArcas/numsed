@@ -83,9 +83,7 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
 
     def visit_Call(self, node):
         if type(node.func) is ast.Name:
-            if False and node.func.id not in self.defined_functions:
-                check_error('function is not defined', node.func.id, node)
-            elif node.func.id == 'print' and len(node.args) != 1:
+            if node.func.id == 'print' and len(node.args) != 1:
                 check_error('print admits only one argument', node.func.id, node)
             else:
                 for _ in node.args: self.visit(_)
