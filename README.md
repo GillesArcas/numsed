@@ -21,17 +21,17 @@ This subset includes:
 * logical if
 * logical operators (and , or, not)
 * assignments, including augmented assignments and chained assignments,
-* control flow statements (if-elif-else, while-else, break, continue)
+* control flow statements (if-elif-else, while-else, break, continue, pass)
 * function definitions and calls
 * print function
 * global statement
-* first citizen functions. Functions can be assigned to variables, returned by functions and compared. However, arithmetical operators do not apply to functions and the assumption is made in the current version that arithmetical operator operands are always integers.
+* first citizen functions. Functions can be assigned to variables, returned by functions and compared. However, arithmetical and comparison operators do not apply to functions and the assumption is made in the current version that arithmetical and comparison operator operands are always integers.
 
 The grammar of numsed python is given in the file grammar/grammar. 
 
 A numsed script is a python script and can be executed as any python script. When executed by numsed, a verification is done to check that the script uses only numsed python subset.
 
-Some additional limitations are worthy to note:
+There are some limitations to note:
 
 * there is no list and as a consequence no parallel assignments nor multiple return results
 * functions have only positional arguments with no default values
@@ -40,8 +40,9 @@ Some additional limitations are worthy to note:
 
 More limitations:
 
-* there is no control on using arithmetical operators with functions
+* there is no control on using arithmetical and comparison operators with functions
 * not always return 0 or 1, and the result cannot be compared with python which returns True or False
+* the value printed for functions cannot be compared with the function values printed by python.
 
 Note also that there is no limitations (less memory) on recursion.
 
