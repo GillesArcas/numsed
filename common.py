@@ -6,6 +6,8 @@ try:
 except ImportError:
     from io import StringIO  # Python3
 
+PY2 = sys.version_info < (3,)
+
 
 class NumsedConversion:
     def __init__(self, source, transformation):
@@ -21,6 +23,9 @@ class NumsedConversion:
     def coverage(self):
         return 'Coverage not implemented for current conversion.'
 
+    def print_run_result(self):
+        return True
+
     def test(self):
         if not self.source.endswith('.py'):
             return False
@@ -32,7 +37,8 @@ class NumsedConversion:
 
         # run conversion
         res = self.run()
-        print(res)
+        if self.print_run_result():
+            print(res)
 
         # compare
         status, diff = list_compare('ref', 'res', ref.splitlines(), res.splitlines())
@@ -54,6 +60,29 @@ class ListStream:
         return self.result.getvalue().splitlines()
     def singlestring(self):
         return self.result.getvalue()
+
+
+def run(cmd):
+    try:
+        p = subprocess.Popen(cmd.split(),
+                            #shell=True,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT)
+    except:
+        print('Unable to start', cmd)
+        exit(1)
+
+    res = []
+    while True:
+        line = p.stdout.readline()
+        line = line.decode('ascii') # py3
+        if line == '':
+            break
+        else:
+            line = line.rstrip('\n\r')
+            res.append(line)
+            print(line)
+    return '\n'.join(res)
 
 
 def testlines(name):

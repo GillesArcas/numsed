@@ -8,7 +8,6 @@ import sys
 import re
 import dis
 import types
-import shutil
 
 import common
 import transformer
@@ -101,7 +100,7 @@ def parse_dis_instruction(s):
     if not arg:
         arg = None
     elif 'code object' in arg:
-        m = re.search('code object (\w+)', arg)
+        m = re.search(r'code object (\w+)', arg)
         arg = make_function_label(m.group(1))
     elif '(' in arg:
         m = re.search(r'\((.*)\)', arg)
@@ -377,7 +376,7 @@ def pprint_opcode(code):
         if instr.strip() == '':
             continue
         if instr.startswith(':'):
-            #newcode.append('')
+            newcode.append('')
             newcode.append(instr)
             continue
         x = instr.split()
@@ -413,15 +412,15 @@ def interpreter(code, coverage=False):
     opcodes = list()
     labels = dict()
 
-    for index, x in enumerate(code):
+    # remove empty lines, split opcode and argument, store label indexes
+    for x in code:
         if x.strip() == '':
             continue
-        y = x.split() + [None]
-        opc, arg = y[:2]
-        if opc[0] == ':':
-            opc, arg = opc[0], opc[1:]
-            labels[arg] = index
-        opcodes.append((opc, arg))
+        opcode, argument = (x.split() + [None])[:2]
+        if opcode[0] == ':':
+            opcode, argument = opcode[0], opcode[1:]
+            labels[argument] = len(opcodes)
+        opcodes.append((opcode, argument))
 
     # add label for final RETURN_VALUE
     stack.append(1000000000)
@@ -438,11 +437,9 @@ def interpreter(code, coverage=False):
         if opc != ':':
             if opc in OPCODES:
                 counter[opc] += 1
-        #print instr_pointer, opc, arg, stack
+        #print(instr_pointer, opc, arg, stack)
         instr_pointer += 1
-        if False:
-            pass
-        elif opc == ':':
+        if opc == ':':
             pass
         elif opc == 'LOAD_CONST':
             try:
@@ -567,7 +564,7 @@ def interpreter(code, coverage=False):
                 args.append(stack.pop())
             func = stack.pop()
             stack.append(instr_pointer)
-            for i in range(int(arg)):
+            for _ in range(int(arg)):
                 stack.append(args.pop())
             instr_pointer = labels[func]
         elif opc == 'RETURN_VALUE':

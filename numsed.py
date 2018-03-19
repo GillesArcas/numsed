@@ -5,7 +5,6 @@ numsed: compiling python to sed
 from __future__ import print_function
 
 import argparse
-import sys
 import os
 import webbrowser
 

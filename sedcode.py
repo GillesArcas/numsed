@@ -20,6 +20,9 @@ class SedConversion(common.NumsedConversion):
     def run(self):
         return run_sed(self.sed)
 
+    def print_run_result(self):
+        return False
+
 
 HEADER1 = '''\
 # This sed script is the result of the compilation of the following python script by numsed.py
@@ -53,11 +56,13 @@ def run_sed(sed):
     with open(name_input, 'w') as f:
         print('0', file=f)
 
-    com = 'sed -n -r -f %s %s' % (name_script, name_input)
+    com = 'sed -u -n -r -f %s %s' % (name_script, name_input)
 
-    # TODO: check sed in path
-    res = subprocess.check_output(com)
-    res = res.decode('ascii') # py3
+    if 0:
+        res = subprocess.check_output(com).decode('ascii')
+    else:
+        res = common.run(com)
+
     return res
 
 
@@ -84,7 +89,7 @@ def sedcode(opcode):
     return sedcode
 
 
-def normalize(snippet, replace=None):
+def normalize(snippet):
 
     labels = []
     for line in snippet.splitlines():
@@ -94,11 +99,6 @@ def normalize(snippet, replace=None):
 
     for label in labels:
         snippet = snippet.replace(label, new_label())
-
-    if replace:
-        for sfrom, sto in replace:
-            # TODO: had to remove starting \b cf CALL_FUNCTION
-            snippet = re.sub(r'%s\b' % sfrom, sto, snippet)
 
     macros = ('STARTUP', 'MAKE_FUNCTION', 'CALL_FUNCTION', 'BRANCH_ON_NAME',
               'MAKE_CONTEXT', 'POP_CONTEXT',
@@ -119,15 +119,12 @@ def normalize(snippet, replace=None):
                'FULLADD', 'FULLSUB', 'FULLMUL', 'MULBYDIGIT', 'DIVBY2', 'ODD')
 
     for macro in macros:
-
+        func = globals()[macro]
         def repl(m):
-            if not m.group(1):
-                return globals()[macro]()
-            else:
-                args = m.group(1).split()
-                return ('# %s\n' % macro) + globals()[macro](*args)
+            args = [] if not m.group(1) else m.group(1).split()
+            return ('# %s\n' % macro) + normalize(func(*args))
 
-        snippet = re.sub(r'\b%s\b *([^;#\n]*)' % macro, repl, snippet)
+        snippet = re.sub(r'(?<!# )\b%s\b *([^ #\n]*)' % macro, repl, snippet)
 
     snippet = snippet.replace('\\d', '[0-9]')
     return snippet
@@ -136,14 +133,14 @@ def normalize(snippet, replace=None):
 label_counter = 0
 def new_label():
     global label_counter
-    r = 'label%d' % label_counter
+    r = 'L%d' % label_counter
     label_counter += 1
     return r
 
 return_counter = 0
 def new_return():
     global return_counter
-    r = 'return%d' % return_counter
+    r = 'R%d' % return_counter
     return_counter += 1
     return r
 
@@ -329,7 +326,7 @@ def STORE_GLOBAL(name):
         :.next
         h                               # PS: ?         HS: X;v;x
     '''
-    return normalize(snippet, replace=(('name', name),))
+    return snippet.replace('name', name)
 
 def DELETE_GLOBAL(name):
     snippet = r'''                      # PS: ?         HS: x;X
@@ -394,7 +391,7 @@ def CALL_FUNCTION(argc):
     return_labels.append(return_label)
 
     # argc parameters on top of stack above name of function
-    # first, swap parameters and name
+    # add return label and swap parameters and name
     snippet = r'''
         x
         s/^(([^;]+;){argc})([^;]+;)/\3\1return_label;/
@@ -404,8 +401,7 @@ def CALL_FUNCTION(argc):
         b call_function
         :return_label
     '''
-    snippet = normalize(snippet, replace=(('argc', argc),('return_label', return_label)))
-    return snippet
+    return snippet.replace('argc', argc).replace('return_label', return_label)
 
 
 def RETURN_VALUE():
@@ -414,7 +410,7 @@ def RETURN_VALUE():
         POP                             # PS: label     HS: R;X
         b return
     '''
-    return normalize(snippet)
+    return snippet
 
 
 def BRANCH_ON_NAME(labels):
@@ -451,7 +447,7 @@ def BINARY_AND():
         s/^[+-1-9]\d+;([+-]?\d+);/\1/
         PUSH
     '''
-    return normalize(snippet)
+    return snippet
 
 def BINARY_OR():
     snippet = r'''
@@ -461,7 +457,7 @@ def BINARY_OR():
         s/^0;[+-]?\d+;/0/
         PUSH
     '''
-    return normalize(snippet)
+    return snippet
 
 
 # -- Compare operators and jumps ---------------------------------------------
@@ -488,7 +484,7 @@ def CMP():
         s/.*/>/                         # PS: > if x > y
         :.end                           # PS: <|=|>
     '''
-    return normalize(snippet)
+    return snippet
 
 
 def COMPARE_OP(opname):
@@ -501,8 +497,7 @@ def COMPARE_OP(opname):
         PUSH
     '''
     conv = {'==': '010', '!=': '101', '<': '100', '<=': '110', '>': '001', '>=': '011'}
-    snippet = snippet.replace('xyz', conv[opname])
-    return normalize(snippet)
+    return snippet.replace('xyz', conv[opname])
 
 
 def POP_JUMP_IF_TRUE(target):
@@ -559,7 +554,7 @@ def PRINT_ITEM():
         POP                             # PS: N         HS: X
         p
      '''
-    return normalize(snippet)
+    return snippet
 
 def PRINT_NEWLINE():
     return ''
@@ -576,7 +571,7 @@ def HALFADD():
         /^0\d(\d);/s//1\1;/
         s/;//
     '''
-    return normalize(snippet)
+    return snippet
 
 def FULLADD():
     # Add two left digits with carry
@@ -591,7 +586,7 @@ def FULLADD():
         /^0\d(\d);/s//1\1;/
         s/;//
     '''
-    return normalize(snippet)
+    return snippet
 
 def FULLSUB():
     # Subtract two left digits with borrow
@@ -607,7 +602,7 @@ def FULLSUB():
         /^0\d(\d);/s//1\1;/
         s/;//
     '''
-    return normalize(snippet)
+    return snippet
 
 
 def FULLADD2():
@@ -642,7 +637,7 @@ def UADD():
         s/^0(\d*);(\d*);(\d*);/\2\3\1/
         :.exit                           # PS: R*
     '''
-    return normalize(snippet)
+    return snippet
 
 
 def USUB():
@@ -667,7 +662,7 @@ def USUB():
         s/^\d*;\d*;\d*;/NAN/            # PS: NAN*
         :.end                            # PS: M-N|NAN
      '''
-    return normalize(snippet)
+    return snippet
 
 
 def BINARY_ADD():
@@ -679,7 +674,7 @@ def BINARY_ADD():
         UADD                            # PS: R         HS: X
         PUSH                            # PS: R         HS: R;X
      '''
-    return normalize(snippet)
+    return snippet
 
 def BINARY_SUBTRACT():
     """
@@ -691,14 +686,14 @@ def BINARY_SUBTRACT():
         USUB                            # PS: R         HS: X
         PUSH                            # PS: R         HS: R;X
      '''
-    return normalize(snippet)
+    return snippet
 
 
 def UNARY_POSITIVE():
     """
     Implements TOS = +TOS.
     """
-    return normalize('')
+    return ''
 
 def UNARY_NEGATIVE():
     """
@@ -707,7 +702,7 @@ def UNARY_NEGATIVE():
     snippet = '''
         NEGATIVE
     '''
-    return normalize(snippet)
+    return snippet
 
 
 # -- Multiplication ----------------------------------------------------------
@@ -732,7 +727,7 @@ def FULLMUL(): # dc.sed version
         s/.{9}(.)\d*;.{9}(.)\d*;/\1\2/
         :.exit
     '''
-    return normalize(snippet)
+    return snippet
 
 
 def MULBYDIGIT():
@@ -747,7 +742,7 @@ def MULBYDIGIT():
         s/;\d;;//                       # PS: RX
         s/^0*(\d)/\1/
     '''
-    return normalize(snippet)
+    return snippet
 
 
 def UMUL(a, b):
@@ -777,18 +772,17 @@ def UMUL():
         s/(\d*);(\d*).*/\1\2/           # PS: RS
         s/^0*(.)/\1/                    # Normalize leading zeros
     '''
-    return normalize(snippet)
+    return snippet
 
 
 def BINARY_MULTIPLY():
-    snippet = r'''
-                                        # PS: ?         HS: M;N;X
+    snippet = r'''                      # PS: ?         HS: M;N;X
         POP2                            # PS: M;N;      HS: X
         s/$/;/
         UMUL                            # PS: R         HS: X
         PUSH                            # PS: R         HS: R;X
      '''
-    return normalize(snippet)
+    return snippet
 
 
 def BINARY_FLOOR_DIVIDE():
@@ -847,7 +841,7 @@ def DIVBY2():
         :.end                           # PS: c;;R;X
         s/.;;0?(\d)/\1/                 # PS: R;X  R = N // 2
     '''
-    return normalize(snippet)
+    return snippet
 
 
 def DIVIDE_BY_TWO():
@@ -856,7 +850,7 @@ def DIVIDE_BY_TWO():
         DIVBY2                          # PS: R;X       HS: N;X
         h                               # PS: R;X       HS: R;X  R = N // 2
     '''
-    return normalize(snippet)
+    return snippet
 
 
 def ODD():
@@ -864,7 +858,7 @@ def ODD():
         s/^\d*(\d)/\1!00!11!20!31!40!51!60!71!80!91/
         s/^(.).*!\1(.)[^;]*/\2/         # PS: R;X  R = 0 if even, or 1 if odd
     '''
-    return normalize(snippet)
+    return snippet
 
 def IS_ODD():
     snippet = r'''                      # PS: ?         HS: N;X
