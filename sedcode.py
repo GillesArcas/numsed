@@ -419,7 +419,7 @@ def BRANCH_ON_NAME(labels):
         t.test_return                   # t to next line to reset t flag
         :.test_return                   # PS: label
     '''
-    snippet = normalize(snippet)
+    snippet = snippet.replace('test_return', new_label())
     snippet += '\n'.join(('s/^%s$//;t %s' % (label, label) for label in labels))
     snippet += '\nb UnknownLabel'
 
