@@ -11,10 +11,10 @@ fpdef: NAME
 stmt: simple_stmt | compound_stmt
 simple_stmt: small_stmt (';' small_stmt)* [';'] NEWLINE
 small_stmt: (expr_stmt | print_stmt  | pass_stmt | flow_stmt | global_stmt)
-expr_stmt: testlist (augassign testlist | ('=' testlist)*)
+expr_stmt: test (augassign test | ('=' test)*)
 augassign: ('+=' | '-=' | '*=' | '//=' | '%=' | **=')
 
-print_stmt: 'print' [ test (',' test)* [','] ]
+print_stmt: 'print' '(' test ')'
 pass_stmt: 'pass'
 flow_stmt: break_stmt | continue_stmt | return_stmt
 break_stmt: 'break'
@@ -32,14 +32,14 @@ or_test: and_test ('or' and_test)*
 and_test: not_test ('and' not_test)*
 not_test: 'not' not_test | comparison
 comparison: expr (comp_op expr)*
-comp_op: '&lt;'|'&gt;'|'=='|'&gt;='|'&lt;='|'!='
+comp_op: '<'|'>'|'=='|'>='|'<='|'!='
 
 expr: arith_expr
 arith_expr: term (('+'|'-') term)*
 term: factor (('*'|'//'|'%'') factor)*
 factor: ('+'|'-') factor | power
 power: atom trailer* ['**' factor]
-atom: (NAME | NUMBER | STRING+)
+atom: NAME | NUMBER
 
 trailer: '(' [arglist] ')'
 testlist: test (',' test)* [',']
