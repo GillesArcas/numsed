@@ -404,8 +404,15 @@ OPCODES = ('LOAD_CONST', 'LOAD_NAME', 'LOAD_GLOBAL', 'STORE_NAME', 'STORE_GLOBAL
            'STARTUP', 'MAKE_CONTEXT', 'POP_CONTEXT',
            'IS_POSITIVE', 'NEGATIVE', 'IS_ODD', 'DIVIDE_BY_TWO')
 
+
+counter = dict()
+for x in OPCODES:
+    counter[x] = 0
+
+
 def interpreter(code, coverage=False):
 
+    global counter
     stack = list()
     names = dict()
     varnames = list()
@@ -425,18 +432,17 @@ def interpreter(code, coverage=False):
     # add label for final RETURN_VALUE
     stack.append(1000000000)
 
-    counter = dict()
-    for x in OPCODES:
-        counter[x] = 0
-
     result = []
 
     instr_pointer = 0
     while instr_pointer < len(opcodes):
         opc, arg = opcodes[instr_pointer]
+
+        # increment coverage
         if opc != ':':
             if opc in OPCODES:
                 counter[opc] += 1
+
         #print(instr_pointer, opc, arg, stack)
         instr_pointer += 1
         if opc == ':':
@@ -600,11 +606,14 @@ def interpreter(code, coverage=False):
             raise Exception('numsed: Unknown opcode: %s' % opc)
 
     if coverage:
-        for x in OPCODES:
-            print('%-20s %10d' % (x, counter[x]))
-        return ''
+        return ['OK']
     else:
         return result
+
+
+def display_coverage():
+    for x in OPCODES:
+        print('%-20s %10d' % (x, counter[x]))
 
 
 if __name__ == "__main__":
