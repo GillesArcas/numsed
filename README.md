@@ -149,3 +149,60 @@ To test all the possible formats and transformations, use the `--all` parameter.
 `numsed_test.py --all test.suite.py`
 
 Finally, the `snippet_test.py` script enables to test some opcodes with hardcoded inputs.
+
+## numsed virtual machine
+
+Using the same opcodes as python, numsed uses machine model close to the one of python:
+
+* all operators take their argument in the stack and put the result in the stack,
+* there is a global namespace,
+* there is local namespace for each function call.
+
+In numsed, stack and namespaces are implemented in sed hold space (HS). HS is organized with the stack on the left and namespaces on the right separated by a "@":
+
+​                                  	HS: <stack>@<namespaces>
+
+The stack grows at the beginning and contains integer values and addresses. Items are separated by semicolons. For instance:
+
+​                                   	HS: x;y;z;@<namespaces>
+
+LOAD_CONST  42    	HS: 42;x;y;z;@<namespaces>
+
+LOAD_CONST  13    	HS: 13;42;x;y;z;@<namespaces>
+
+BINARY_ADD	           	HS: 55;x;y;z;@<namespaces>
+
+Name spaces grow at the end of HS and are separated by a vertical bar character "|". First name space is the global name space. Other name spaces are local and created for each function call. Name spaces contain pairs of names and values separated by semicolons. 
+
+​                                   	HS: x;y;z;@
+
+LOAD_CONST  42   	HS: 42;x;y;z;@
+
+STORE_GLOBAL x		HS: x;y;z;@x;42;
+
+MAKE_CONTEXT		HS: x;y;z;@x;42;|
+
+LOAD_CONST  13    	HS: 13;x;y;z;@x;42;|
+
+STORE_FAST x		HS: 55;x;y;z;@x;42;|x;13;
+
+POP_CONTEXT		HS: 55;x;y;z;@x;42;
+
+## Links
+
+###### Abstract syntax tree
+
+https://greentreesnakes.readthedocs.io/en/latest/
+
+###### Opcodes
+
+cpython/ceval.c
+
+https://docs.python.org/2/library/dis.html
+
+http://unpyc.sourceforge.net/Opcodes.html
+
+http://www.goldsborough.me/python/low-level/2016/10/04/00-31-30-disassembling_python_bytecode/
+
+
+
