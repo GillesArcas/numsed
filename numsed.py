@@ -12,6 +12,7 @@ import common
 import transformer
 import opcoder
 import sedcode
+import snippet_test
 
 
 VERSION = '0.01'
@@ -70,16 +71,20 @@ def parse_command_line(argstring=None):
     xgroup = agroup.add_mutually_exclusive_group()
     xgroup.add_argument("--run", help="run generated script", action="store_true")
     xgroup.add_argument("--trace", help="trace generated script", action="store_true")
-    xgroup.add_argument("--coverage", help="run numsed intermediate opcode and display opcode coverage", action="store_true")
+    xgroup.add_argument("--coverage", help="run intermediate opcode and display opcode coverage (--opcode only)", action="store_true")
     xgroup.add_argument("--test", help="run conversion and compare with original python script", action="store_true")
+    xgroup.add_argument("--all", help="complete test", action="store_true")
 
-    parser.add_argument("--all", help="test", action="store_true")
     parser.add_argument("source", nargs='?', help=argparse.SUPPRESS)
 
     if argstring is None:
         args = parser.parse_args()
     else:
         args = parser.parse_args(argstring.split())
+
+    if args.coverage and not args.opcode:
+        print('numsed error: --coverage requires --opcode')
+        exit(1)
     return parser, args
 
 
@@ -92,6 +97,7 @@ def transformation(args):
         return transformer.SIGNED
     else:
         # default to --signed
+        args.signed = True
         return transformer.SIGNED
 
 
@@ -108,10 +114,11 @@ def numsed_maker(args):
         return sedcode.SedConversion
     else:
         # default to --sed
+        args.sed = True
         return sedcode.SedConversion
 
 
-def proceed(args, source):
+def proceed_test(args, source):
     maker = numsed_maker(args)
     target = maker(source, transformation(args))
     if args.run:
@@ -124,9 +131,51 @@ def proceed(args, source):
         x = target.trace()
     else:
         # default to --run
+        args.run = True
         x = target.run()
-    print(x)
+    if args.run and args.sed:
+        # already printed
+        pass
+    else:
+        print(x)
     return x
+
+
+def process_suite(args):
+    status = True
+    for test in common.testlines(args.source):
+        print(test[0].rstrip())
+        with open('tmp.py', 'w') as f:
+            f.writelines(test)
+        r = proceed_test(args, 'tmp.py')
+        status = status and (not args.test or r)
+        if not status:
+            break
+    print('ALL TESTS OK' if status else 'ONE TEST FAILURE')
+    return status
+
+
+def process_all(args):
+    # use --trace when -test is not relevant. This may catch some errors
+    # and complete coverage.
+    test_args = ('--ast    --literal  --test ',
+                    '--ast    --unsigned --trace',
+                    '--ast    --signed   --test ',
+                    '--script --literal  --test ',
+                    '--script --unsigned --trace',
+                    '--script --signed   --test ',
+                    '--dis    --literal  --trace',
+                    '--dis    --unsigned --trace',
+                    '--dis    --signed   --trace',
+                    '--opcode --literal  --test ',
+                    '--opcode --unsigned --trace',
+                    '--opcode --signed   --test ',
+                    '--sed    --literal  --trace',
+                    '--sed    --unsigned --trace',
+                    '--sed    --signed   --test ')
+    status = all(numsed('%s %s' % (x, args.source)) for x in test_args)
+    status = status and snippet_test.main()
+    print('ALL TESTS OK' if status else 'ONE TEST FAILURE')
 
 
 def numsed(argstring=None):
@@ -143,38 +192,16 @@ def numsed(argstring=None):
         do_helphtml()
 
     elif args.all:
-        # use --trace when -test is not relevant. This may catch some errors
-        # and complete coverage.
-        test_args = ('--ast    --literal  --test ',
-                     '--ast    --unsigned --trace',
-                     '--ast    --signed   --test ',
-                     '--script --literal  --test ',
-                     '--script --unsigned --trace',
-                     '--script --signed   --test ',
-                     '--dis    --literal  --trace',
-                     '--dis    --unsigned --trace',
-                     '--dis    --signed   --trace',
-                     '--opcode --literal  --test ',
-                     '--opcode --unsigned --trace',
-                     '--opcode --signed   --test ',
-                     '--sed    --literal  --trace',
-                     '--sed    --unsigned --trace',
-                     '--sed    --signed   --test ')
-        status = all(numsed('%s %s' % (x, args.source)) for x in test_args)
-        print('ALL TESTS OK' if status else 'ONE TEST FAILURE')
+        process_all(args)
 
     else:
-        if not args.source.endswith('.suite.py'):
-            return proceed(args, args.source)
+        if args.source.endswith('.suite.py'):
+            result = process_suite(args)
         else:
-            status = True
-            for test in common.testlines(args.source):
-                print(test)
-                with open('tmp.py', 'w') as f:
-                    f.writelines(test)
-                status = status and proceed(args, 'tmp.py')
-            print('ALL TESTS OK' if status else 'ONE TEST FAILURE')
-            return status
+            result = proceed_test(args, args.source)
+        if args.coverage:
+            opcoder.display_coverage()
+        return result
 
 
 if __name__ == "__main__":
