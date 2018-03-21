@@ -204,13 +204,13 @@ n = -5
 p = m % n
 print(p)
 # ---
-# loop
+# loop increasing
 n = -10
 while n <= 10:
     print(n)
     n += 1
 # ---
-# loop
+# loop decreasing
 n = 10
 while n >= -10:
     print(n)
