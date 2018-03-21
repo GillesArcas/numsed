@@ -103,7 +103,7 @@ def normalize(snippet):
     macros = ('STARTUP', 'MAKE_FUNCTION', 'CALL_FUNCTION', 'BRANCH_ON_NAME',
               'MAKE_CONTEXT', 'POP_CONTEXT',
               'LOAD_CONST', 'LOAD_GLOBAL', 'STORE_GLOBAL', 'LOAD_NAME', 'STORE_NAME',
-              'LOAD_FAST', 'STORE_FAST',
+              'LOAD_FAST', 'STORE_FAST', 'DELETE_FAST', 'DELETE_GLOBAL',
               'BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY',
               'UNARY_POSITIVE', 'UNARY_NEGATIVE',
               'COMPARE_OP', 'UNARY_NOT', #'BINARY_AND', 'BINARY_OR',
@@ -314,19 +314,15 @@ def LOAD_GLOBAL(name):
 
 
 def STORE_GLOBAL(name):
-    # name = POP() (cf cpython/ceval.c)
+    # name = POP()
     snippet = r'''                      # PS: ?         HS: x;X
-        g                               # PS: x;X       HS: ?
-        t.reset_t
-        :.reset_t
-        s/^([^;]*);([^@]*@[^|]*;name;)[^;]*/\2\1/
-                                        # PS: X;v;x     HS: ?
-        t.next
+        DELETE_GLOBAL name
+        g
         s/^([^;]*);([^@]*@)/\2;name;\1/ # PS: X;v;x     HS: ?
-        :.next
         h                               # PS: ?         HS: X;v;x
     '''
     return snippet.replace('name', name)
+
 
 def DELETE_GLOBAL(name):
     snippet = r'''                      # PS: ?         HS: x;X
@@ -346,25 +342,25 @@ def LOAD_FAST(name):
     # TOS = val(name)
     snippet = r'''                      # PS: ?         HS: ?;v;x?
         g                               # PS: ?;v;x?    HS: ?;v;x?
-        /[|][^|]*;name;[^|]*/! s/.*/0;&/
-                                        # PS: 0 if var undefined
-                                        # TODO: should be error
+        /[|][^|]*;name;[^|]*/! { s/.*/name/; b NameError }
+                                        # branch to error if var undefined
         s/.*[|][^|]*;name;([^;]*)[^|]*$/\1;&/
                                         # PS: x;?;v;x?  HS: ?;v;x?
         h                               # PS: ?         HS: x;?;v;x?
     '''
     return snippet.replace('name', name)
 
+
 def STORE_FAST(name):
-    # TODO: code without DELETE, see STORE_GLOBAL
-    # name = POP() (cf cpython/ceval.c)
-    # TODO: make sure there is a test with var in last position
+    # name = POP()
     snippet = r'''                      # PS: ?         HS: x;X
+        DELETE_FAST name
         g                               # PS: x;X       HS: ?
         s/([^;]*);(.*)/\2;name;\1/      # PS: X';v;x    HS: ?
         h                               # PS: ?         HS: X';v;x
     '''
-    return DELETE_FAST(name) + snippet.replace('name', name)
+    return snippet.replace('name', name)
+
 
 def DELETE_FAST(name):
     snippet = r'''                      # PS: ?         HS: x;X
@@ -415,7 +411,6 @@ def RETURN_VALUE():
 
 def BRANCH_ON_NAME(labels):
     snippet = '''                       # PS: label
-        s/^//                           # force a substitution to reset t flag
         t.test_return                   # t to next line to reset t flag
         :.test_return                   # PS: label
     '''
@@ -573,11 +568,14 @@ def HALFADD():
     '''
     return snippet
 
+
 def FULLADD():
-    # Add two left digits with carry
-    #
-    # Input  PS: abcX with c = 0 or 1
-    # Output PS: rX   with r = a + b + c padded on two digits
+    """
+    Add two left digits with carry
+
+    Input  PS: abcX with c = 0 or 1
+    Output PS: rX   with r = a + b + c padded on two digits
+    """
     snippet = r'''
         s/^(...)/\1;9876543210;9876543210;/
         s/^(..)0/\1/
@@ -588,12 +586,15 @@ def FULLADD():
     '''
     return snippet
 
+
 def FULLSUB():
-    # Subtract two left digits with borrow
-    #
-    # Input  PS: abcX with c = 0 or 1
-    # Output PS: xyX  with if b+c <= a, x = 0, y = a-(b+c)
-    #                      if b+c >  a, x = 1, y = 10+a-(b+c)
+    """
+    Subtract two left digits with borrow
+
+    Input  PS: abcX with c = 0 or 1
+    Output PS: xyX  with if b+c <= a, x = 0, y = a-(b+c)
+                         if b+c >  a, x = 1, y = 10+a-(b+c)
+    """
     snippet = r'''
         s/^(...)/\1;9876543210;0123456789;/
         s/^(..)0/\1/
@@ -602,17 +603,6 @@ def FULLSUB():
         /^0\d(\d);/s//1\1;/
         s/;//
     '''
-    return snippet
-
-
-def FULLADD2():
-    snippet = r'''
-        s/^(...)/\19876543210aaaaaaaaa;9876543210aaaaaaaaa;10a;/
-        s/(.)(.)(.)\d*\1.{9}(a*);\d*\2.{9}(a*);\d*\3.(a*);/\4\5\6/
-        s/a{10}/b/
-        s/(b*)(a*)/\19876543210;\29876543210;/
-        s/.{9}(.)\d*;.{9}(.)\d*;/\1\2/
-        '''
     return snippet
 
 
@@ -676,6 +666,7 @@ def BINARY_ADD():
      '''
     return snippet
 
+
 def BINARY_SUBTRACT():
     """
     Implements TOS = TOS1 - TOS on unsigned integers (R = N - M).
@@ -694,6 +685,7 @@ def UNARY_POSITIVE():
     Implements TOS = +TOS.
     """
     return ''
+
 
 def UNARY_NEGATIVE():
     """
@@ -830,7 +822,7 @@ def DIVBY2():
     snippet = r'''                      # PS: N;X
         s/^[0-9]+;/0;&;/                # PS: 0;N;;X
         :.loop
-        /^.;;/t.end
+        /^.;;/b.end
                                         # PS: c;nN;R;X
         s/;(.)/\1;/                     # PS: cn;N;R;X
         s/(..)/\1!0000!0110!0201!0311!0402!0512!0603!0713!0804!0914!1005!1115!1206!1316!1407!1517!1608!1718!1809!1919/
