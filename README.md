@@ -1,19 +1,30 @@
 # numsed
-Computing with sed: compiling python scripts into sed scripts
+Computing with sed: compiling python into sed
 
-[TOC]
+# Table of Contents
+* [Description](#description)
+* [Language](#language)
+* [Compilation process](#compilation-process)
+* [ Command line](#command-line)
+  * [Filename parameter](#filename-parameter)
+  * [Action parameter](#action-parameter)
+  * [Transformation parameter](#transformation-parameter)
+  * [Format parameter](#format-parameter)
+* [ Testing](#testing)
+* [ numsed virtual machine](#numsed-virtual-machine)
+* [ Links](#links)
+  * [Abstract syntax tree](#abstract-syntax-tree)
+  * [Opcodes](#opcodes)
 
 ## Description
 
-numsed compiles a tiny subset of python into sed scripts. This subset is sufficient to make any calculation using integer numbers. The compilation to sed uses python opcodes as intermediate format. These opcodes can be interpreted as independent programs and are replaced by sed snippets to obtain the final the script.
+numsed compiles a small subset of python into sed scripts. This subset is sufficient to make any calculation using integer numbers. The compilation to sed uses python opcodes as intermediate format. These opcodes can be interpreted as independent programs. Opcodes are replaced by sed snippets to obtain the final script.
 
 numsed is compatible with python 2 and 3.
 
 ## Language
 
-numsed uses a small subset of python, a minimal subset to make non trivial integer calculus.
-
-This subset includes:
+The subset of Python used by numsed is made of:
 
 * signed integer constants and variables, with no limitation in size,
 * arithmetic operators (+, -, *, //, %, **)
@@ -25,34 +36,39 @@ This subset includes:
 * function definitions and calls
 * print function
 * global statement
-* first citizen functions. Functions can be assigned to variables, returned by functions and compared. However, arithmetical and comparison operators do not apply to functions and the assumption is made in the current version that arithmetical and comparison operator operands are always integers.
+* string constants and variables. Strings can be assigned to variables, passed to functions and returned by functions. However, arithmetical and comparison operators do not apply to strings.
+* function variables. Functions can be assigned to variables, passed to functions and returned by functions. However, arithmetical and comparison operators do not apply to functions.
 
-The grammar of numsed python is given in the file grammar/grammar. 
 
-A numsed script is a python script and can be executed as any python script. When executed by numsed, a verification is done to check that the script uses only numsed python subset.
 
-There are some limitations to note:
+The following limitations are checked during conversion:
 
 * there is no list and as a consequence no parallel assignments nor multiple return results
 * functions have only positional arguments with no default values
 * it is not possible to define a function inside a function
 * print has always a single argument
 
-More limitations:
+Some choices in implementation break the comparison with python script results:
 
-* there is no control on using arithmetical and comparison operators with functions
 * not always return 0 or 1, and the result cannot be compared with python which returns True or False
 * the value printed for functions cannot be compared with the function values printed by python.
+
+The current implementation deserves improvement for the following points:
+
+* strings may not contain these characters ";", "@" and "|"
+* leading and trailing spaces in strings are ignored 
+* empty strings and strings made of spaces result in errors
+* a string containing only digits is treated as an integer
 
 Note also that there is no limitations (less memory) on recursion.
 
 ## Compilation process
 
-Compiling a python script sed is made in four passes:
+Compiling a python script into sed is made in four passes:
 
-* the python script is transformed into another python script where all operators are replaced with functions. These functions are defined in the module numsed_lib. These definitions used the standard operators but with positive operands. Let's call the resulting script the positive form.
-* The positive form is then compiled and disassembled with the dis module into opcodes including the function definitions.
-* The disassembly is simplified and completed to obtain an opcode program which can be interpreted. The interpretation of opcodes is used for testing.
+* the python script is transformed into another python script where all operators are replaced with functions. These functions are defined in the module numsed_lib. These definitions used the standard operators assuming they work on positive operands. Let's call the resulting script the positive form.
+* The positive form is then compiled and disassembled with the dis module into opcodes.
+* The disassembly is simplified and completed to obtain an opcode program which can be interpreted independently. The interpretation of opcodes is used for testing.
 * Finally, the sed script is obtained by replacing each opcode by a sed snippet.
 
 
@@ -192,17 +208,21 @@ POP_CONTEXT		HS: 55;x;y;z;@x;42;
 
 ###### Abstract syntax tree
 
+The official documentation:
+
+https://docs.python.org/3/library/ast.html
+
+More detailed description
+
 https://greentreesnakes.readthedocs.io/en/latest/
 
-###### Opcodes
+###### dis and opcodes
 
-cpython/ceval.c
+The official documentation:
 
-https://docs.python.org/2/library/dis.html
+https://docs.python.org/3/library/dis.html
 
-http://unpyc.sourceforge.net/Opcodes.html
+The implementation gives all details of opcode working:
 
-http://www.goldsborough.me/python/low-level/2016/10/04/00-31-30-disassembling_python_bytecode/
-
-
+[cpython/ceval.c](https://github.com/python/cpython/blob/2bdba08bd0eb6f1b2a20d14558a4ea2009b46438/Python/ceval.c) 
 
