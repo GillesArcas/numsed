@@ -185,11 +185,7 @@ def process_all(args):
 def numsed(argstring=None):
     parser, args = parse_command_line(argstring)
 
-    if False: # args.version:
-        print(__doc__)
-        print(VERSION)
-
-    elif args.help:
+    if args.help:
         parser.print_help()
 
     elif args.fullhelp:
