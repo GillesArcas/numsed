@@ -623,6 +623,38 @@ def foo():
 print(foo())
 print(x)
 # ---
+# print strings
+print('Hello word!')
+print("Hello word!")
+print('Hello "word"!')
+print("Hello 'word'!")
+# ---
+# string variables
+a = 'foo'
+b = "bar"
+print(a)
+print(b)
+# ---
+# string arguments
+def foo(x, s1, s2): 
+    if x < 0:
+        print(s1)
+    else:
+        print(s2)
+
+foo(-1, 'negative', 'positive')
+foo(+1, 'negative', 'positive')
+# ---
+# string results
+def foo(x): 
+    if x < 0:
+        return 'negative'
+    else:
+        return 'positive'
+
+print(foo(-1))
+print(foo(+1))
+# ---
 # First class function - assignment
 def foo(x):
     x = x + 1
