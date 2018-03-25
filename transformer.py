@@ -64,6 +64,9 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         if not isinstance(node.n, int) and not (common.PY2 and isinstance(node.n, long)):
             check_error('not an integer', node.n, node)
 
+    def visit_Str(self, node):
+        pass
+
     def visit_UnaryOp(self, node):
         if not isinstance(node.op, (ast.UAdd, ast.USub, ast.Not)):
             check_error('unknown operator', node.op, node)
@@ -76,7 +79,7 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         self.visit(node.right)
 
     def visit_Print(self, node):
-        if len(node.values) != 1 or node.dest is not None or  node.nl is False:
+        if len(node.values) != 1 or node.dest is not None or node.nl is False:
             check_error('incorrect print', node.func.id, node)
         else:
             self.visit(node.values[0])
