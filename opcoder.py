@@ -103,7 +103,8 @@ def parse_dis_instruction(s):
         m = re.search(r'code object (\w+)', arg)
         arg = make_function_label(m.group(1))
     elif '(' in arg:
-        m = re.search(r'\((.*)\)', arg)
+        # if any quotes, they are kept until end of formating opcodes
+        m = re.search(r'\((.*)\) *$', arg)
         arg = m.group(1)
         if arg.startswith('to '):
             arg = arg[3:]
@@ -141,6 +142,18 @@ class OpcodeConversion(common.NumsedConversion):
         return'\n'.join(interpreter(self.opcode, coverage=True))
 
 
+def scancodes(code):
+    for instr in code:
+        yield scancode(instr)
+
+
+def scancode(instr):
+    x = instr.split(None, 1)
+    opc = x[0]
+    arg = x[1] if len(x) > 1 else None
+    return instr, opc, arg
+
+
 def opcodes(dis_code):
     # simplify dis code
     dis_code = prepared_dis_code(dis_code)
@@ -162,18 +175,18 @@ def opcodes(dis_code):
 
     # handle function arguments and context
     tmp = []
-    for instr in newcode:
-        if instr.startswith('FUNCTION'):
-            x = instr.split()
-            name = x[1]
-            args = x[2:]
+    for instr, opc, args in scancodes(newcode):
+        if opc == 'FUNCTION':
+            x = args.split()
+            name = x[0]
+            args = x[1:]
             tmp.append(':%s' % name)
             tmp.append('MAKE_CONTEXT')
             # arguments are pushed first one first by native python compiler,
             # and they have to be popped in reverse order
             for arg in reversed(args):
                 tmp.append('STORE_FAST %s' % arg)
-        elif instr.startswith('RETURN_VALUE'):
+        elif opc == 'RETURN_VALUE':
             tmp.append('POP_CONTEXT')
             tmp.append(instr)
         else:
@@ -182,11 +195,9 @@ def opcodes(dis_code):
 
     # rename jump opcodes
     tmp = []
-    for instr in newcode:
-        if re.match('^JUMP_ABSOLUTE|JUMP_FORWARD', instr):
-            x = instr.split()
-            label = x[1]
-            tmp.append('JUMP ' + label)
+    for instr, opc, arg in scancodes(newcode):
+        if opc in ('JUMP_ABSOLUTE', 'JUMP_FORWARD'):
+            tmp.append('JUMP ' + arg)
         else:
             tmp.append(instr)
     newcode = tmp
@@ -220,24 +231,28 @@ def opcodes(dis_code):
 
     # ignore some opcodes
     tmp = []
-    for instr in newcode:
-        x = instr.split()
-        opc = x[0]
-        arg = x[1] if len(x) > 1 else None
+    for index, (instr, opc, arg) in enumerate(scancodes(newcode)):
         if opc == 'EXTENDED_ARG':
-            pass # used in py3 for comparison operators, useless here, operators
-                 # have been written in argument position
-        elif opc == 'LOAD_CONST' and re.match(r"^'.*'$", arg):
-            pass # use in py3, the name of a function is pushed before MAKE_FUNCTION
-                 # there is no other string hanfled in numsed
+            # used in py3 for comparison operators, useless here, operators
+            # have been written in argument position
+            pass
+        elif (opc == 'LOAD_CONST' and re.match(r"^'.*'$", arg) and
+              scancode(newcode[index + 1])[1] == 'MAKE_FUNCTION'):
+            # use in py3, the name of a function is pushed before MAKE_FUNCTION
+            # keep other strings
+            pass
         elif opc == 'STORE_NAME' and arg in numsed_lib.PRIMITIVES:
-            pass # use in py3
+            # use in py3
+            pass
         else:
             tmp.append(instr)
     newcode = tmp
 
     # add print definition
     newcode.extend(PRINT())
+
+    # remove quotes
+    clean_strings(newcode)
 
     # return list of formated instructions
     return pprint_opcode(newcode)
@@ -283,26 +298,25 @@ def inline_helper_opcodes(code):
     variables, consts and operators, i.e. no call functions inside the XXX
     sequence of opcodes.
     """
-
     code2 = []
     i = 0
     while i < len(code):
-        opcode = code[i]
+        instr = code[i]
         i += 1
-        if opcode.strip() == '':
+        if instr.strip() == '':
             continue
-        x = opcode.split()
+        x = instr.split()
         opc = x[0]
         arg = x[1] if len(x) > 1 else None
         if opc == 'LOAD_CONST':
             if any(arg.startswith(_) for _ in numsed_lib.PRIMITIVES):
                 i += 2
             else:
-                code2.append(opcode)
+                code2.append(instr)
         elif opc == 'LOAD_GLOBAL':
             func = arg
             if func not in numsed_lib.PRIMITIVES:
-                code2.append(opcode)
+                code2.append(instr)
             else:
                 argseq = []
                 while not code[i].startswith('CALL_FUNCTION'):
@@ -316,7 +330,7 @@ def inline_helper_opcodes(code):
                 i += 1
             i += 1
         else:
-            code2.append(opcode)
+            code2.append(instr)
     return code2
 
 
@@ -342,50 +356,50 @@ def PRINT():
     )
 
 
-def link_opcode(code):
-    # after disassembly of functions by dis-ing on module, labels in each
-    # function starts from 0. Update labels to have separate name spaces.
+def clean_strings(opcodes):
+    """
+    remove quotes from strings
+    """
+    for index, (_, opc, arg) in enumerate(scancodes(opcodes)):
+        if opc == 'LOAD_CONST' and re.match(r'^([\'"]).*\1$', arg):
+            arg = arg[1:-1]
+            opcodes[index] = '%s %s' % (opc, arg)
 
+
+def link_opcode(code):
+    """
+    After disassembly of functions, labels in each function starts from 0.
+    Update labels to have separate name spaces.
+    """
     offset = 0
     maxlabel = 0
-    for index, instr in enumerate(code):
-        if instr.strip() == '':
-            continue
+    for index, (instr, opc, arg) in enumerate(scancodes(code)):
         if is_function_label(instr):
             offset = maxlabel + 2
             continue
+
         if instr.startswith(':'):
             label = offset + int(instr[1:])
             code[index] = ':%d' % label
             if label > maxlabel:
                 maxlabel = label
 
-        if instr_with_label(instr):
-            opc, arg = instr.split()
+        if 'JUMP' in opc or opc == 'SETUP_LOOP':
             label = offset + int(arg)
             code[index] = '%s %d' % (opc, label)
 
 
-def instr_with_label(instr):
-    return 'JUMP' in instr or instr.startswith('SETUP_LOOP')
-
-
 def pprint_opcode(code):
     newcode = []
-    for instr in code:
-        if instr.strip() == '':
-            continue
+    for instr, opc, arg in scancodes(code):
         if instr.startswith(':'):
             newcode.append('')
             newcode.append(instr)
             continue
-        x = instr.split()
-        opcode = x[0]
-        arg = x[1] if len(x) > 1 else None
         if arg is None:
             newcode.append(instr)
         else:
-            newcode.append('%-17s %s' % (opcode, arg))
+            newcode.append('%-17s %s' % (opc, arg))
     return newcode
 
 
@@ -423,7 +437,7 @@ def interpreter(code, coverage=False):
     for x in code:
         if x.strip() == '':
             continue
-        opcode, argument = (x.split() + [None])[:2]
+        x, opcode, argument = scancode(x)
         if opcode[0] == ':':
             opcode, argument = opcode[0], opcode[1:]
             labels[argument] = len(opcodes)
