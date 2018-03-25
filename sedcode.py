@@ -115,16 +115,16 @@ def normalize(snippet):
               'IS_POSITIVE', 'NEGATIVE', 'IS_ODD', 'DIVIDE_BY_TWO', 'TRACE')
 
     macros += ('PUSH', 'POP', 'POP2', 'SWAP', 'POP_TOP', 'DUP_TOP',
-               'CMP', 'UADD', 'USUB', 'UMUL',
+               'CHECKINT2', 'CMP', 'UADD', 'USUB', 'UMUL',
                'FULLADD', 'FULLSUB', 'FULLMUL', 'MULBYDIGIT', 'DIVBY2', 'ODD')
 
     for macro in macros:
         func = globals()[macro]
         def repl(m):
-            args = [] if not m.group(1) else m.group(1).split()
+            args = [] if not m.group(1) else [m.group(1)]
             return ('# %s\n' % macro) + normalize(func(*args))
 
-        snippet = re.sub(r'(?<!# )\b%s\b *([^ #\n]*)' % macro, repl, snippet)
+        snippet = re.sub(r'(?<!# )\b%s\b *([^#\n]*)' % macro, repl, snippet)
 
     snippet = snippet.replace('\\d', '[0-9]')
     return snippet
@@ -160,7 +160,35 @@ def prettyprint(sedcode):
     return '\n'.join(sedcode2)
 
 
-# -- push/pop ---------------------------------------------------------------
+# -- Startup -----------------------------------------------------------------
+
+
+def STARTUP():
+    snippet = r'''
+        x
+        s/.*/end_of_script;@/
+        x
+        b.start
+        :end_of_script
+        q
+        :NameError
+        s/.*/NameError: name & is not defined/
+        p
+        q
+        :UnknownLabel
+        s/.*/UnknownLabel: label & is not defined/
+        p
+        q
+        :NotAnInteger
+        s/^([^;]+;[^;]+).*/NotAnInteger: an operand is not an integer: \1/
+        p
+        q
+        :.start
+    '''
+    return snippet
+
+
+# -- Stack ------------------------------------------------------------------
 
 
 def PUSH():
@@ -172,6 +200,7 @@ def PUSH():
     '''
     return snippet
 
+
 def POP():
     snippet = r'''                      # PS: ?         HS: N;X
         g                               # PS: N;X       HS: N;X
@@ -180,6 +209,7 @@ def POP():
         s/;.*//                         # PS: N         HS: X
     '''
     return snippet
+
 
 def PUSH2():
     snippet = r'''                      # PS: M;N       HS: X
@@ -190,6 +220,7 @@ def PUSH2():
     '''
     return snippet
 
+
 def POP2():
     snippet = r'''                      # PS: ?         HS: M;N;X
         g                               # PS: M;N;X     HS: M;N;X
@@ -199,6 +230,7 @@ def POP2():
     '''
     return snippet
 
+
 def SWAP():
     snippet = r'''                      # PS: ?         HS: M;N;X
         x                               # PS: M;N;X     HS: ?
@@ -206,9 +238,6 @@ def SWAP():
         x                               # PS: ?         HS: N;M;X
     '''
     return snippet
-
-
-# -- Stack ------------------------------------------------------------------
 
 
 def POP_TOP():
@@ -248,9 +277,6 @@ def ROT_THREE():
     return snippet
 
 
-# -- Constants --------------------------------------------------------------
-
-
 def LOAD_CONST(const):
     snippet = r'''                      # PS: ?         HS: X
         g                               # PS: X         HS: X
@@ -263,26 +289,6 @@ def LOAD_CONST(const):
 # -- Name spaces -------------------------------------------------------------
 
 
-def STARTUP():
-    snippet = '''
-        x
-        s/.*/end_of_script;@/
-        x
-        b.start
-        :end_of_script
-        q
-        :NameError
-        s/.*/NameError: name & is not defined/
-        p
-        q
-        :UnknownLabel
-        s/.*/UnknownLabel: label & is not defined/
-        p
-        q
-        :.start
-    '''
-    return snippet
-
 def MAKE_CONTEXT():
     snippet = '''
         x
@@ -290,6 +296,7 @@ def MAKE_CONTEXT():
         x
     '''
     return snippet
+
 
 def POP_CONTEXT():
     snippet = '''
@@ -401,7 +408,7 @@ def CALL_FUNCTION(argc):
 
 
 def RETURN_VALUE():
-    snippet = '''                       # PS: ?         HS: R;label;X
+    snippet = r'''                      # PS: ?         HS: R;label;X
         SWAP                            # PS: ?         HS: label;R;X
         POP                             # PS: label     HS: R;X
         b return
@@ -410,7 +417,7 @@ def RETURN_VALUE():
 
 
 def BRANCH_ON_NAME(labels):
-    snippet = '''                       # PS: label
+    snippet = r'''                      # PS: label
         t.test_return                   # t to next line to reset t flag
         :.test_return                   # PS: label
     '''
@@ -418,6 +425,16 @@ def BRANCH_ON_NAME(labels):
     snippet += '\n'.join(('s/^%s$//;t %s' % (label, label) for label in labels))
     snippet += '\nb UnknownLabel'
 
+    return snippet
+
+
+# -- Type checking -----------------------------------------------------------
+
+
+def CHECKINT2():
+    snippet = r'''                      # PS: X;Y         HS: X;Y;Z
+        /^\d+;\d+/!b NotAnInteger
+    '''
     return snippet
 
 
@@ -486,6 +503,7 @@ def COMPARE_OP(opname):
     snippet = '''
         SWAP
         POP2
+        CHECKINT2
         s/$/;/
         CMP
         y/<=>/xyz/
@@ -660,7 +678,8 @@ def BINARY_ADD():
     Implements TOS = TOS1 + TOS on unsigned integers (R = N + M).
     """
     snippet = r'''                      # PS: ?         HS: M;N;X
-        POP2                            # PS: M;N;      HS: X
+        POP2                            # PS: M;N       HS: X
+        CHECKINT2
         UADD                            # PS: R         HS: X
         PUSH                            # PS: R         HS: R;X
      '''
@@ -673,7 +692,8 @@ def BINARY_SUBTRACT():
     """
     snippet = r'''                      # PS: ?         HS: M;N;X
         SWAP
-        POP2                            # PS: M;N;      HS: X
+        POP2                            # PS: M;N       HS: X
+        CHECKINT2
         USUB                            # PS: R         HS: X
         PUSH                            # PS: R         HS: R;X
      '''
@@ -769,7 +789,8 @@ def UMUL():
 
 def BINARY_MULTIPLY():
     snippet = r'''                      # PS: ?         HS: M;N;X
-        POP2                            # PS: M;N;      HS: X
+        POP2                            # PS: M;N       HS: X
+        CHECKINT2
         s/$/;/
         UMUL                            # PS: R         HS: X
         PUSH                            # PS: R         HS: R;X
