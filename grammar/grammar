@@ -39,7 +39,7 @@ arith_expr: term (('+'|'-') term)*
 term: factor (('*'|'//'|'%'') factor)*
 factor: ('+'|'-') factor | power
 power: atom trailer* ['**' factor]
-atom: NAME | NUMBER
+atom: NAME | NUMBER | STRING
 
 trailer: '(' [arglist] ')'
 testlist: test (',' test)* [',']
