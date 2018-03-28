@@ -11,6 +11,22 @@ print(10000000000000000000)
 n = 42
 print(n)
 # ---
+# variable names
+_ = 1
+print(_)
+n = 42
+print(n)
+nn = 13
+print(nn)
+nnnnnnnnnnnnnnnnn = 5
+print(nnnnnnnnnnnnnnnnn)
+n1 = 543
+print(n1)
+n123456789000 = 64
+print(n123456789000)
+a_very_long_variable_name = 17
+print(a_very_long_variable_name)
+# ---
 # assign variable
 m = 42
 n = m
@@ -71,6 +87,16 @@ m = 42
 n = 5
 p = (m * n + m // n) - 3 * (m - n)
 print(p)
+# ---
+# unary arithmetical operators
+if +5 == 5:
+    print(1)
+else:
+    print(0)
+if -5 == 0 - 5:
+    print(1)
+else:
+    print(0)
 # ---
 # augmented assign add
 m = 42
@@ -654,6 +680,26 @@ def foo(x):
 
 print(foo(-1))
 print(foo(+1))
+# ---
+# string equality
+def foo(s1, s2): 
+    if s1 == s2:
+        print('strings are equal')
+    else:
+        print('strings are different')
+
+foo('foo', 'foo')
+foo('foo', 'bar')
+# ---
+# string difference
+def foo(s1, s2): 
+    if s1 != s2:
+        print('strings are different')
+    else:
+        print('strings are equal')
+
+foo('foo', 'foo')
+foo('foo', 'bar')
 # ---
 # First class function - assignment
 def foo(x):

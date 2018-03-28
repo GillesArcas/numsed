@@ -67,6 +67,9 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
     def visit_Str(self, node):
         pass
 
+    def visit_Subscript(self, node):
+        pass
+
     def visit_UnaryOp(self, node):
         if not isinstance(node.op, (ast.UAdd, ast.USub, ast.Not)):
             check_error('unknown operator', node.op, node)
@@ -313,7 +316,7 @@ def function_calls(libfuncs):
         numsed_ast_visitor = NumsedAstVisitor()
         numsed_ast_visitor.visit(tree)
         for func in numsed_ast_visitor.required_func:
-            if func not in libfuncs and func not in libfuncs2:
+            if func not in libfuncs and func not in libfuncs2 and func != 'isinstance':
                 libfuncs.add(func)
     return sorted(list(libfuncs2))
 
@@ -418,8 +421,8 @@ unsigned_func = {  # assert_unsigned_func
 
 unsigned_func_pattern = """
 def %s(x, y):
-    assert x >= 0, 'x < 0'
-    assert y >= 0, 'y < 0'
+    assert isinstance(x, str) or x >= 0, 'x < 0'
+    assert isinstance(y, str) or y >= 0, 'y < 0'
     return x %s y
 """
 

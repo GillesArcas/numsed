@@ -223,7 +223,7 @@ PRIMITIVES = ('is_positive', 'negative', 'is_odd', 'divide_by_two')
 
 
 def is_positive(x):
-    return x > 0
+    return isinstance(x, str) or x > 0
 
 def negative(x):
     return -x
@@ -234,3 +234,9 @@ def is_odd(x):
 def divide_by_two(x):
     return x // 2
 
+def input():
+    try:
+        return raw_input()
+    except:
+        import builtins
+        return builtins.input()

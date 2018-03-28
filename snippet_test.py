@@ -2,18 +2,26 @@ from __future__ import print_function
 
 import subprocess
 import random
+import string
 from sedcode import (normalize,
                  STARTUP, MAKE_CONTEXT, POP_CONTEXT, PUSH, POP,
                  LOAD_GLOBAL, STORE_GLOBAL, DELETE_GLOBAL, LOAD_FAST,
-                 STORE_FAST, CMP, FULLADD, FULLSUB, UADD, USUB, FULLMUL,
-                 MULBYDIGIT, UMUL, DIVBY2, ODD)
+                 STORE_FAST, CMP, CMPSTR, FULLADD, FULLSUB, UADD, USUB, FULLMUL,
+                 MULBYDIGIT, UMUL, DIVBY2, ODD, EQU)
 
 
 def random_ndigits(n):
     return random.randint(10 ** (n - 1), 10 ** n)
 
+
+def random_string(size):
+    chars = string.ascii_uppercase + string.ascii_lowercase + string.digits
+    return ''.join(random.choice(chars) for _ in range(size))
+
+
 def random_varname():
     return ''.join(random.sample('abcdefghijklmnopqrstuvwxyz', random.randint(1, 10)))
+
 
 def random_content():
     x = [str(random.randint(0, 10 ** random.randint(0, 10))) for _ in range(random.randint(0, 10))]
@@ -269,6 +277,45 @@ def test_cmp_2():
             outlist.append('%s' % '<' if a < b else '=' if a == b else '>')
 
     return test_gen('CMP_2', CMP, inplist, outlist)
+
+
+def test_cmpstr():
+    '''
+    Input  PS: M;N;
+    Output PS: < or = or >
+    100 x 100 values with 1 to 99 char
+    '''
+    inplist = list()
+    outlist = list()
+    for p in range(1, 100):
+        for q in range(1, 100):
+            a = random_string(p)
+            b = random_string(q)
+            inplist.append('%s;%s;' % (a, b))
+            outlist.append('%s' % '<' if a < b else '=' if a == b else '>')
+
+    return test_gen('CMPSTR', CMPSTR, inplist, outlist)
+
+
+def test_equ():
+    '''
+    Input  HS: M;N;
+    Output PS: 0 or 1
+    100 equalities and 100 differences with 1 to 99 digits
+    '''
+    inplist = list()
+    outlist = list()
+    for p in range(1, 100):
+        a = random_ndigits(p)
+        b = random_ndigits(p)
+        while b == a:
+            b = random_ndigits(p)
+        inplist.append('%d;%d;' % (a, a))
+        outlist.append('%s' % '1')
+        inplist.append('%d;%d;' % (a, b))
+        outlist.append('%s' % '0')
+
+    return test_gen('EQU', lambda: 'x\n' + EQU(), inplist, outlist)
 
 
 def test_fulladd():
@@ -596,15 +643,20 @@ def test_gen(descr, func, inplist, outlist):
 
     res = subprocess.check_output(com).decode('ascii').splitlines()
 
+    with open('test.result', 'w') as f:
+        f.writelines(res)
+
     if res == outlist:
         print('%-15s %s' % (descr, 'OK'))
         return True
-    else:
-        print('%-15s %s' % (descr, 'fail'))
+
+    print('%-15s %s' % (descr, 'fail'))
+
     for inp, out, res in zip(inplist, outlist, res):
         if out != res:
-                print('%-8s %-8s %-8s' % (inp, out, res))
-        return False
+            print('%-8s %-8s %-8s' % (inp, out, res))
+
+    return False
 
 
 def main():
@@ -614,30 +666,33 @@ def main():
         print('Fail to start sed:', str(e))
         exit(1)
 
-    result = all((test_context_0(),
-                  test_context_1(),
-                  test_context_2(),
-                  test_context_3(),
-                  test_context_4(),
-                  test_cmp_1(),
-                  test_cmp_2(),
-                  test_fulladd(),
-                  test_fullsub(),
-                  test_uadd(),
-                  test_usub_1(),
-                  test_usub_2(),
-                  test_fullmul(),
-                  test_mulbydigit(),
-                  test_umul_1(),
-                  test_umul_2(),
-                  test_umul_3(),
-                  test_umul_4(),
-                  test_umul_5(),
-                  test_umul_6(),
-                  test_umul_7(),
-                  test_divby2_1(),
-                  test_divby2_2(),
-                  test_odd(),))
+    result = all((test_cmpstr(),
+                #   test_context_0(),
+                #   test_context_1(),
+                #   test_context_2(),
+                #   test_context_3(),
+                #   test_context_4(),
+                #   test_cmp_1(),
+                #   test_cmp_2(),
+                #   test_equ(),
+                #   test_fulladd(),
+                #   test_fullsub(),
+                #   test_uadd(),
+                #   test_usub_1(),
+                #   test_usub_2(),
+                #   test_fullmul(),
+                #   test_mulbydigit(),
+                #   test_umul_1(),
+                #   test_umul_2(),
+                #   test_umul_3(),
+                #   test_umul_4(),
+                #   test_umul_5(),
+                #   test_umul_6(),
+                #   test_umul_7(),
+                #   test_divby2_1(),
+                #   test_divby2_2(),
+                #   test_odd(),
+                  ))
 
     print('OK' if result else 'FAIL')
     return result

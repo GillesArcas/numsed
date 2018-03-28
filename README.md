@@ -36,7 +36,7 @@ The subset of Python used by numsed is made of:
 * function definitions and calls
 * print function
 * global statement
-* string constants and variables. Strings can be assigned to variables, passed to functions and returned by functions. However, arithmetical and comparison operators do not apply to strings.
+* string constants and variables. Strings can be assigned to variables, passed to functions and returned by functions. Strings can be tested for equality or difference, but other comparison operators and arithmetical operators do not apply to strings.
 * function variables. Functions can be assigned to variables, passed to functions and returned by functions. However, arithmetical and comparison operators do not apply to functions.
 
 

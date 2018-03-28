@@ -1,3 +1,5 @@
+#coding: latin_1
+
 from __future__ import print_function
 
 import sys
@@ -33,7 +35,7 @@ class NumsedConversion:
 
         # run original script and store results
         ref = subprocess.check_output('python ' + self.source)
-        ref = ref.decode('ascii') # py3
+        ref = ref.decode('Latin-1') # py3
         print(ref)
 
         # run conversion
@@ -76,7 +78,7 @@ def run(cmd):
     res = []
     while True:
         line = p.stdout.readline()
-        line = line.decode('ascii') # py3
+        line = line.decode('Latin-1') # py3
         if line == '':
             break
         else:

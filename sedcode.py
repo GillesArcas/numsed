@@ -1,3 +1,5 @@
+#coding: latin_1
+
 from __future__ import print_function
 
 import re
@@ -72,7 +74,7 @@ def run_sed(sed):
 def sedcode(opcode):
     global function_labels, return_labels
 
-    function_labels = ['print']
+    function_labels = ['print', 'input.func']
     return_labels = []
 
     for instr in opcode:
@@ -111,18 +113,23 @@ def normalize(snippet):
               'JUMP_IF_TRUE_OR_POP', 'JUMP_IF_FALSE_OR_POP',
               'SETUP_LOOP', 'POP_BLOCK',
               'RETURN_VALUE',
-              'PRINT_ITEM', 'PRINT_NEWLINE',
+              'PRINT_ITEM', 'PRINT_NEWLINE', 'RAW_INPUT',
+              'BINARY_SUBSCR',
               'IS_POSITIVE', 'NEGATIVE', 'IS_ODD', 'DIVIDE_BY_TWO', 'TRACE')
 
+    # macros = opcoder.OPCODES - BINARY_MODULO
+
     macros += ('PUSH', 'POP', 'POP2', 'SWAP', 'POP_TOP', 'DUP_TOP',
-               'CHECKINT2', 'CMP', 'UADD', 'USUB', 'UMUL',
+               'CHECKINT2', 'CMP', 'CMPSTR', 'EQU', 'NEQ', 'UADD', 'USUB', 'UMUL',
+               'DEC',
                'FULLADD', 'FULLSUB', 'FULLMUL', 'MULBYDIGIT', 'DIVBY2', 'ODD')
 
     for macro in macros:
         func = globals()[macro]
         def repl(m):
-            args = [] if not m.group(1) else [m.group(1)]
-            return ('# %s\n' % macro) + normalize(func(*args))
+            arg = '' if not m.group(1) else m.group(1)
+            larg = [] if not arg else [arg]
+            return '# %s %s\n' % (macro, arg) + normalize(func(*larg)) + ('# %s/\n' % macro)
 
         snippet = re.sub(r'(?<!# )\b%s\b *([^#\n]*)' % macro, repl, snippet)
 
@@ -428,89 +435,7 @@ def BRANCH_ON_NAME(labels):
     return snippet
 
 
-# -- Type checking -----------------------------------------------------------
-
-
-def CHECKINT2():
-    snippet = r'''                      # PS: X;Y         HS: X;Y;Z
-        /^\d+;\d+/!b NotAnInteger
-    '''
-    return snippet
-
-
-# -- Boolean operations ------------------------------------------------------
-
-
-def UNARY_NOT():
-    snippet = r'''
-        g
-        s/^0;/!;/                       # use marker to avoid another substitution
-        s/^\d+/0/
-        s/^!/1/
-        h
-    '''
-    return snippet
-
-def BINARY_AND():
-    snippet = r'''
-        SWAP
-        POP2
-        s/^0;[+-]?\d+;/0/
-        s/^[+-1-9]\d+;([+-]?\d+);/\1/
-        PUSH
-    '''
-    return snippet
-
-def BINARY_OR():
-    snippet = r'''
-        SWAP
-        POP2
-        s/^([+-1-9]\d+);[+-]?\d+;/\1/
-        s/^0;[+-]?\d+;/0/
-        PUSH
-    '''
-    return snippet
-
-
-# -- Compare operators and jumps ---------------------------------------------
-
-
-def CMP():
-    snippet = r'''                      # PS: X;Y;
-        s/;/!;/g                        # PS: X!;Y!;
-        :.loop                          # PS: Xx!X';Yy!Y';
-        s/(\d)!(\d*;\d*)(\d)!/!\1\2!\3/ # PS: X!xX';Y!yY';
-        t.loop
-        /^!/!b.gt
-        /;!/!b.lt
-                                        # PS: !X;!Y;
-        s/^!(\d*)(\d*);!\1(\d*);/\2;\3;/# strip identical leading digits
-        /^;;$/ { s/.*/=/; b.end }       # PS: = if all digits are equal
-
-        s/$/9876543210/
-        /^(.)\d*;(.)\d*;.*\1.*\2/b.gt
-        :.lt
-        s/.*/</                         # PS: < if x < y
-        b.end
-        :.gt
-        s/.*/>/                         # PS: > if x > y
-        :.end                           # PS: <|=|>
-    '''
-    return snippet
-
-
-def COMPARE_OP(opname):
-    snippet = '''
-        SWAP
-        POP2
-        CHECKINT2
-        s/$/;/
-        CMP
-        y/<=>/xyz/
-        PUSH
-    '''
-    conv = {'==': '010', '!=': '101', '<': '100', '<=': '110', '>': '001', '>=': '011'}
-    return snippet.replace('xyz', conv[opname])
+# -- Control flow-------------------------------------------------------------
 
 
 def POP_JUMP_IF_TRUE(target):
@@ -559,18 +484,139 @@ def POP_BLOCK():
     return ''
 
 
-# -- Printing ----------------------------------------------------------------
+# -- Type checking -----------------------------------------------------------
 
 
-def PRINT_ITEM():
-    snippet = r'''                      # PS: ?         HS: N;X
-        POP                             # PS: N         HS: X
-        p
-     '''
+def CHECKINT2():
+    snippet = r'''                      # PS: X;Y         HS: X;Y;Z
+        /^\d+;\d+/!b NotAnInteger
+    '''
     return snippet
 
-def PRINT_NEWLINE():
-    return ''
+
+# -- Boolean operations ------------------------------------------------------
+
+
+def UNARY_NOT():
+    snippet = r'''
+        g
+        s/^0;/!;/                       # use marker to avoid another substitution
+        s/^\d+/0/
+        s/^!/1/
+        h
+    '''
+    return snippet
+
+def BINARY_AND():
+    snippet = r'''
+        SWAP
+        POP2
+        s/^0;[+-]?\d+;/0/
+        s/^[+-1-9]\d+;([+-]?\d+);/\1/
+        PUSH
+    '''
+    return snippet
+
+def BINARY_OR():
+    snippet = r'''
+        SWAP
+        POP2
+        s/^([+-1-9]\d+);[+-]?\d+;/\1/
+        s/^0;[+-]?\d+;/0/
+        PUSH
+    '''
+    return snippet
+
+
+# -- Compare operators -------------------------------------------------------
+
+
+def EQU():
+    snippet = r'''
+        POP2                            # PS: X;Y
+        s/^([^;]+);\1$/1/               # PS: 1 if equal
+        s/^[^;]+;[^;]+$/0/              # PS: 0 if different
+        PUSH
+    '''
+    return snippet
+
+
+def NEQ():
+    snippet = r'''
+        POP2                            # PS: X;Y
+        s/^([^;]+);\1$/0/               # PS: 0 if equal
+        s/^[^;]+;[^;]+$/1/              # PS: 1 if different
+        PUSH
+    '''
+    return snippet
+
+
+def CMP():
+    """
+    int
+    """
+    snippet = r'''                      # PS: X;Y;
+        s/;/!;/g                        # PS: X!;Y!;
+        :.loop                          # PS: Xx!X';Yy!Y';
+        s/(\d)!(\d*;\d*)(\d)!/!\1\2!\3/ # PS: X!xX';Y!yY';
+        t.loop
+        /^!/!b.gt
+        /;!/!b.lt
+                                        # PS: !X;!Y;
+        s/^!(\d*)(\d*);!\1(\d*);/\2;\3;/# strip identical leading digits
+        /^;;$/ { s/.*/=/; b.end }       # PS: = if all digits are equal
+
+        s/$/9876543210/
+        /^(.)\d*;(.)\d*;.*\1.*\2/b.gt
+        :.lt
+        s/.*/</                         # PS: < if x < y
+        b.end
+        :.gt
+        s/.*/>/                         # PS: > if x > y
+        :.end                           # PS: <|=|>
+    '''
+    return snippet
+
+
+def CMPSTR():
+    """
+    strings
+    """
+    snippet = r'''                      # PS: X;Y;
+        s/^([^;]*)([^;]*);\1/\2;/       # strip identical leading characters
+        /^;;/ { s/.*/=/; b.end2 }
+        /^;/  { s/.*/</; b.end2 }
+        /^[^;]+;;/  { s/.*/>/; b.end2 }
+                                        # !"#$%&\'()*+,-./
+        s/$/ !"$%&\'()*+,-.0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~/
+        /^(.)[^;]*;(.)[^;]*;.*\1.*\2/ { s/.*/</; b.end2 }
+        s/.*/>/
+        :.end2
+    '''
+    return snippet
+
+
+def COMPARE_OP(opname):
+    if opname == '==':
+        return 'EQU'
+    if opname == '!=':
+        return 'NEQ'
+
+    snippet = '''
+        SWAP
+        POP2
+        s/$/;/
+        /^\d+;\d+/!b cmpstr
+        CMP
+        b.end
+        :cmpstr
+        CMPSTR
+        :.end
+        y/<=>/xyz/
+        PUSH
+    '''
+    conv = {'==': '010', '!=': '101', '<': '100', '<=': '110', '>': '001', '>=': '011'}
+    return snippet.replace('xyz', conv[opname])
 
 
 # - Addition and subtraction -------------------------------------------------
@@ -878,6 +924,61 @@ def IS_ODD():
         g                               # PS: N;X       HS: N;X
         ODD
         h                               # PS: R;X       HS: R;X  R = 0 if even, or 1 if odd
+    '''
+    return snippet
+
+
+# -- Strings -----------------------------------------------------------------
+
+
+def DEC():
+    snippet = r'''                      # PS: X;N
+        s/$/¢!9876543210/
+        :.loop
+        TRACE loop
+        s/0¢/¢9/
+        t.loop
+        s/^([^;];)¢/\10¢/
+        s/(.)¢(.*)!.*\1(.).*/\3\2/      # PS: X;N-1
+    '''
+    return snippet
+
+
+def BINARY_SUBSCR():
+    """
+    Implements TOS = TOS1[TOS]
+    """
+    snippet = r'''                      # PS:
+        SWAP
+        POP2
+        :.start
+        DEC
+        s/^.//                          # PS: s[1:];i-1
+        /^[^;]*;1$/! b.start
+        s/^(.).*/\1/
+        PUSH
+    '''
+    return snippet
+
+
+# -- Printing ----------------------------------------------------------------
+
+
+def PRINT_ITEM():
+    snippet = r'''                      # PS: ?         HS: N;X
+        POP                             # PS: N         HS: X
+        p
+     '''
+    return snippet
+
+def PRINT_NEWLINE():
+    return ''
+
+
+def RAW_INPUT():
+    snippet = r'''
+        n
+        PUSH
     '''
     return snippet
 
