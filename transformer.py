@@ -84,15 +84,24 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
 
     def visit_Call(self, node):
         if type(node.func) is ast.Name:
-            if node.func.id == 'print' and len(node.args) != 1:
-                check_error('print admits only one argument', node.func.id, node)
+            if node.func.id == 'print':
+                self.visit_CallPrint(node)
+            else:
+                self.visit_child_nodes(node)
         else:
             check_error('callable not handled', node.func, node)
-        self.visit_child_nodes(node)
+
+    def visit_CallPrint(self, node):
+        if len(node.args) != 1:
+            check_error('print admits only one argument', node.func.id, node)
+        elif isinstance(node.args[0], ast.Str):
+            pass
+        else:
+            self.visit_child_nodes(node)
 
     def visit_Compare(self, node):
         for op in node.ops:
-            if type(op) not in (ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE):
+            if not isinstance(op, (ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE)):
                 check_error('comparator not handled', type(op), node)
             else:
                 self.visit(node.left)
