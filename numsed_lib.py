@@ -219,7 +219,9 @@ as an argument of a primitive function and there is no control to check that.
 """
 
 
-PRIMITIVES = ('is_positive', 'negative', 'is_odd', 'divide_by_two')
+PRIMITIVES = ('is_positive', 'negative', 'is_odd', 'divide_by_two', 'input')
+PRIMITIVES_OPCODE = ('is_positive', 'negative', 'is_odd', 'divide_by_two')
+PRIMITIVES_FUNCTION = ('input',)
 
 
 def is_positive(x):
@@ -233,4 +235,12 @@ def is_odd(x):
 
 def divide_by_two(x):
     return x // 2
+
+def input():
+    try:
+        import __builtin__
+        return __builtin__.input()
+    except:
+        import builtins
+        return eval(builtins.input())
 

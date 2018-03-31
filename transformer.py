@@ -27,6 +27,7 @@ from numsed_lib import *
 
 
 LITERAL, UNSIGNED, SIGNED = range(3)
+FUTURE_FUNCTION = 'from __future__ import print_function\n'
 
 
 # -- Syntax checking visitor -------------------------------------------------
@@ -45,6 +46,10 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
 
     def visit_Module(self, node):
         for _ in node.body: self.visit(_)
+
+    def visit_ImportFrom(self, node):
+        # allow for print_function
+        pass
 
     def visit_Assign(self, node):
         for _ in node.targets: self.visit(_)
@@ -78,21 +83,10 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         self.visit(node.left)
         self.visit(node.right)
 
-    def visit_Print(self, node):
-        if len(node.values) != 1 or node.dest is not None or node.nl is False:
-            check_error('incorrect print', node.func.id, node)
-        else:
-            self.visit(node.values[0])
-
     def visit_Call(self, node):
         if type(node.func) is ast.Name:
             if node.func.id == 'print' and len(node.args) != 1:
                 check_error('print admits only one argument', node.func.id, node)
-            else:
-                for _ in node.args: self.visit(_)
-        elif type(node.func) is ast.Call:
-            self.visit(node.func)
-            for _ in node.args: self.visit(_)
         else:
             check_error('callable not handled', node.func, node)
 
@@ -168,7 +162,7 @@ def check(source):
     # list of functions defined in source
     source_functions = {x.co_name for x in code.co_consts if isinstance(x, types.CodeType)}
 
-    tree = ast.parse(script)
+    tree = ast.parse(FUTURE_FUNCTION + script)
     numsed_check_ast_visitor = NumsedCheckAstVisitor(source_functions)
     numsed_check_ast_visitor.visit(tree)
 
@@ -223,6 +217,12 @@ class UnsignedTransformer(ast.NodeTransformer):
         else:
             self.generic_visit(node)
             return node
+
+    def visit_Call(self, node):
+        if node.func.id == 'input':
+            self.required_func.add(node.func.id)
+        self.generic_visit(node)
+        return node
 
 
 # -- Signed transformer ------------------------------------------------------
@@ -284,6 +284,12 @@ class NumsedAstTransformer(ast.NodeTransformer):
             self.generic_visit(node)
             return node
 
+    def visit_Call(self, node):
+        if node.func.id == 'input':
+            self.required_func.add(node.func.id)
+        self.generic_visit(node)
+        return node
+
 
 # -- List of library functions -----------------------------------------------
 
@@ -308,6 +314,8 @@ def function_calls(libfuncs):
     while libfuncs:
         func = libfuncs.pop()
         libfuncs2.add(func)
+        if func == 'input':
+            continue
         textfunc = '\n'.join(inspect.getsourcelines(globals()[func])[0])
         tree = ast.parse(textfunc)
         numsed_ast_visitor = NumsedAstVisitor()
@@ -321,15 +329,18 @@ def function_calls(libfuncs):
 # -- Unsigned transformation -------------------------------------------------
 
 
-def transform_unsigned(script_in, script_out):
+def transform_unsigned(script_in, script_out, include_prim_def=True):
     tree = ast.parse(open(script_in).read())
     numsed_ast_transformer = UnsignedTransformer(Unsigned_func)
     numsed_ast_transformer.visit(tree)
 
     libfuncs = numsed_ast_transformer.required_func
     libfuncs2 = function_calls(libfuncs)
+    if include_prim_def is False:
+        for func in numsed_lib.PRIMITIVES:
+            if func in libfuncs2:
+                libfuncs2.remove(func)
     libfuncs = [globals()[x] for x in libfuncs2]
-
     return save_new_script(tree, libfuncs, getsourcetext, script_out)
 
 
@@ -342,13 +353,17 @@ Unsigned_func = {
 # -- Positive transformation -------------------------------------------------
 
 
-def transform_positive(script_in, script_out):
+def transform_positive(script_in, script_out, include_prim_def=True):
     tree = ast.parse(open(script_in).read())
     numsed_ast_transformer = NumsedAstTransformer(signed_func)
     numsed_ast_transformer.visit(tree)
 
     libfuncs = numsed_ast_transformer.required_func
     libfuncs2 = function_calls(libfuncs)
+    if include_prim_def is False:
+        for func in numsed_lib.PRIMITIVES:
+            if func in libfuncs2:
+                libfuncs2.remove(func)
     libfuncs = [globals()[x] for x in libfuncs2]
 
     return save_new_script(tree, libfuncs, getsourcetext, script_out)
@@ -397,6 +412,9 @@ def transform_assert(script_in, script_out):
     numsed_ast_transformer.visit(tree)
 
     libfuncs = numsed_ast_transformer.required_func
+    for func in numsed_lib.PRIMITIVES:
+        if func in libfuncs:
+            libfuncs.remove(func)
 
     return save_new_script(tree, libfuncs, make_unsigned_func, script_out)
 
@@ -455,7 +473,8 @@ def pprint_ast(astree, indent='  ', stream=sys.stdout):
 
 def rec_node(node, level, indent, write):
     pfx = indent * level
-    if isinstance(node, (ast.Name, ast.Num)):
+    if (common.PY2 and isinstance(node, (ast.Name, ast.Num)) or
+        common.PY3 and isinstance(node, (ast.Name, ast.Num, ast.arg))):
         print(pfx, ast.dump(node), sep='', end='')
 
     elif isinstance(node, ast.AST):
@@ -520,13 +539,17 @@ class ScriptConversion(common.NumsedConversion):
     def __init__(self, source, transformation):
         common.NumsedConversion.__init__(self, source, transformation)
         check(source)
-        if transformation == LITERAL:
+        if transformation == LITERAL or transformation == LITERAL + 10:
             self.code = open(source).read()
             open('~.py', 'wt').write(self.code)
         elif transformation == UNSIGNED:
             self.code = transform_unsigned(source, '~.py')
         elif transformation == SIGNED:
             self.code = transform_positive(source, '~.py')
+        elif transformation == UNSIGNED + 10:
+            self.code = transform_unsigned(source, '~.py', include_prim_def=False)
+        elif transformation == SIGNED + 10:
+            self.code = transform_positive(source, '~.py', include_prim_def=False)
         else:
             self.code = ''
     def trace(self):

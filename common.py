@@ -8,6 +8,7 @@ except ImportError:
     from io import StringIO  # Python3
 
 PY2 = sys.version_info < (3,)
+PY3 = sys.version_info > (3,)
 
 
 class NumsedConversion:

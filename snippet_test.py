@@ -6,7 +6,7 @@ from sedcode import (normalize,
                  STARTUP, MAKE_CONTEXT, POP_CONTEXT, PUSH, POP,
                  LOAD_GLOBAL, STORE_GLOBAL, DELETE_GLOBAL, LOAD_FAST,
                  STORE_FAST, CMP, FULLADD, FULLSUB, UADD, USUB, FULLMUL,
-                 MULBYDIGIT, UMUL, DIVBY2, ODD)
+                 MULBYDIGIT, UMUL, DIVBY2, ODD, EQU)
 
 
 def random_ndigits(n):
@@ -269,6 +269,27 @@ def test_cmp_2():
             outlist.append('%s' % '<' if a < b else '=' if a == b else '>')
 
     return test_gen('CMP_2', CMP, inplist, outlist)
+
+
+def test_equ():
+    '''
+    Input  HS: M;N;
+    Output PS: 0 or 1
+    100 equalities and 100 differences with 1 to 99 digits
+    '''
+    inplist = list()
+    outlist = list()
+    for p in range(1, 100):
+        a = random_ndigits(p)
+        b = random_ndigits(p)
+        while b == a:
+            b = random_ndigits(p)
+        inplist.append('%d;%d;' % (a, a))
+        outlist.append('%s' % '1')
+        inplist.append('%d;%d;' % (a, b))
+        outlist.append('%s' % '0')
+
+    return test_gen('EQU', lambda: 'x\n' + EQU(), inplist, outlist)
 
 
 def test_fulladd():
@@ -601,8 +622,8 @@ def test_gen(descr, func, inplist, outlist):
         return True
     else:
         print('%-15s %s' % (descr, 'fail'))
-    for inp, out, res in zip(inplist, outlist, res):
-        if out != res:
+        for inp, out, res in zip(inplist, outlist, res):
+            if out != res:
                 print('%-8s %-8s %-8s' % (inp, out, res))
         return False
 
@@ -621,6 +642,7 @@ def main():
                   test_context_4(),
                   test_cmp_1(),
                   test_cmp_2(),
+                  test_equ(),
                   test_fulladd(),
                   test_fullsub(),
                   test_uadd(),

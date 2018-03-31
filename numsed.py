@@ -163,20 +163,20 @@ def process_all(args):
     # use --trace when -test is not relevant. This completes coverage and may
     # catch some errors
     test_args = ('--ast    --literal  --test ',
-                    '--ast    --unsigned --trace',
-                    '--ast    --signed   --test ',
-                    '--script --literal  --test ',
-                    '--script --unsigned --trace',
-                    '--script --signed   --test ',
-                    '--dis    --literal  --trace',
-                    '--dis    --unsigned --trace',
-                    '--dis    --signed   --trace',
-                    '--opcode --literal  --test ',
-                    '--opcode --unsigned --trace',
-                    '--opcode --signed   --test ',
-                    '--sed    --literal  --trace',
-                    '--sed    --unsigned --trace',
-                    '--sed    --signed   --test ')
+                 '--ast    --unsigned --trace',
+                 '--ast    --signed   --test ',
+                 '--script --literal  --test ',
+                 '--script --unsigned --trace',
+                 '--script --signed   --test ',
+                 '--dis    --literal  --trace',
+                 '--dis    --unsigned --trace',
+                 '--dis    --signed   --trace',
+                 '--opcode --literal  --test ',
+                 '--opcode --unsigned --trace',
+                 '--opcode --signed   --test ',
+                 '--sed    --literal  --trace',
+                 '--sed    --unsigned --trace',
+                 '--sed    --signed   --test ')
     status = all(numsed('%s %s' % (x, args.source)) for x in test_args)
     status = status and snippet_test.main()
     print('ALL TESTS OK' if status else 'ONE TEST FAILURE')
