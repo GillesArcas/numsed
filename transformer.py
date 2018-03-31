@@ -45,22 +45,21 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         self.inside_funcdef = False
 
     def visit_Module(self, node):
-        for _ in node.body: self.visit(_)
+        self.visit_child_nodes(node)
 
     def visit_ImportFrom(self, node):
         # allow for print_function
         pass
 
     def visit_Assign(self, node):
-        for _ in node.targets: self.visit(_)
-        self.visit(node.value)
+        self.visit_child_nodes(node)
 
     def visit_AugAssign(self, node):
         self.visit(node.target)
         self.visit(node.value)
 
     def visit_Expr(self, node):
-        self.visit(node.value)
+        self.visit_child_nodes(node)
 
     def visit_Name(self, node):
         pass
@@ -89,6 +88,7 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
                 check_error('print admits only one argument', node.func.id, node)
         else:
             check_error('callable not handled', node.func, node)
+        self.visit_child_nodes(node)
 
     def visit_Compare(self, node):
         for op in node.ops:
@@ -102,19 +102,13 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         for _ in node.values: self.visit(_)
 
     def visit_IfExp(self, node):
-        self.visit(node.test)
-        self.visit(node.body)
-        self.visit(node.orelse)
+        self.visit_child_nodes(node)
 
     def visit_If(self, node):
-        self.visit(node.test)
-        for _ in node.body: self.visit(_)
-        for _ in node.orelse: self.visit(_)
+        self.visit_child_nodes(node)
 
     def visit_While(self, node):
-        self.visit(node.test)
-        for _ in node.body: self.visit(_)
-        for _ in node.orelse: self.visit(_)
+        self.visit_child_nodes(node)
 
     def visit_Break(self, node):
         pass
@@ -126,7 +120,7 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         pass
 
     def visit_Return(self, node):
-        self.visit(node.value)
+        self.visit_child_nodes(node)
 
     def visit_Global(self, node):
         pass
@@ -146,10 +140,11 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         for _ in node.body: self.visit(_)
         self.inside_funcdef = False
 
+    def visit_child_nodes(self, node):
+        for _ in ast.iter_child_nodes(node):
+            self.visit(_)
+
     def generic_visit(self, node):
-        # print(node)
-        # print(dir(node))
-        # print(ast.dump(node))
         check_error('construct is not handled', type(node), node)
 
 
