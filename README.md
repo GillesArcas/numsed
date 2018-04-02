@@ -36,8 +36,7 @@ The subset of Python used by numsed is made of:
 * function definitions and calls
 * print function
 * global statement
-* string constants and variables. Strings can be assigned to variables, passed to functions and returned by functions. However, arithmetical and comparison operators do not apply to strings.
-* function variables. Functions can be assigned to variables, passed to functions and returned by functions. However, arithmetical and comparison operators do not apply to functions.
+* string constants are only allowed as print argument.
 
 
 
@@ -50,15 +49,7 @@ The following limitations are checked during conversion:
 
 Some choices in implementation break the comparison with python script results:
 
-* not always return 0 or 1, and the result cannot be compared with python which returns True or False
-* the value printed for functions cannot be compared with the function values printed by python.
-
-The current implementation deserves improvement for the following points:
-
-* strings may not contain these characters ";", "@" and "|"
-* leading and trailing spaces in strings are ignored 
-* empty strings and strings made of spaces result in errors
-* a string containing only digits is treated as an integer
+* not always return 0 or 1, and the result cannot be compared with python which returns True or False.
 
 Note also that there is no limitations (less memory) on recursion.
 
