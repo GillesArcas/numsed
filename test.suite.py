@@ -649,3 +649,9 @@ def foo():
 print(foo())
 print(x)
 # ---
+# print strings
+print('Hello word!')
+print("Hello word!")
+print('Hello "word"!')
+print("Hello 'word'!")
+# ---
