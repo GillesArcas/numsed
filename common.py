@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import sys
 import subprocess
+import time
 try:
     from StringIO import StringIO  # Python2
 except ImportError:
@@ -38,7 +39,9 @@ class NumsedConversion:
         print(ref)
 
         # run conversion
+        t0 = time.time()
         res = self.run()
+        time_sed = time.time() - t0
         if self.print_run_result():
             print(res)
 
@@ -48,7 +51,7 @@ class NumsedConversion:
             for _ in diff:
                 print(_)
 
-        return status
+        return status, time_sed
 
 
 class ListStream:

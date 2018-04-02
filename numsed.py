@@ -7,6 +7,7 @@ from __future__ import print_function
 import argparse
 import os
 import webbrowser
+import glob
 
 import common
 import transformer
@@ -144,17 +145,37 @@ def process_test(args, source):
     return x
 
 
-def process_suite(args):
-    status = True
-    for test in common.testlines(args.source):
+def tests_from_dir(source):
+    for test in glob.glob(os.path.join(source, '*.py')):
+        print(test)
+        yield test, test
+
+
+def tests_from_suite(source):
+    for test in common.testlines(source):
         print(test[0].rstrip())
         with open('tmp.py', 'w') as f:
             f.writelines(test)
-        r = process_test(args, 'tmp.py')
+        yield 'tmp.py', test[0].rstrip()
+
+
+def process_tests(args, tests_from_source):
+    timing = []
+    status = True
+    for test, title in tests_from_source(args.source):
+        r = process_test(args, test)
         status = status and (not args.test or r)
+        if args.test:
+            timing.append((title, status[1]))
+            status = status[0]
         if not status:
             break
     if args.test:
+        s = 0
+        for (test, timing) in timing:
+            print('%-30s %6.2f' % (test, timing))
+            s += timing
+        print('%-30s %6.2f' % ('total', s))
         print('ALL TESTS OK' if status else 'ONE TEST FAILURE')
     return status
 
@@ -195,8 +216,10 @@ def numsed(argstring=None):
         process_all(args)
 
     else:
-        if args.source.endswith('.suite.py'):
-            result = process_suite(args)
+        if os.path.isdir(args.source):
+            result = process_tests(args, tests_from_dir)
+        elif args.source.endswith('.suite.py'):
+            result = process_tests(args, tests_from_suite)
         else:
             result = process_test(args, args.source)
         if args.coverage:
