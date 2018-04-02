@@ -223,8 +223,6 @@ class UnsignedTransformer(ast.NodeTransformer):
             return node
 
     def visit_Call(self, node):
-        if node.func.id == 'input':
-            self.required_func.add(node.func.id)
         self.generic_visit(node)
         return node
 
@@ -289,8 +287,6 @@ class NumsedAstTransformer(ast.NodeTransformer):
             return node
 
     def visit_Call(self, node):
-        if node.func.id == 'input':
-            self.required_func.add(node.func.id)
         self.generic_visit(node)
         return node
 
@@ -318,8 +314,6 @@ def function_calls(libfuncs):
     while libfuncs:
         func = libfuncs.pop()
         libfuncs2.add(func)
-        if func == 'input':
-            continue
         textfunc = '\n'.join(inspect.getsourcelines(globals()[func])[0])
         tree = ast.parse(textfunc)
         numsed_ast_visitor = NumsedAstVisitor()

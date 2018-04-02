@@ -72,7 +72,7 @@ def run_sed(sed):
 def sedcode(opcode):
     global function_labels, return_labels
 
-    function_labels = ['print', 'input.func']
+    function_labels = ['print']
     return_labels = []
 
     for instr in opcode:
@@ -913,14 +913,6 @@ def PRINT_ITEM():
 
 def PRINT_NEWLINE():
     return ''
-
-
-def RAW_INPUT():
-    snippet = r'''
-        n
-        PUSH
-    '''
-    return snippet
 
 
 # -- Debug -------------------------------------------------------------------

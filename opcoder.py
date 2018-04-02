@@ -22,7 +22,7 @@ OPCODES = ('LOAD_CONST', 'LOAD_NAME', 'LOAD_GLOBAL', 'STORE_NAME', 'STORE_GLOBAL
            'BINARY_FLOOR_DIVIDE', 'BINARY_MODULO', 'BINARY_POWER',
            'COMPARE_OP', 'UNARY_NOT', 'JUMP', 'POP_JUMP_IF_TRUE', 'POP_JUMP_IF_FALSE',
            'JUMP_IF_TRUE_OR_POP', 'JUMP_IF_FALSE_OR_POP',
-           'PRINT_ITEM', 'PRINT_NEWLINE', 'RAW_INPUT',
+           'PRINT_ITEM', 'PRINT_NEWLINE',
            'MAKE_FUNCTION', 'CALL_FUNCTION', 'RETURN_VALUE', 'SETUP_LOOP', 'POP_BLOCK',
            'STARTUP', 'MAKE_CONTEXT', 'POP_CONTEXT',
            'IS_POSITIVE', 'NEGATIVE', 'IS_ODD', 'DIVIDE_BY_TWO', 'DIVIDE_BY_TEN', 'MODULO_TEN')
@@ -174,7 +174,6 @@ def opcodes(dis_code):
 
     # add print declaration
     newcode.extend(PRINT_DECL())
-    newcode.extend(INPUT_DECL())
 
     # normalize disassembly labels and opcode arguments
     newcode.extend(dis_code)
@@ -250,7 +249,7 @@ def opcodes(dis_code):
             # use in py3, the name of a function is pushed before MAKE_FUNCTION
             # keep other strings
             pass
-        elif opc == 'STORE_NAME' and arg in numsed_lib.PRIMITIVES_OPCODE:
+        elif opc == 'STORE_NAME' and arg in numsed_lib.PRIMITIVES:
             # use in py3
             pass
         else:
@@ -259,7 +258,6 @@ def opcodes(dis_code):
 
     # add print definition
     newcode.extend(PRINT())
-    newcode.extend(INPUT())
 
     # remove quotes
     clean_strings(newcode)
@@ -319,13 +317,13 @@ def inline_helper_opcodes(code):
         opc = x[0]
         arg = x[1] if len(x) > 1 else None
         if opc == 'LOAD_CONST':
-            if any(arg.startswith(_) for _ in numsed_lib.PRIMITIVES_OPCODE):
+            if any(arg.startswith(_) for _ in numsed_lib.PRIMITIVES):
                 i += 2
             else:
                 code2.append(instr)
         elif opc == 'LOAD_GLOBAL':
             func = arg
-            if func not in numsed_lib.PRIMITIVES_OPCODE:
+            if func not in numsed_lib.PRIMITIVES:
                 code2.append(instr)
             else:
                 argseq = []
@@ -335,7 +333,7 @@ def inline_helper_opcodes(code):
                 i += 1                                      # skip call and return label
                 code2.extend(argseq)                        # append sequence
                 code2.append(primitive_opcode(func))        # append opcode
-        elif opc == 'FUNCTION' and any(arg.startswith(_) for _ in numsed_lib.PRIMITIVES_OPCODE):
+        elif opc == 'FUNCTION' and any(arg.startswith(_) for _ in numsed_lib.PRIMITIVES):
             while not code[i].startswith('RETURN_VALUE'):   # ignore code from primitive
                 i += 1
             i += 1
@@ -362,22 +360,6 @@ def PRINT():
         'PRINT_ITEM',                   # PS: N         HS: label;X
         'PRINT_NEWLINE',
         'LOAD_CONST 0',                 # PS: N         HS: 0;label;X
-        'RETURN_VALUE'
-    )
-
-
-def INPUT_DECL():
-    return (
-        'LOAD_CONST               input.func',
-        'MAKE_FUNCTION            0',
-        'STORE_NAME               input'
-    )
-
-
-def INPUT():
-    return (                            # PS: ?         HS: N;label;X
-        ':input.func',
-        'RAW_INPUT',
         'RETURN_VALUE'
     )
 
@@ -575,9 +557,6 @@ def interpreter(code, coverage=False):
                 instr_pointer = labels[arg]
             else:
                 tos = stack.pop()
-        elif opc == 'RAW_INPUT':
-            x = numsed_lib.input()
-            stack.append(x)
         elif opc == 'PRINT_ITEM':
             tos = stack.pop()
             print(tos, end='')
