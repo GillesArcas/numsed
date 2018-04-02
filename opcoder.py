@@ -15,7 +15,7 @@ import numsed_lib
 
 
 OPCODES = ('LOAD_CONST', 'LOAD_NAME', 'LOAD_GLOBAL', 'STORE_NAME', 'STORE_GLOBAL',
-           'LOAD_FAST', 'STORE_FAST',
+           'LOAD_FAST', 'STORE_FAST', 'DELETE_FAST', 'DELETE_GLOBAL',
            'POP_TOP', 'DUP_TOP', 'ROT_TWO', 'ROT_THREE',
            'UNARY_NEGATIVE', 'UNARY_POSITIVE',
            'BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY',
@@ -25,7 +25,7 @@ OPCODES = ('LOAD_CONST', 'LOAD_NAME', 'LOAD_GLOBAL', 'STORE_NAME', 'STORE_GLOBAL
            'PRINT_ITEM', 'PRINT_NEWLINE', 'RAW_INPUT',
            'MAKE_FUNCTION', 'CALL_FUNCTION', 'RETURN_VALUE', 'SETUP_LOOP', 'POP_BLOCK',
            'STARTUP', 'MAKE_CONTEXT', 'POP_CONTEXT',
-           'IS_POSITIVE', 'NEGATIVE', 'IS_ODD', 'DIVIDE_BY_TWO')
+           'IS_POSITIVE', 'NEGATIVE', 'IS_ODD', 'DIVIDE_BY_TWO', 'DIVIDE_BY_TEN', 'MODULO_TEN')
 
 
 # -- Disassembly -------------------------------------------------------------
@@ -630,6 +630,12 @@ def interpreter(code, coverage=False):
         elif opc == 'DIVIDE_BY_TWO':
             tos = stack.pop()
             stack.append(tos // 2)
+        elif opc == 'DIVIDE_BY_TEN':
+            tos = stack.pop()
+            stack.append(tos // 10)
+        elif opc == 'MODULO_TEN':
+            tos = stack.pop()
+            stack.append(tos % 10)
         elif opc == 'TRACE':
             pass
         else:

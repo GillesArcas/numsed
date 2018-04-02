@@ -100,19 +100,7 @@ def normalize(snippet):
     for label in labels:
         snippet = snippet.replace(label, new_label())
 
-    macros = ('STARTUP', 'MAKE_FUNCTION', 'CALL_FUNCTION', 'BRANCH_ON_NAME',
-              'MAKE_CONTEXT', 'POP_CONTEXT',
-              'LOAD_CONST', 'LOAD_GLOBAL', 'STORE_GLOBAL', 'LOAD_NAME', 'STORE_NAME',
-              'LOAD_FAST', 'STORE_FAST', 'DELETE_FAST', 'DELETE_GLOBAL',
-              'BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY',
-              'UNARY_POSITIVE', 'UNARY_NEGATIVE',
-              'COMPARE_OP', 'UNARY_NOT', #'BINARY_AND', 'BINARY_OR',
-              'JUMP', 'POP_JUMP_IF_TRUE', 'POP_JUMP_IF_FALSE',
-              'JUMP_IF_TRUE_OR_POP', 'JUMP_IF_FALSE_OR_POP',
-              'SETUP_LOOP', 'POP_BLOCK',
-              'RETURN_VALUE',
-              'PRINT_ITEM', 'PRINT_NEWLINE', 'RAW_INPUT',
-              'IS_POSITIVE', 'NEGATIVE', 'IS_ODD', 'DIVIDE_BY_TWO', 'TRACE')
+    macros = opcoder.OPCODES
 
     macros += ('PUSH', 'POP', 'POP2', 'SWAP', 'POP_TOP', 'DUP_TOP',
                'CHECKINT2', 'CMP', 'EQU', 'NEQ', 'UADD', 'USUB', 'UMUL',
@@ -816,6 +804,14 @@ def BINARY_FLOOR_DIVIDE():
     # not implemented in sed, implemented in python
     return ''
 
+def BINARY_MODULO():
+    # not implemented in sed, implemented in python
+    return ''
+
+def BINARY_POWER():
+    # not implemented in sed, implemented in python
+    return ''
+
 
 # -- Helper opcodes ----------------------------------------------------------
 
@@ -839,16 +835,6 @@ def NEGATIVE():
         s/^-0;/0;/                      # handle N = -0
         s/^!//                          # remove marker
         h                               # PS: R;X       HS: R;X  R = -N
-    '''
-    return snippet
-
-
-def DIVIDE_BY_TEN():
-    snippet = r'''                      # PS: ?         HS: N;X
-        g                               # PS: N;X       HS: N;X
-        s/[0-9];/;/                     # remove last digit
-        s/^;/0;/                        # R = 0 if single digit input
-        h                               # PS: R;X       HS: R;X  R = N // 10
     '''
     return snippet
 
@@ -892,6 +878,25 @@ def IS_ODD():
         g                               # PS: N;X       HS: N;X
         ODD
         h                               # PS: R;X       HS: R;X  R = 0 if even, or 1 if odd
+    '''
+    return snippet
+
+
+def DIVIDE_BY_TEN():
+    snippet = r'''                      # PS: ?         HS: N;X
+        g                               # PS: N;X       HS: N;X
+        s/\d;/;/                        # remove last digit
+        s/^;/0;/                        # R = 0 if single digit input
+        h                               # PS: R;X       HS: R;X  R = N // 10
+    '''
+    return snippet
+
+
+def MODULO_TEN():
+    snippet = r'''                      # PS: ?         HS: N;X
+        g                               # PS: N;X       HS: N;X
+        s/\d*(\d);/\1;/                 # keep last digit
+        h                               # PS: R;X       HS: R;X  R = N % 10
     '''
     return snippet
 

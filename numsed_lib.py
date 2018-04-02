@@ -61,6 +61,9 @@ def signed_gte(x, y):
 
 
 def udiv(a, b):
+    if b == 10:
+        return divide_by_ten(a)
+
     # http://compoasso.free.fr/primelistweb/page/prime/euclide.php
     r = a
     q = 0
@@ -83,6 +86,9 @@ def udiv(a, b):
 
 
 def umod(a, b):
+    if b == 10:
+        return modulo_ten(a)
+
     q = udiv(a, b)
     return a - q * b
 
@@ -219,8 +225,8 @@ as an argument of a primitive function and there is no control to check that.
 """
 
 
-PRIMITIVES = ('is_positive', 'negative', 'is_odd', 'divide_by_two', 'input')
-PRIMITIVES_OPCODE = ('is_positive', 'negative', 'is_odd', 'divide_by_two')
+PRIMITIVES = ('is_positive', 'negative', 'is_odd', 'divide_by_two', 'divide_by_ten', 'modulo_ten', 'input')
+PRIMITIVES_OPCODE = ('is_positive', 'negative', 'is_odd', 'divide_by_two', 'divide_by_ten', 'modulo_ten')
 PRIMITIVES_FUNCTION = ('input',)
 
 
@@ -235,6 +241,12 @@ def is_odd(x):
 
 def divide_by_two(x):
     return x // 2
+
+def divide_by_ten(x):
+    return x // 10
+
+def modulo_ten(x):
+    return x % 10
 
 def input():
     try:
