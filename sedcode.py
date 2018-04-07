@@ -275,6 +275,32 @@ def LOAD_CONST(const):
     return snippet.replace('const', const)
 
 
+# -- Tuples ------------------------------------------------------------------
+
+
+def BUILD_TUPLE(n):
+    n = int(n)
+    lhs = '([^;]+);' * n
+    rhs = ','.join(r'\%d' % _ for _ in range(n, 0, -1))
+    snippet = r'''
+        g
+        s/lhs/rhs;/
+        h
+    '''
+    return snippet.replace('lhs', lhs).replace('rhs', rhs)
+
+def UNPACK_SEQUENCE(n):
+    n = int(n)
+    lhs = '([^,]+),' * (n - 1) + '([^,]+)'
+    rhs = ';'.join(r'\%d' % _ for _ in range(1, n + 1))
+    snippet = r'''
+        g
+        s/lhs/rhs/
+        h
+    '''
+    return snippet.replace('lhs', lhs).replace('rhs', rhs)
+
+
 # -- Name spaces -------------------------------------------------------------
 
 
@@ -312,20 +338,10 @@ def LOAD_GLOBAL(name):
 def STORE_GLOBAL(name):
     # name = POP()
     snippet = r'''                      # PS: ?         HS: x;X
-        DELETE_GLOBAL name
         g
+        s/(@[^|]*);name;[^;|]*/\1/      # PS: x;X'      HS: ? (del ;var;val in PS)
         s/^([^;]*);([^@]*@)/\2;name;\1/ # PS: X;v;x     HS: ?
         h                               # PS: ?         HS: X;v;x
-    '''
-    return snippet.replace('name', name)
-
-
-def DELETE_GLOBAL(name):
-    snippet = r'''                      # PS: ?         HS: x;X
-        g                               # PS: x;X       HS: ?
-        s/(@[^|]*);name;[^;|]*(.*)/\1\2/
-                                        # PS: x;X'      HS: ? (del ;var;val in PS)
-        h                               # PS: ?         HS: x;X';v;x
     '''
     return snippet.replace('name', name)
 
@@ -350,20 +366,10 @@ def LOAD_FAST(name):
 def STORE_FAST(name):
     # name = POP()
     snippet = r'''                      # PS: ?         HS: x;X
-        DELETE_FAST name
         g                               # PS: x;X       HS: ?
-        s/([^;]*);(.*)/\2;name;\1/      # PS: X';v;x    HS: ?
+        s/;name;[^;|]*([^|]*)$/\1/      # PS: x;X'      HS: ? (del ;var;val in PS)
+        s/^([^;]*);(.*)/\2;name;\1/     # PS: X';v;x    HS: ?
         h                               # PS: ?         HS: X';v;x
-    '''
-    return snippet.replace('name', name)
-
-
-def DELETE_FAST(name):
-    snippet = r'''                      # PS: ?         HS: x;X
-        g                               # PS: x;X       HS: ?
-        s/([|][^|]*);name;[^;|]*([^|]*)$/\1\2/
-                                        # PS: x;X'      HS: ? (del ;var;val in PS)
-        h                               # PS: ?         HS: x;X';v;x
     '''
     return snippet.replace('name', name)
 

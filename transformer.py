@@ -52,7 +52,30 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         pass
 
     def visit_Assign(self, node):
+        def len_of_target(elt):
+            if isinstance(elt, ast.Name):
+                return 1
+            elif isinstance(elt, ast.Tuple):
+                return len(elt.elts)
+            else:
+                check_error('cannot assign to', elt, node)
+
         self.visit_child_nodes(node)
+        num = len_of_target(node.targets[0])
+        for elt in node.targets[1:]:
+            if len_of_target(elt) != num:
+                check_error('multiple assignment must have same number of variables',
+                            codegen.to_source(elt), node)
+        if isinstance(node.value, ast.Tuple):
+            numv = len(node.value.elts)
+        elif isinstance(node.value, ast.Call):
+            # TODO: compute nvalout and test against
+            numv = num
+        else:
+            numv = 1
+        if numv != num:
+            check_error('targets and values must have same length',
+                        codegen.to_source(node.value), node)
 
     def visit_AugAssign(self, node):
         self.visit(node.target)
@@ -68,7 +91,20 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         if not isinstance(node.n, int) and not (common.PY2 and isinstance(node.n, long)):
             check_error('not an integer', node.n, node)
 
-    def visit_Str(self, node):
+    def visit_Str(self, node): # TODO check delete
+        pass
+
+    def visit_Tuple(self, node):
+        for elt in node.elts:
+			# TODO: Call ok if nvalout == 1
+            if isinstance(elt, (ast.Tuple, ast.Call)):
+                check_error('elements of tuples may not be tuples or calls', codegen.to_source(elt), node)
+        self.visit_child_nodes(node)
+
+    def visit_Store(self, node):
+        pass
+
+    def visit_Load(self, node):
         pass
 
     def visit_UnaryOp(self, node):

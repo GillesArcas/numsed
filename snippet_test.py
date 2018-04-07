@@ -4,8 +4,8 @@ import subprocess
 import random
 from sedcode import (normalize,
                  STARTUP, MAKE_CONTEXT, POP_CONTEXT, PUSH, POP,
-                 LOAD_GLOBAL, STORE_GLOBAL, DELETE_GLOBAL, LOAD_FAST,
-                 STORE_FAST, CMP, FULLADD, FULLSUB, UADD, USUB, FULLMUL,
+                 LOAD_GLOBAL, STORE_GLOBAL, LOAD_FAST, STORE_FAST,
+                 CMP, FULLADD, FULLSUB, UADD, USUB, FULLMUL,
                  MULBYDIGIT, UMUL, DIVBY2, ODD, EQU)
 
 

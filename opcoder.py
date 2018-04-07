@@ -15,17 +15,21 @@ import numsed_lib
 
 
 OPCODES = ('LOAD_CONST', 'LOAD_NAME', 'LOAD_GLOBAL', 'STORE_NAME', 'STORE_GLOBAL',
-           'LOAD_FAST', 'STORE_FAST', 'DELETE_FAST', 'DELETE_GLOBAL',
+           'LOAD_FAST', 'STORE_FAST',
            'POP_TOP', 'DUP_TOP', 'ROT_TWO', 'ROT_THREE',
+           'BUILD_TUPLE', 'UNPACK_SEQUENCE',
            'UNARY_NEGATIVE', 'UNARY_POSITIVE',
            'BINARY_ADD', 'BINARY_SUBTRACT', 'BINARY_MULTIPLY',
            'BINARY_FLOOR_DIVIDE', 'BINARY_MODULO', 'BINARY_POWER',
-           'COMPARE_OP', 'UNARY_NOT', 'JUMP', 'POP_JUMP_IF_TRUE', 'POP_JUMP_IF_FALSE',
+           'COMPARE_OP', 'UNARY_NOT',
+           'JUMP', 'POP_JUMP_IF_TRUE', 'POP_JUMP_IF_FALSE',
            'JUMP_IF_TRUE_OR_POP', 'JUMP_IF_FALSE_OR_POP',
            'PRINT_ITEM', 'PRINT_NEWLINE',
-           'MAKE_FUNCTION', 'CALL_FUNCTION', 'RETURN_VALUE', 'SETUP_LOOP', 'POP_BLOCK',
+           'MAKE_FUNCTION', 'CALL_FUNCTION', 'RETURN_VALUE',
+           'SETUP_LOOP', 'POP_BLOCK',
            'STARTUP', 'MAKE_CONTEXT', 'POP_CONTEXT',
-           'IS_POSITIVE', 'NEGATIVE', 'IS_ODD', 'DIVIDE_BY_TWO', 'DIVIDE_BY_TEN', 'MODULO_TEN')
+           'IS_POSITIVE', 'NEGATIVE', 'IS_ODD', 'DIVIDE_BY_TWO', 'DIVIDE_BY_TEN', 'MODULO_TEN',
+           'TRACE')
 
 
 # -- Disassembly -------------------------------------------------------------
@@ -116,6 +120,13 @@ def parse_dis_instruction(s):
         arg = m.group(1)
         if arg.startswith('to '):
             arg = arg[3:]
+        else:
+            m = re.search(r'\((.*)\) *$', arg)
+            if m:
+                # tuples
+                arg = m.group(1).replace(' ', '')
+                if arg[-1] == ',':
+                    arg = arg[:-1]
     else:
         arg = arg.strip()
 
@@ -446,6 +457,7 @@ def interpreter(code, coverage=False):
     instr_pointer = 0
     while instr_pointer < len(opcodes):
         opc, arg = opcodes[instr_pointer]
+        # print(opc, arg, file=sys.stderr)
 
         # increment coverage
         if opc != ':':
@@ -459,8 +471,11 @@ def interpreter(code, coverage=False):
         elif opc == 'LOAD_CONST':
             try:
                 x = int(arg)
-            except:
-                x = arg
+            except :
+                if ',' in arg:
+                    x = arg.split(',')
+                else:
+                    x = arg
             stack.append(x)
         elif opc == 'LOAD_NAME' or opc == 'LOAD_GLOBAL':
             stack.append(names[arg])
@@ -487,6 +502,17 @@ def interpreter(code, coverage=False):
             y = stack.pop()
             z = stack.pop()
             stack.extend([x, z, y])
+        elif opc == 'BUILD_TUPLE':
+            n = int(arg)
+            x = []
+            for _ in range(n):
+                x.insert(0, stack.pop())
+            stack.append(x)
+        elif opc == 'UNPACK_SEQUENCE':
+            n = int(arg)
+            x = stack.pop()
+            for _ in range(n):
+                stack.append(x.pop())
         elif opc == 'UNARY_NEGATIVE':
             tos = stack.pop()
             stack.append(-tos)
