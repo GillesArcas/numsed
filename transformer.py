@@ -21,6 +21,7 @@ import types
 import ast
 import subprocess
 import codegen
+from collections import defaultdict
 import common
 import numsed_lib
 from numsed_lib import *
@@ -39,12 +40,12 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         # list of functions defined in lib
         self.lib_functions = {x[0] for x in inspect.getmembers(numsed_lib, inspect.isfunction)}
         self.lib_functions.add('print')
-
         self.defined_functions = source_functions.union(self.lib_functions)
 
         self.inside_funcdef = False
 
     def visit_Module(self, node):
+        self.numvalout = calc_nvalout(node)
         self.visit_child_nodes(node)
 
     def visit_ImportFrom(self, node):
@@ -69,8 +70,7 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         if isinstance(node.value, ast.Tuple):
             numv = len(node.value.elts)
         elif isinstance(node.value, ast.Call):
-            # TODO: compute nvalout and test against
-            numv = num
+           numv = self.numvalout[node.value.func.id]
         else:
             numv = 1
         if numv != num:
@@ -96,9 +96,11 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
 
     def visit_Tuple(self, node):
         for elt in node.elts:
-			# TODO: Call ok if nvalout == 1
-            if isinstance(elt, (ast.Tuple, ast.Call)):
-                check_error('elements of tuples may not be tuples or calls', codegen.to_source(elt), node)
+            if isinstance(elt, ast.Tuple):
+                check_error('elements of tuples may not be tuples', codegen.to_source(elt), node)
+            elif isinstance(elt, ast.Call):
+                if self.numvalout[elt.func.id] > 1:
+                    check_error('call in tuples should retuena single result', codegen.to_source(elt), node)
         self.visit_child_nodes(node)
 
     def visit_Store(self, node):
@@ -193,6 +195,65 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         check_error('construct is not handled', type(node), node)
 
 
+def calc_nvalout(tree):
+    """
+    Compute the number of result values for each function. Return a dictionary.
+    """
+    nvalout = dict()
+    calls = defaultdict(set)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef):
+            current_func = node.name
+        elif isinstance(node, ast.Return):
+            if isinstance(node.value, (ast.Num, ast.Name, ast.UnaryOp, ast.BinOp, ast.BoolOp)):
+                nval = 1
+                if current_func not in nvalout:
+                    nvalout[current_func] = nval
+                elif nval != nvalout[current_func]:
+                    check_error('various numbers of result values - 1', current_func, node)
+                else:
+                    pass
+            elif isinstance(node.value, ast.Call):
+                if node.value.func.id != current_func:
+                    calls[current_func].add(node.value.func.id)
+            elif isinstance(node.value, ast.Tuple):
+                nval = len(node.value.elts)
+                if current_func not in nvalout:
+                    nvalout[current_func] = nval
+                elif nval != nvalout[current_func]:
+                    print(nval, nvalout[current_func], file=sys.stderr)
+                    check_error('various numbers of result values - 2', current_func, node)
+                else:
+                    pass
+            else:
+                check_error('unexpected return value', current_func, node)
+
+    for func in nvalout:
+        nval = set()
+        nval.add(nvalout[func])
+        for f in call_closure(func, calls):
+            if f in nvalout:
+                nval.add(nvalout[f])
+        if len(nval) > 1:
+            check_error('different numbers of return values', func, None)
+
+    return nvalout
+
+
+def call_closure(func, calls_dict):
+    calls_heap = calls_dict[func]
+    calls = set()
+    while calls_heap:
+        call = next(iter(calls_heap))
+        calls_heap.discard(call)
+        if call not in calls:
+            calls.add(call)
+            for f in calls_dict[call]:
+                if f not in calls_heap:
+                    calls_heap.add(f)
+    return calls
+
+
 def check(source):
     # compile for syntax verification
     with open(source) as f:
@@ -204,12 +265,17 @@ def check(source):
 
     tree = ast.parse(FUTURE_FUNCTION + script)
     numsed_check_ast_visitor = NumsedCheckAstVisitor(source_functions)
-    numsed_check_ast_visitor.visit(tree)
+    try:
+        numsed_check_ast_visitor.visit(tree)
+        return True
+    except:
+        return False
 
 
 def check_error(msg, arg, node):
     print('numsed: line %d col %d: %s : %s' % (node.lineno, node.col_offset, msg, arg))
     exit(1)
+    raise Exception()
 
 
 # -- Unsigned transformer ----------------------------------------------------
