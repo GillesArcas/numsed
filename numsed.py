@@ -125,7 +125,7 @@ def numsed_maker(args):
         return sedcode.SedConversion
 
 
-def process_test(args, source):
+def process_test(args, source, result):
     maker = numsed_maker(args)
     target = maker(source, transformation(args))
     if args.run:
@@ -133,7 +133,7 @@ def process_test(args, source):
     elif args.coverage:
         x = target.coverage()
     elif args.test:
-        x = target.test()
+        x = target.test(result)
     elif args.trace:
         x = target.trace()
 
@@ -148,22 +148,22 @@ def process_test(args, source):
 def tests_from_dir(source):
     for test in glob.glob(os.path.join(source, '*.py')):
         print(test)
-        yield test, test
+        yield test, test, None
 
 
 def tests_from_suite(source):
-    for test in common.testlines(source):
+    for test, result in common.testlines(source):
         print(test[0].rstrip())
         with open('tmp.py', 'w') as f:
             f.writelines(test)
-        yield 'tmp.py', test[0].rstrip()
+        yield 'tmp.py', test[0].rstrip(), result
 
 
 def process_tests(args, tests_from_source):
     timing = []
     status = True
-    for test, title in tests_from_source(args.source):
-        r = process_test(args, test)
+    for test, title, result in tests_from_source(args.source):
+        r = process_test(args, test, result)
         status = status and (not args.test or r)
         if args.test:
             timing.append((title, status[1]))

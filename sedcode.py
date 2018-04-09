@@ -354,10 +354,9 @@ def LOAD_FAST(name):
     # TOS = val(name)
     snippet = r'''                      # PS: ?         HS: ?;v;x?
         g                               # PS: ?;v;x?    HS: ?;v;x?
-        /[|][^|]*;name;[^|]*/! { s/.*/name/; b NameError }
+        /;name;[^|]*$/! { s/.*/name/; b NameError }
                                         # branch to error if var undefined
-        s/.*[|][^|]*;name;([^;]*)[^|]*$/\1;&/
-                                        # PS: x;?;v;x?  HS: ?;v;x?
+        s/.*;name;([^;]*)[^|]*$/\1;&/   # PS: x;?;v;x?  HS: ?;v;x?
         h                               # PS: ?         HS: x;?;v;x?
     '''
     return snippet.replace('name', name)

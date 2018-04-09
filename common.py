@@ -29,13 +29,20 @@ class NumsedConversion:
     def print_run_result(self):
         return True
 
-    def test(self):
+    def test(self, result):
+        """
+        if result is None, the test has to be compared with the python script
+        if result is not None, the test has to be compared with it
+        """
         if not self.source.endswith('.py'):
             return False
 
         # run original script and store results
-        ref = subprocess.check_output('python ' + self.source)
-        ref = ref.decode('ascii') # py3
+        if result is None:
+            ref = subprocess.check_output('python ' + self.source)
+            ref = ref.decode('ascii') # py3
+        else:
+            ref = ''.join(result)
         print(ref)
 
         # run conversion
@@ -94,14 +101,21 @@ def testlines(name):
     '''
     yield each test in a test suite
     '''
+    lines = []
+    result = None
+    dest = lines
     with open(name) as f:
-        lines = []
         for line in f:
-            if line.startswith('#') and '---' in line:
-                yield lines
+            if line.startswith('#') and '===' in line:
+                result = []
+                dest = result
+            elif line.startswith('#') and '---' in line:
+                yield lines, result
                 lines = []
+                result = None
+                dest = lines
             else:
-                lines.append(line)
+                dest.append(line)
 
 
 def list_compare(tag1, tag2, list1, list2):

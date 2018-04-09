@@ -536,6 +536,15 @@ while m <= 2:
         n += 1
     m += 1
 # ---
+# not
+print(not 0)
+print(not 1)
+print(not 2)
+# ===
+1
+0
+0
+# ---
 # and
 m = -2
 while m <= 2:
@@ -603,7 +612,7 @@ def bar(n):
 n = 42
 print(foo(bar(n)))
 # ---
-# recursive function
+# recursion: fac
 def fac(n):
     if n == 1:
         return 1
@@ -613,7 +622,7 @@ def fac(n):
 n = 10
 print(fac(n))
 # ---
-# recursive function
+# recursion: fib
 def fib(n):
     if n <= 1:
         return 1
@@ -622,7 +631,47 @@ def fib(n):
 
 print(fib(10))
 # ---
-# mutual recursive functions
+# recursion: Hofstadter G sequence
+def G(n):
+    if n == 0:
+        return 0
+    else:
+        return  n - G(G(n - 1))
+
+print(G(10))
+# ---
+# recursion: Hofstadter H sequence
+def H(n):
+    if n == 0:
+        return 0
+    else:
+        return  n - H(H(H(n - 1)))
+
+print(H(10))
+# ---
+# recursion: Hofstadter Q sequence
+def Q(n):
+    if n <= 2:
+        return 1
+    else:
+        return Q(n - Q(n - 1)) + Q(n - Q(n - 2))
+
+print(Q(10))
+# ---
+# recursion: binomial coefficient
+def binomial(n, k):
+    if k == 0 or k == n:
+        return 1
+    else:
+        return binomial(n - 1, k - 1) + binomial(n - 1, k)
+
+n = 8
+k = 0
+while k <= n:
+    print(binomial(n, k))
+    k += 1
+# ---
+# mutual recursion: odd/even
 def even(n):
     if n == 0:
         return 1
@@ -638,6 +687,43 @@ def odd(n):
 n = 10
 print(even(10))
 print(odd(10))
+# ---
+# mutual recursion: Hofstadter
+def F(n):
+    if n == 0:
+        return 1
+    else:
+        return n - M(F(n - 1))
+        
+def M(n):
+    if n == 0:
+        return 0
+    else:
+        return n - F(M(n - 1))
+        
+print(F(15))
+print(M(15))
+# ---
+# mutual recursion: Kurkiewicz
+def R(k):
+    if k == 1:
+        return 1
+    else:
+        return R(k-1) + M(k-1) + C(k-1)
+
+def M(k):
+    if k == 1:
+        return 1
+    else:
+        return R(k-1) + M(k-1)
+
+def C(k):
+    if k == 1:
+        return 1
+    else:
+        return R(k-1) + C(k-1)
+        
+print(R(6) + M(6) + C(6))
 # ---
 # global
 x = 0
