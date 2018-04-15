@@ -7,9 +7,29 @@ print(42)
 # print long int constant
 print(10000000000000000000)
 # ---
-# assign constant
-n = 42
-print(n)
+# print admits one and only one argument (0 given)
+print()
+# ===
+numsed error: print admits one and only one argument
+line 2 col 0: print()
+# ---
+# print admits one and only one argument (2 given)
+print(1, 2)
+# ===
+numsed error: print admits one and only one argument
+line 2 col 0: print(1, 2)
+# ---
+# constant error
+n = 42.0
+# ===
+numsed error: not an integer
+line 2 col 4: 42.0
+# ---
+# constant error
+n = 'foo'
+# ===
+numsed error: strings not handled (less as print argument)
+line 2 col 4: 'foo'
 # ---
 # variable names
 _ = 1
@@ -31,6 +51,18 @@ print(a_very_long_variable_name)
 m = 42
 n = m
 print(n)
+# ---
+# can't assign
+1 = 2
+# ===
+SyntaxError: can't assign to literal
+line 2: 1 = 2
+# ---
+# cannot assign to
+x[0] = 1
+# ===
+numsed error: cannot assign to
+line 2 col 0: x[0]
 # ---
 # chained assignment
 m = n = 42
@@ -88,6 +120,12 @@ n = 5
 p = (m * n + m // n) - 3 * (m - n)
 print(p)
 # ---
+# binary operator not handled
+x = 5 & 7
+# ===
+numsed error: operator not handled
+line 2 col 4: 5 & 7
+# ---
 # unary arithmetical operators
 if +5 == 5:
     print(1)
@@ -97,6 +135,12 @@ if -5 == 0 - 5:
     print(1)
 else:
     print(0)
+# ---
+# unary operator operator not handled
+x = ~5
+# ===
+numsed error: operator not handled
+line 2 col 4: ~5
 # ---
 # augmented assign add
 m = 42
@@ -472,7 +516,7 @@ while m <= 10:
         n += 1
     m += 1
 # ---
-# test all comparison operators
+# comparison operators
 m = -2
 while m <= 2:
     n = -2
@@ -486,7 +530,7 @@ while m <= 2:
         n += 1
     m += 1
 # ---
-# test comparison operator concatenation
+# comparison concatenation
 m = -2
 while m <= 2:
     n = -2
@@ -535,6 +579,12 @@ while m <= 2:
             p += 1
         n += 1
     m += 1
+# ---
+# comparator not handled
+x = 1 in 2
+# ===
+numsed error: comparator not handled
+line 2 col 4: 1 in 2
 # ---
 # not
 print(not 0)
@@ -595,6 +645,12 @@ while m <= 2:
         n += 1
     m += 1
 # ---
+# construct is not handled
+x = []
+# ===
+numsed error: construct is not handled
+line 2 col 4: []
+# ---
 # function
 def foo(n):
     return n + 10
@@ -611,6 +667,35 @@ def bar(n):
 
 n = 42
 print(foo(bar(n)))
+# ---
+# function definitions allowed only at module level - 1
+if 1:
+    def foo():
+        return 42
+# ===        
+numsed error: function definitions allowed only at module level
+line 3 col 4: foo
+# ---
+# function definitions allowed only at module level - 2
+def spam():
+    def foo():
+        return 42
+# ===        
+numsed error: function definitions allowed only at module level
+line 3 col 4: foo
+# ---
+# callable not handled
+foo(x)(y)
+# ===        
+numsed error: callable not handled
+line 2 col 0: foo(x)
+# ---
+# not allowed to redefine numsed_lib functions
+def udiv(x, y):
+    return 0
+# ===        
+numsed error: not allowed to redefine numsed_lib functions
+line 2 col 0: udiv
 # ---
 # recursion: fac
 def fac(n):
@@ -740,4 +825,169 @@ print('Hello word!')
 print("Hello word!")
 print('Hello "word"!')
 print("Hello 'word'!")
+# ---
+# Multiple assignment (constants)
+a, = 1,
+x, = a,
+print(x)
+a, b = 1, 2
+x, y = a, b
+print(x)
+print(y)
+a, b, c = 1, 2, 3
+x, y, z = a, b, c
+print(x)
+print(y)
+print(z)
+a, b, c, d = 1, 2, 3, 4
+x, y, z, t = a, b, c, d
+print(x)
+print(y)
+print(z)
+print(t)
+# ---
+# Multiple assignment (expressions)
+a, b = 1, 2
+x, y = a + b, a - b
+print(x)
+print(y)
+a, b, c = 1, 2, 3
+x, y, z = a + b, b + c, c + a
+print(x)
+print(y)
+print(z)
+a, b, c, d = 1, 2, 3, 4
+x, y, z, t = a, a - b, a - b + c, a - b + c - d
+print(x)
+print(y)
+print(z)
+print(t)
+# ---
+# Swap and permutation
+x, y = 1, 2
+x, y = y, x
+print(x)
+print(y)
+x, y, z = 1, 2, 3
+x, y, z = z, x, y
+print(x)
+print(y)
+print(z)
+x, y, z, t = 1, 2, 3, 4
+x, y, z, t = t, z, y, x
+print(x)
+print(y)
+print(z)
+print(t)
+# ---
+# target and value must have same length
+a, b, c = 1, 2
+# ===
+numsed error: targets and values must have same length
+line 2 col 0: a, b, c = 1, 2
+# ---
+# multiple assignment must have same number of variables
+a, b, c = e, f = 1, 2
+# ===
+numsed error: multiple assignment must have same number of variables
+line 2 col 0: a, b, c = e, f = 1, 2
+# ---
+# elements of tuples may not be tuples
+x, y = 1, (2, 3)
+# ===
+numsed error: elements of tuples may not be tuples
+line 2 col 7: (1, (2, 3))
+# ---
+# Multiple assignment with function results
+def foo(n):
+    return 2 * n + 1
+    
+x, y, z = foo(13), foo(17), foo(19)
+print(x)
+print(y)
+print(z)
+# ---
+# Multiple function results (2)
+def foo(x, y):
+    return x + y, x - y
+    
+x, y = foo(13, 5)
+
+print(x)
+print(y)
+# ---
+# Multiple function results (2bis)
+def foo(x, y):
+    return x if x < y else y, x if x > y else y
+    
+x, y = foo(13, 5)
+print(x)
+print(y)
+x, y = foo(5, 13)
+print(x)
+print(y)
+# ---
+# Multiple function results (3)
+def foo(x, y):
+    return x + y, x - y, x * y
+    
+x, y, z = foo(13, 5)
+
+print(x)
+print(y)
+print(z)
+# ---
+# Multiple function results (4)
+def foo(x, y):
+    return x + y, x - y, x * y, x // y
+    
+x, y, z, t = foo(13, 5)
+
+print(x)
+print(y)
+print(z)
+print(t)
+# ---
+# Multiple function results: len error
+def foo(x, y):
+    return x + y, x - y, x * y, x // y
+    
+x, y, z = foo(13, 5)
+# ===
+numsed error: targets and values must have same length
+line 5 col 0: x, y, z = foo(13, 5)
+# ---
+# Multiple function results: nested calls depth 2
+def foo(x):
+    return x, x + 1
+    
+def bar(x):
+    return foo(x)
+    
+x, y = bar(7)
+print(x)
+print(y)
+# ---
+# Multiple function results: nested calls depth 3
+def foo(x):
+    return x, x + 1
+    
+def bar(x):
+    return foo(x)
+    
+def spam(x):
+    return bar(x)
+    
+x, y = spam(7)
+print(x)
+print(y)
+# ---
+# call in tuples should return a single result
+def foo():
+    return 1, 2
+    
+x, y = 1, foo()
+# ===
+numsed error: call in tuples should return a single result
+line 5 col 7: (1, foo())
 # ---
