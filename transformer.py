@@ -76,6 +76,9 @@ class UnsignedTransformer(ast.NodeTransformer):
             return node
 
     def visit_Call(self, node):
+        if node.func.id == 'divmod':
+            node.func.id = 'udivmod'
+            self.required_func.add('udivmod')
         self.generic_visit(node)
         return node
 
@@ -140,6 +143,9 @@ class NumsedAstTransformer(ast.NodeTransformer):
             return node
 
     def visit_Call(self, node):
+        if node.func.id == 'divmod':
+            node.func.id = 'signed_divmod'
+            self.required_func.add('signed_divmod')
         self.generic_visit(node)
         return node
 

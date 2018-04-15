@@ -844,6 +844,15 @@ def NEGATIVE():
     return snippet
 
 
+def ABS():
+    snippet = r'''                      # PS: ?         HS: N;X
+        g                               # PS: N;X       HS: N;X
+        s/^-//                          # remove minus sign
+        h                               # PS: R;X       HS: R;X  R = abs(N)
+    '''
+    return snippet
+
+
 def DIVBY2():
     snippet = r'''                      # PS: N;X
         s/^[0-9]+;/0;&;/                # PS: 0;N;;X

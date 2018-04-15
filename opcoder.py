@@ -28,7 +28,8 @@ OPCODES = ('LOAD_CONST', 'LOAD_NAME', 'LOAD_GLOBAL', 'STORE_NAME', 'STORE_GLOBAL
            'MAKE_FUNCTION', 'CALL_FUNCTION', 'RETURN_VALUE',
            'SETUP_LOOP', 'POP_BLOCK',
            'STARTUP', 'MAKE_CONTEXT', 'POP_CONTEXT',
-           'IS_POSITIVE', 'NEGATIVE', 'IS_ODD', 'DIVIDE_BY_TWO', 'DIVIDE_BY_TEN', 'MODULO_TEN',
+           'IS_POSITIVE', 'NEGATIVE', 'ABS', 'IS_ODD',
+           'DIVIDE_BY_TWO', 'DIVIDE_BY_TEN', 'MODULO_TEN',
            'TRACE')
 
 
@@ -636,6 +637,9 @@ def interpreter(code, coverage=False):
         elif opc == 'IS_ODD':
             tos = stack.pop()
             stack.append(tos % 2)
+        elif opc == 'ABS':
+            tos = stack.pop()
+            stack.append(abs(tos))
         elif opc == 'DIVIDE_BY_TWO':
             tos = stack.pop()
             stack.append(tos // 2)

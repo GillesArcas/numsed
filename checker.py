@@ -68,6 +68,7 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
     def visit_Module(self, node):
         self.modulebody = node.body
         self.numvalout = nvalout_functions(node)
+        self.numvalout['divmod'] = 2
         self.visit_child_nodes(node)
 
     def visit_ImportFrom(self, node):

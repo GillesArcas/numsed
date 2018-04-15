@@ -506,6 +506,18 @@ while m <= 10:
         n += 1
     m += 1
 # ---
+# loop on divmod
+m = -10
+while m <= 10:
+    n = -10
+    while n <= 10:
+        if n != 0:
+            q, r = divmod(m, n)
+            print(q)
+            print(r)
+        n += 1
+    m += 1
+# ---
 # loop on power
 m = -10
 while m <= 10:
@@ -581,10 +593,10 @@ while m <= 2:
     m += 1
 # ---
 # comparator not handled
-x = 1 in 2
+x = 1 is 2
 # ===
 numsed error: comparator not handled
-line 2 col 4: 1 in 2
+line 2 col 4: 1 is 2
 # ---
 # not
 print(not 0)
@@ -672,7 +684,7 @@ print(foo(bar(n)))
 if 1:
     def foo():
         return 42
-# ===        
+# ===
 numsed error: function definitions allowed only at module level
 line 3 col 4: foo
 # ---
@@ -680,22 +692,22 @@ line 3 col 4: foo
 def spam():
     def foo():
         return 42
-# ===        
+# ===
 numsed error: function definitions allowed only at module level
 line 3 col 4: foo
 # ---
 # callable not handled
 foo(x)(y)
-# ===        
+# ===
 numsed error: callable not handled
 line 2 col 0: foo(x)
 # ---
 # not allowed to redefine numsed_lib functions
-def udiv(x, y):
+def udivmod(x, y):
     return 0
-# ===        
+# ===
 numsed error: not allowed to redefine numsed_lib functions
-line 2 col 0: udiv
+line 2 col 0: udivmod
 # ---
 # recursion: fac
 def fac(n):
@@ -779,13 +791,13 @@ def F(n):
         return 1
     else:
         return n - M(F(n - 1))
-        
+
 def M(n):
     if n == 0:
         return 0
     else:
         return n - F(M(n - 1))
-        
+
 print(F(15))
 print(M(15))
 # ---
@@ -807,7 +819,7 @@ def C(k):
         return 1
     else:
         return R(k-1) + C(k-1)
-        
+
 print(R(6) + M(6) + C(6))
 # ---
 # global
@@ -901,7 +913,7 @@ line 2 col 7: (1, (2, 3))
 # Multiple assignment with function results
 def foo(n):
     return 2 * n + 1
-    
+
 x, y, z = foo(13), foo(17), foo(19)
 print(x)
 print(y)
@@ -910,7 +922,7 @@ print(z)
 # Multiple function results (2)
 def foo(x, y):
     return x + y, x - y
-    
+
 x, y = foo(13, 5)
 
 print(x)
@@ -919,7 +931,7 @@ print(y)
 # Multiple function results (2bis)
 def foo(x, y):
     return x if x < y else y, x if x > y else y
-    
+
 x, y = foo(13, 5)
 print(x)
 print(y)
@@ -930,7 +942,7 @@ print(y)
 # Multiple function results (3)
 def foo(x, y):
     return x + y, x - y, x * y
-    
+
 x, y, z = foo(13, 5)
 
 print(x)
@@ -940,7 +952,7 @@ print(z)
 # Multiple function results (4)
 def foo(x, y):
     return x + y, x - y, x * y, x // y
-    
+
 x, y, z, t = foo(13, 5)
 
 print(x)
@@ -951,7 +963,7 @@ print(t)
 # Multiple function results: len error
 def foo(x, y):
     return x + y, x - y, x * y, x // y
-    
+
 x, y, z = foo(13, 5)
 # ===
 numsed error: targets and values must have same length
@@ -960,10 +972,10 @@ line 5 col 0: x, y, z = foo(13, 5)
 # Multiple function results: nested calls depth 2
 def foo(x):
     return x, x + 1
-    
+
 def bar(x):
     return foo(x)
-    
+
 x, y = bar(7)
 print(x)
 print(y)
@@ -971,13 +983,13 @@ print(y)
 # Multiple function results: nested calls depth 3
 def foo(x):
     return x, x + 1
-    
+
 def bar(x):
     return foo(x)
-    
+
 def spam(x):
     return bar(x)
-    
+
 x, y = spam(7)
 print(x)
 print(y)
@@ -985,7 +997,7 @@ print(y)
 # call in tuples should return a single result
 def foo():
     return 1, 2
-    
+
 x, y = 1, foo()
 # ===
 numsed error: call in tuples should return a single result

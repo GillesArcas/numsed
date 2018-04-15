@@ -60,6 +60,31 @@ def signed_gte(x, y):
 # unsigned arithmetic operators
 
 
+def udivmod(a, b):
+    if b == 10:
+        return divide_by_ten(a), modulo_ten(a)
+
+    # http://compoasso.free.fr/primelistweb/page/prime/euclide.php
+    r = a
+    q = 0
+    n = 0
+    aux = b
+
+    while aux <= a:
+        aux *= 2
+        n += 1
+
+    while n > 0:
+        aux = divide_by_two(aux)
+        n -= 1
+        q *= 2
+        if r >= aux:
+            r -= aux
+            q += 1
+
+    return q, r
+
+
 def udiv(a, b):
     if b == 10:
         return divide_by_ten(a)
@@ -192,65 +217,30 @@ def signed_mult(x, y):
 
 
 def signed_div(x, y):
+    abs_x = abs(x)
+    abs_y = abs(y)
+    q, r = udivmod(abs_x, abs_y)
     if is_positive(x):
         if is_positive(y):
-            q = udiv(x, y)
             return q
         else:
-            abs_y = negative(y)
-            q = udiv(x, abs_y)
-            r = x - abs_y * q
             if r == 0:
                 return negative(q)
             else:
                 return negative(q + 1)
     else:
-        abs_x = negative(x)
         if is_positive(y):
-            q = udiv(abs_x, y)
-            r = abs_x - y * q
             if r == 0:
                 return negative(q)
             else:
                 return negative(q + 1)
         else:
-            abs_y = negative(y)
-            q = udiv(abs_x, abs_y)
             return q
 
 
 def signed_mod(x, y):
-    q = signed_div(x, y)
-    return signed_sub(x, signed_mult(y, q))
-
-def signed_mod(x, y):
-    if is_positive(y):
-        if is_positive(x):
-            return umod(x, y)
-        else:
-            x = negative(x)
-            r = umod(x, y)
-            if r == 0:
-                return 0
-            else:
-                return (y - r)
-    else:
-        y = negative(y)
-        if is_positive(x):
-            r = umod(x, y)
-            if r == 0:
-                return 0
-            else:
-                return -(y - r)
-        else:
-            x = negative(x)
-            r = umod(x, y)
-            return negative(r)
-
-
-def signed_mod(x, y):
-    abs_x = x if is_positive(x) else negative(x)
-    abs_y = y if is_positive(y) else negative(y)
+    abs_x = abs(x)
+    abs_y = abs(y)
     r = umod(abs_x, abs_y)
     if is_positive(y):
         if is_positive(x):
@@ -265,15 +255,47 @@ def signed_mod(x, y):
 
 
 def signed_mod(x, y):
-    abs_x = x if is_positive(x) else negative(x)
-    abs_y = y if is_positive(y) else negative(y)
-    r = umod(abs_x, abs_y)
+    abs_x = abs(x)
+    abs_y = abs(y)
+    q, r = udivmod(abs_x, abs_y)
     if r == 0:
         return 0
     elif is_positive(y):
         return r if is_positive(x) else y - r
     else:
         return -(abs_y - r) if is_positive(x) else -r
+
+
+def signed_divmod(x, y):
+    abs_x = abs(x)
+    abs_y = abs(y)
+    q, r = udivmod(abs_x, abs_y)
+
+    if is_positive(x):
+        if is_positive(y):
+            pass
+        else:
+            if r == 0:
+                q = negative(q)
+            else:
+                q = negative(q + 1)
+    else:
+        if is_positive(y):
+            if r == 0:
+                q = negative(q)
+            else:
+                q = negative(q + 1)
+        else:
+            pass
+
+    if r == 0:
+        pass
+    elif is_positive(y):
+        r = r if is_positive(x) else y - r
+    else:
+        r = -(abs_y - r) if is_positive(x) else -r
+
+    return q, r
 
 
 def signed_pow(base, exp):
@@ -302,7 +324,8 @@ as an argument of a primitive function and there is no control to check that.
 """
 
 
-PRIMITIVES = ('is_positive', 'negative', 'is_odd', 'divide_by_two', 'divide_by_ten', 'modulo_ten')
+PRIMITIVES = ('is_positive', 'negative', 'abs', 'is_odd', 'divide_by_two',
+              'divide_by_ten', 'modulo_ten')
 
 
 def is_positive(x):
@@ -310,6 +333,9 @@ def is_positive(x):
 
 def negative(x):
     return -x
+
+def abs(x):
+    return x if x >= 0 else -x
 
 def is_odd(x):
     return x % 2
