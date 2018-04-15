@@ -93,6 +93,31 @@ def umod(a, b):
     return a - q * b
 
 
+def umod(a, b):
+    if b == 10:
+        return modulo_ten(a)
+
+    # http://compoasso.free.fr/primelistweb/page/prime/euclide.php
+    r = a
+    q = 0
+    n = 0
+    aux = b
+
+    while aux <= a:
+        aux *= 2
+        n += 1
+
+    while n > 0:
+        aux = divide_by_two(aux)
+        n -= 1
+        q *= 2
+        if r >= aux:
+            r -= aux
+            q += 1
+
+    return r
+
+
 def upow(base, exp):
     result = 1
     while exp:
@@ -197,6 +222,58 @@ def signed_div(x, y):
 def signed_mod(x, y):
     q = signed_div(x, y)
     return signed_sub(x, signed_mult(y, q))
+
+def signed_mod(x, y):
+    if is_positive(y):
+        if is_positive(x):
+            return umod(x, y)
+        else:
+            x = negative(x)
+            r = umod(x, y)
+            if r == 0:
+                return 0
+            else:
+                return (y - r)
+    else:
+        y = negative(y)
+        if is_positive(x):
+            r = umod(x, y)
+            if r == 0:
+                return 0
+            else:
+                return -(y - r)
+        else:
+            x = negative(x)
+            r = umod(x, y)
+            return negative(r)
+
+
+def signed_mod(x, y):
+    abs_x = x if is_positive(x) else negative(x)
+    abs_y = y if is_positive(y) else negative(y)
+    r = umod(abs_x, abs_y)
+    if is_positive(y):
+        if is_positive(x):
+            return r
+        else:
+            return 0 if r == 0 else y - r
+    else:
+        if is_positive(x):
+            return 0 if r == 0 else -(abs_y - r)
+        else:
+            return negative(r)
+
+
+def signed_mod(x, y):
+    abs_x = x if is_positive(x) else negative(x)
+    abs_y = y if is_positive(y) else negative(y)
+    r = umod(abs_x, abs_y)
+    if r == 0:
+        return 0
+    elif is_positive(y):
+        return r if is_positive(x) else y - r
+    else:
+        return -(abs_y - r) if is_positive(x) else -r
 
 
 def signed_pow(base, exp):
