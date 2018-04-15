@@ -8,8 +8,11 @@ import argparse
 import os
 import webbrowser
 import glob
+import subprocess
+import time
 
 import common
+import checker
 import transformer
 import opcoder
 import sedcode
@@ -110,9 +113,11 @@ def transformation(args):
         return transformer.UNSIGNED
     elif args.signed:
         return transformer.SIGNED
+    else:
+        return None
 
 
-def numsed_maker(args):
+def numsed_conversion(args):
     if args.ast:
         return transformer.AstConversion
     elif args.script:
@@ -123,26 +128,74 @@ def numsed_maker(args):
         return opcoder.OpcodeConversion
     elif args.sed:
         return sedcode.SedConversion
-
-
-def process_test(args, source, result):
-    maker = numsed_maker(args)
-    target = maker(source, transformation(args))
-    if args.run:
-        x = target.run()
-    elif args.coverage:
-        x = target.coverage()
-    elif args.test:
-        x = target.test(result)
-    elif args.trace:
-        x = target.trace()
-
-    if args.run and args.sed:
-        # already printed
-        pass
     else:
-        print(x)
-    return x
+        return None
+
+
+def process_script(args, source, expected_result=None):
+
+    checked, msg = checker.check(source)
+
+    if args.test:
+        return test_script(args, source, expected_result, checked, msg)
+    elif checked is False:
+        print(msg)
+        return ''
+    else:
+        conversion = numsed_conversion(args)
+        target = conversion(source, transformation(args))
+        if args.run:
+            x = target.run()
+        elif args.coverage:
+            x = target.coverage()
+        elif args.trace:
+            x = target.trace()
+
+        if args.run and args.sed:
+            # already printed
+            pass
+        else:
+            print(x)
+        return x
+
+
+def test_script(args, source, result, checked, msg):
+    """
+    if result is None, the test has to be compared with the python script
+    if result is not None, the test has to be compared with it
+    """
+    if not source.endswith('.py'):
+        return False
+
+    if checked is False:
+        res = msg #+ '\n'
+        time_sed = 0
+    else:
+        conversion = numsed_conversion(args)
+        target = conversion(source, transformation(args))
+
+        # run conversion
+        t0 = time.time()
+        res = target.run()
+        time_sed = time.time() - t0
+        if target.print_run_result():
+            print(res)
+
+    # run original script and store results
+    if result is None or (checked is True and (args.ast or args.script)):
+        ref = subprocess.check_output('python ' + source)
+        ref = ref.decode('ascii') # py3
+    else:
+        ref = ''.join(result)
+    print(ref)
+
+    # compare
+    status, diff = common.list_compare('ref', 'res', ref.splitlines(), res.splitlines())
+    if not status:
+        for _ in diff:
+            print(_)
+
+    return status, time_sed
 
 
 def tests_from_dir(source):
@@ -163,7 +216,7 @@ def process_tests(args, tests_from_source):
     timing = []
     status = True
     for test, title, result in tests_from_source(args.source):
-        r = process_test(args, test, result)
+        r = process_script(args, test, result)
         status = status and (not args.test or r)
         if args.test:
             timing.append((title, status[1]))
@@ -173,9 +226,9 @@ def process_tests(args, tests_from_source):
     if args.test:
         s = 0
         for (test, timing) in timing:
-            print('%-30s %6.2f' % (test, timing))
+            print('%-40s %6.2f' % (test, timing))
             s += timing
-        print('%-30s %6.2f' % ('total', s))
+        print('%-40s %6.2f' % ('total', s))
         print('ALL TESTS OK' if status else 'ONE TEST FAILURE')
     return status
 
@@ -221,7 +274,7 @@ def numsed(argstring=None):
         elif args.source.endswith('.suite.py'):
             result = process_tests(args, tests_from_suite)
         else:
-            result = process_test(args, args.source)
+            result = process_script(args, args.source)
         if args.coverage:
             opcoder.display_coverage()
         return result
