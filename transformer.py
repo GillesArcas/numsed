@@ -17,11 +17,9 @@ from __future__ import division, print_function
 
 import sys
 import inspect
-import types
 import ast
 import subprocess
 import codegen
-from collections import defaultdict
 import common
 import numsed_lib
 from numsed_lib import *
@@ -29,253 +27,6 @@ from numsed_lib import *
 
 LITERAL, UNSIGNED, SIGNED = range(3)
 FUTURE_FUNCTION = 'from __future__ import print_function\n'
-
-
-# -- Syntax checking visitor -------------------------------------------------
-
-
-class NumsedCheckAstVisitor(ast.NodeVisitor):
-
-    def __init__(self, source_functions):
-        # list of functions defined in lib
-        self.lib_functions = {x[0] for x in inspect.getmembers(numsed_lib, inspect.isfunction)}
-        self.lib_functions.add('print')
-        self.defined_functions = source_functions.union(self.lib_functions)
-
-        self.inside_funcdef = False
-
-    def visit_Module(self, node):
-        self.numvalout = calc_nvalout(node)
-        self.visit_child_nodes(node)
-
-    def visit_ImportFrom(self, node):
-        # allow for print_function
-        pass
-
-    def visit_Assign(self, node):
-        def len_of_target(elt):
-            if isinstance(elt, ast.Name):
-                return 1
-            elif isinstance(elt, ast.Tuple):
-                return len(elt.elts)
-            else:
-                check_error('cannot assign to', elt, node)
-
-        self.visit_child_nodes(node)
-        num = len_of_target(node.targets[0])
-        for elt in node.targets[1:]:
-            if len_of_target(elt) != num:
-                check_error('multiple assignment must have same number of variables',
-                            codegen.to_source(elt), node)
-        if isinstance(node.value, ast.Tuple):
-            numv = len(node.value.elts)
-        elif isinstance(node.value, ast.Call):
-           numv = self.numvalout[node.value.func.id]
-        else:
-            numv = 1
-        if numv != num:
-            check_error('targets and values must have same length',
-                        codegen.to_source(node.value), node)
-
-    def visit_AugAssign(self, node):
-        self.visit(node.target)
-        self.visit(node.value)
-
-    def visit_Expr(self, node):
-        self.visit_child_nodes(node)
-
-    def visit_Name(self, node):
-        pass
-
-    def visit_Num(self, node):
-        if not isinstance(node.n, int) and not (common.PY2 and isinstance(node.n, long)):
-            check_error('not an integer', node.n, node)
-
-    def visit_Str(self, node): # TODO check delete
-        pass
-
-    def visit_Tuple(self, node):
-        for elt in node.elts:
-            if isinstance(elt, ast.Tuple):
-                check_error('elements of tuples may not be tuples', codegen.to_source(elt), node)
-            elif isinstance(elt, ast.Call):
-                if self.numvalout[elt.func.id] > 1:
-                    check_error('call in tuples should retuena single result', codegen.to_source(elt), node)
-        self.visit_child_nodes(node)
-
-    def visit_Store(self, node):
-        pass
-
-    def visit_Load(self, node):
-        pass
-
-    def visit_UnaryOp(self, node):
-        if not isinstance(node.op, (ast.UAdd, ast.USub, ast.Not)):
-            check_error('unknown operator', node.op, node)
-        self.visit(node.operand)
-
-    def visit_BinOp(self, node):
-        if type(node.op) not in signed_func:
-            check_error('unknown operator', type(node.op), node)
-        self.visit(node.left)
-        self.visit(node.right)
-
-    def visit_Call(self, node):
-        if type(node.func) is ast.Name:
-            if node.func.id == 'print':
-                self.visit_CallPrint(node)
-            else:
-                self.visit_child_nodes(node)
-        else:
-            check_error('callable not handled', node.func, node)
-
-    def visit_CallPrint(self, node):
-        if len(node.args) != 1:
-            check_error('print admits only one argument', node.func.id, node)
-        elif isinstance(node.args[0], ast.Str):
-            pass
-        else:
-            self.visit_child_nodes(node)
-
-    def visit_Compare(self, node):
-        for op in node.ops:
-            if not isinstance(op, (ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE)):
-                check_error('comparator not handled', type(op), node)
-            else:
-                self.visit(node.left)
-                for _ in node.comparators: self.visit(_)
-
-    def visit_BoolOp(self, node):
-        for _ in node.values: self.visit(_)
-
-    def visit_IfExp(self, node):
-        self.visit_child_nodes(node)
-
-    def visit_If(self, node):
-        self.visit_child_nodes(node)
-
-    def visit_While(self, node):
-        self.visit_child_nodes(node)
-
-    def visit_Break(self, node):
-        pass
-
-    def visit_Continue(self, node):
-        pass
-
-    def visit_Pass(self, node):
-        pass
-
-    def visit_Return(self, node):
-        self.visit_child_nodes(node)
-
-    def visit_Global(self, node):
-        pass
-
-    def visit_FunctionDef(self, node):
-        if self.inside_funcdef:
-            check_error('no nested function definitions', node.name, node)
-        if node.name in self.lib_functions:
-            check_error('not allowed to redefine functions', node.name, node)
-        if node.args.vararg is not None:
-            check_error('no vararg', node.args.vararg, node)
-        if node.args.kwarg is not None:
-            check_error('no kwarg', node.args.kwarg, node)
-        if len(node.args.defaults) > 0:
-            check_error('no defaults', node.args.defaults, node)
-        self.inside_funcdef = True
-        for _ in node.body: self.visit(_)
-        self.inside_funcdef = False
-
-    def visit_child_nodes(self, node):
-        for _ in ast.iter_child_nodes(node):
-            self.visit(_)
-
-    def generic_visit(self, node):
-        check_error('construct is not handled', type(node), node)
-
-
-def calc_nvalout(tree):
-    """
-    Compute the number of result values for each function. Return a dictionary.
-    """
-    nvalout = dict()
-    calls = defaultdict(set)
-    for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef):
-            current_func = node.name
-        elif isinstance(node, ast.Return):
-            if isinstance(node.value, (ast.Num, ast.Name, ast.UnaryOp, ast.BinOp, ast.BoolOp)):
-                nval = 1
-                if current_func not in nvalout:
-                    nvalout[current_func] = nval
-                elif nval != nvalout[current_func]:
-                    check_error('various numbers of result values - 1', current_func, node)
-                else:
-                    pass
-            elif isinstance(node.value, ast.Call):
-                if node.value.func.id != current_func:
-                    calls[current_func].add(node.value.func.id)
-            elif isinstance(node.value, ast.Tuple):
-                nval = len(node.value.elts)
-                if current_func not in nvalout:
-                    nvalout[current_func] = nval
-                elif nval != nvalout[current_func]:
-                    print(nval, nvalout[current_func], file=sys.stderr)
-                    check_error('various numbers of result values - 2', current_func, node)
-                else:
-                    pass
-            else:
-                check_error('unexpected return value', current_func, node)
-
-    for func in nvalout:
-        nval = set()
-        nval.add(nvalout[func])
-        for f in call_closure(func, calls):
-            if f in nvalout:
-                nval.add(nvalout[f])
-        if len(nval) > 1:
-            check_error('different numbers of return values', func, None)
-
-    return nvalout
-
-
-def call_closure(func, calls_dict):
-    calls_heap = calls_dict[func]
-    calls = set()
-    while calls_heap:
-        call = next(iter(calls_heap))
-        calls_heap.discard(call)
-        if call not in calls:
-            calls.add(call)
-            for f in calls_dict[call]:
-                if f not in calls_heap:
-                    calls_heap.add(f)
-    return calls
-
-
-def check(source):
-    # compile for syntax verification
-    with open(source) as f:
-        script = f.read()
-        code = compile(script, source, "exec")
-
-    # list of functions defined in source
-    source_functions = {x.co_name for x in code.co_consts if isinstance(x, types.CodeType)}
-
-    tree = ast.parse(FUTURE_FUNCTION + script)
-    numsed_check_ast_visitor = NumsedCheckAstVisitor(source_functions)
-    try:
-        numsed_check_ast_visitor.visit(tree)
-        return True
-    except:
-        return False
-
-
-def check_error(msg, arg, node):
-    print('numsed: line %d col %d: %s : %s' % (node.lineno, node.col_offset, msg, arg))
-    exit(1)
-    raise Exception()
 
 
 # -- Unsigned transformer ----------------------------------------------------
@@ -603,7 +354,6 @@ def rec_node(node, level, indent, write):
 class AstConversion(common.NumsedConversion):
     def __init__(self, source, transformation):
         common.NumsedConversion.__init__(self, source, transformation)
-        check(source)
         self.tree = ast.parse(open(source).read())
         if transformation == LITERAL:
             pass
@@ -638,7 +388,6 @@ class AstConversion(common.NumsedConversion):
 class ScriptConversion(common.NumsedConversion):
     def __init__(self, source, transformation):
         common.NumsedConversion.__init__(self, source, transformation)
-        check(source)
         if transformation == LITERAL or transformation == LITERAL + 10:
             self.code = open(source).read()
             open('~.py', 'wt').write(self.code)
