@@ -1,26 +1,61 @@
+"""
+Tests if a script is compliant with numsed python syntax.
+The following is tested:
+- the script respects python syntax
+- the only scalar type is integer
+- strings are allowed only as print arguments
+- tuples are allowed as multiple assignments and function results. A tuple
+  may not contain tuples. A tuple must be assigned to a tuple of the same
+  length.
+- unary operators are - and +
+- binary operators are -, +, *, //, % and **
+- comparison operators are ==, !=, <, <=, >, and >=
+- boolean operators are or, and and not
+- functions are defined at module level
+- functions from numsed_lib may not be redefined
+- functions accept only positional arguments with no default value
+- names are the only callables accepted
+- print admits only one argument
+- control flow statements are if-elif-else, while-else, break, continue,
+  return, pass
+"""
 from __future__ import division, print_function
 
-import sys
 import inspect
 import types
 import ast
-import subprocess
 import codegen
-from collections import defaultdict
 import common
 import numsed_lib
 from numsed_lib import *
 
 
-LITERAL, UNSIGNED, SIGNED = range(3)
 FUTURE_FUNCTION = 'from __future__ import print_function\n'
 
 
-# -- Syntax checking visitor -------------------------------------------------
+def check(source):
+    try:
+        with open(source) as f:
+            script = f.read()
+            code = compile(script, source, "exec")
+    except SyntaxError as e:
+        msg = 'SyntaxError: %s\nline %d: %s'% (e.args[0], e.args[1][1], e.args[1][3])
+        return False, msg
+
+    # list of functions defined in source
+    source_functions = {x.co_name for x in code.co_consts if isinstance(x, types.CodeType)}
+
+    tree = ast.parse(FUTURE_FUNCTION + script)
+    numsed_check_ast_visitor = NumsedCheckAstVisitor(source_functions)
+    try:
+        numsed_check_ast_visitor.visit(tree)
+        return True, ''
+    except CheckException as e:
+        return False, e.args[0]
 
 
 BINOP = (ast.Add, ast.Sub, ast.Mult, ast.FloorDiv, ast.Mod, ast.Pow,
-         ast.Eq, ast.NotEq, ast.Lt,  ast.LtE, ast.Gt, ast.GtE)
+         ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE)
 
 
 class NumsedCheckAstVisitor(ast.NodeVisitor):
@@ -29,15 +64,10 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         # list of functions defined in lib
         self.lib_functions = {x[0] for x in inspect.getmembers(numsed_lib, inspect.isfunction)}
         self.lib_functions.add('print')
-        self.defined_functions = source_functions.union(self.lib_functions)
-
-        self.inside_funcdef = False
 
     def visit_Module(self, node):
         self.modulebody = node.body
-        print(self.modulebody)
         self.numvalout = nvalout_functions(node)
-        #print(self.numvalout)
         self.visit_child_nodes(node)
 
     def visit_ImportFrom(self, node):
@@ -51,9 +81,8 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
             elif isinstance(elt, ast.Tuple):
                 return len(elt.elts)
             else:
-                check_error('cannot assign to', elt, node)
+                check_error('cannot assign to', codegen.to_source(elt), node)
 
-        self.visit_child_nodes(node)
         num = len_of_target(node.targets[0])
         for elt in node.targets[1:]:
             if len_of_target(elt) != num:
@@ -63,12 +92,14 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         if isinstance(node.value, ast.Tuple):
             numv = len(node.value.elts)
         elif isinstance(node.value, ast.Call):
-           numv = self.numvalout[node.value.func.id]
+            numv = self.numvalout[node.value.func.id]
         else:
             numv = 1
         if numv != num:
             check_error('targets and values must have same length',
                         codegen.to_source(node), node)
+
+        self.visit_child_nodes(node)
 
     def visit_AugAssign(self, node):
         self.visit(node.target)
@@ -131,13 +162,13 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         self.visit_child_nodes(node)
 
     def visit_Call(self, node):
-        if type(node.func) is ast.Name:
+        if isinstance(node.func, ast.Name):
             if node.func.id == 'print':
                 self.visit_CallPrint(node)
             else:
                 self.visit_child_nodes(node)
         else:
-            check_error('callable not handled', node.func, node)
+            check_error('callable not handled', codegen.to_source(node.func), node)
 
     def visit_CallPrint(self, node):
         if len(node.args) != 1:
@@ -172,26 +203,22 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         if node not in self.modulebody:
             check_error('function definitions allowed only at module level', node.name, node)
 
-        if self.inside_funcdef:
-            check_error('no nested function definitions', node.name, node)
         if node.name in self.lib_functions:
-            check_error('not allowed to redefine functions', node.name, node)
+            check_error('not allowed to redefine numsed_lib functions', node.name, node)
         if node.args.vararg is not None:
             check_error('no vararg', node.args.vararg, node)
         if node.args.kwarg is not None:
             check_error('no kwarg', node.args.kwarg, node)
         if len(node.args.defaults) > 0:
             check_error('no defaults', node.args.defaults, node)
-        self.inside_funcdef = True
         for _ in node.body: self.visit(_)
-        self.inside_funcdef = False
 
     def visit_child_nodes(self, node):
         for _ in ast.iter_child_nodes(node):
             self.visit(_)
 
     def generic_visit(self, node):
-        check_error('construct is not handled', type(node), node)
+        check_error('construct is not handled', codegen.to_source(node), node)
 
 
 def nvalout_functions(tree):
@@ -203,13 +230,11 @@ def nvalout_functions(tree):
 
     for node in tree.body:
         if isinstance(node, ast.FunctionDef):
-            func_nval, func_calls =  nvalout_funcdef(node)
+            func_nval, func_calls = nvalout_funcdef(node)
             if True or func_nval is not None:
                 nvalout[node.name] = func_nval
             calls[node.name] = func_calls
 
-    print(nvalout)
-    print(calls)
     for func in nvalout:
         nval = set()
         nval.add(nvalout[func])
@@ -221,7 +246,6 @@ def nvalout_functions(tree):
                 pass
         if None in nval:
             nval.discard(None)
-        print(nval)
         if len(nval) == 1:
             nvalout[func] = next(iter(nval))
         else:
@@ -292,27 +316,6 @@ def call_closure(func, calls_dict):
             for f in calls_dict[call]:
                 heap.add(f)
     return calls
-
-
-def check(source):
-    try:
-        with open(source) as f:
-            script = f.read()
-            code = compile(script, source, "exec")
-    except SyntaxError as e:
-        msg = 'SyntaxError: %s\nline %d: %s'% (e.args[0], e.args[1][1], e.args[1][3])
-        return False, msg
-
-    # list of functions defined in source
-    source_functions = {x.co_name for x in code.co_consts if isinstance(x, types.CodeType)}
-
-    tree = ast.parse(FUTURE_FUNCTION + script)
-    numsed_check_ast_visitor = NumsedCheckAstVisitor(source_functions)
-    try:
-        numsed_check_ast_visitor.visit(tree)
-        return True, ''
-    except CheckException as e:
-        return False, e.args[0]
 
 
 class CheckException(Exception):
