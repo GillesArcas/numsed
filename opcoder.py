@@ -471,7 +471,7 @@ def interpreter(code, coverage=False):
         elif opc == 'LOAD_CONST':
             try:
                 x = int(arg)
-            except :
+            except:
                 if ',' in arg:
                     x = arg.split(',')
                 else:
@@ -511,8 +511,11 @@ def interpreter(code, coverage=False):
         elif opc == 'UNPACK_SEQUENCE':
             n = int(arg)
             x = stack.pop()
-            for _ in range(n):
-                stack.append(x.pop())
+            if n == 1:
+                stack.append(int(x))
+            else:
+                for _ in range(n):
+                    stack.append(int(x.pop()))
         elif opc == 'UNARY_NEGATIVE':
             tos = stack.pop()
             stack.append(-tos)
@@ -546,6 +549,7 @@ def interpreter(code, coverage=False):
         elif opc == 'UNARY_NOT':
             tos = stack.pop()
             stack.append(1 if tos == 0 else 0)
+            #stack.append(True if tos == 0 else False)
         elif opc == 'COMPARE_OP':
             tos = stack.pop()
             tos1 = stack.pop()
