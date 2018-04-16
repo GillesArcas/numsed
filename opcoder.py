@@ -29,7 +29,7 @@ OPCODES = ('LOAD_CONST', 'LOAD_NAME', 'LOAD_GLOBAL', 'STORE_NAME', 'STORE_GLOBAL
            'SETUP_LOOP', 'POP_BLOCK',
            'STARTUP', 'MAKE_CONTEXT', 'POP_CONTEXT',
            'IS_POSITIVE', 'NEGATIVE', 'ABS', 'IS_ODD',
-           'DIVIDE_BY_TWO', 'DIVIDE_BY_TEN', 'MODULO_TEN',
+           'DIVIDE_BY_TWO', 'DIVIDE_BY_TEN', 'MODULO_TEN', 'DIVMOD10',
            'TRACE')
 
 
@@ -458,14 +458,13 @@ def interpreter(code, coverage=False):
     instr_pointer = 0
     while instr_pointer < len(opcodes):
         opc, arg = opcodes[instr_pointer]
-        # print(opc, arg, file=sys.stderr)
+        # print(instr_pointer, opc, arg, stack, file=sys.stderr)
 
         # increment coverage
         if opc != ':':
             if opc in OPCODES:
                 counter[opc] += 1
 
-        #print(instr_pointer, opc, arg, stack)
         instr_pointer += 1
         if opc == ':':
             pass
@@ -649,6 +648,9 @@ def interpreter(code, coverage=False):
         elif opc == 'MODULO_TEN':
             tos = stack.pop()
             stack.append(tos % 10)
+        elif opc == 'DIVMOD10':
+            tos = stack.pop()
+            stack.append([tos // 10, tos % 10])
         elif opc == 'TRACE':
             pass
         else:

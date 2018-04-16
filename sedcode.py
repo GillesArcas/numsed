@@ -915,6 +915,16 @@ def MODULO_TEN():
     return snippet
 
 
+def DIVMOD10():
+    snippet = r'''                      # PS: ?         HS: N;X
+        g                               # PS: N;X       HS: N;X
+        s/(\d);/,\1;/                   # PS: Q;R;X     HS: N;X
+        s/^,/0,/                        # Q = 0 if single digit input
+        h                               # PS: Q;R;X     HS: Q;R;X  Q,R = divmod(N, 10)
+    '''
+    return snippet
+
+
 # -- Printing ----------------------------------------------------------------
 
 

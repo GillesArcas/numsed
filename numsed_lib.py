@@ -62,7 +62,8 @@ def signed_gte(x, y):
 
 def udivmod(a, b):
     if b == 10:
-        return divide_by_ten(a), modulo_ten(a)
+        #return divide_by_ten(a), modulo_ten(a)
+        return divmod10(a)
 
     # http://compoasso.free.fr/primelistweb/page/prime/euclide.php
     r = a
@@ -325,7 +326,7 @@ as an argument of a primitive function and there is no control to check that.
 
 
 PRIMITIVES = ('is_positive', 'negative', 'abs', 'is_odd', 'divide_by_two',
-              'divide_by_ten', 'modulo_ten')
+              'divide_by_ten', 'modulo_ten', 'divmod10')
 
 
 def is_positive(x):
@@ -349,3 +350,5 @@ def divide_by_ten(x):
 def modulo_ten(x):
     return x % 10
 
+def divmod10(x):
+    return x // 10, x % 10
