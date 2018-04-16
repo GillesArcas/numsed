@@ -69,8 +69,6 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
     def visit_Module(self, node):
         self.tree = node
         self.modulebody = node.body
-        #self.numvalout = nvalout_functions(node)
-        #self.numvalout['divmod'] = 2
         self.visit_child_nodes(node)
 
     def visit_ImportFrom(self, node):
@@ -95,7 +93,6 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         if isinstance(node.value, ast.Tuple):
             numv = len(node.value.elts)
         elif isinstance(node.value, ast.Call):
-            #numv = self.numvalout[node.value.func.id]
             if node.value.func.id == 'divmod':
                 numv = 2
             else:
@@ -131,10 +128,6 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
             if isinstance(elt, ast.Tuple):
                 check_error('elements of tuples may not be tuples',
                             codegen.to_source(node), node)
-            elif isinstance(elt, ast.Call):
-                if False: # self.numvalout[elt.func.id] > 1:
-                    check_error('call in tuples should return a single result',
-                                codegen.to_source(node), node)
         self.visit_child_nodes(node)
 
     def visit_Store(self, node):
@@ -240,103 +233,6 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
 
     def generic_visit(self, node):
         check_error('construct is not handled', codegen.to_source(node), node)
-
-
-def nvalout_functions(tree):
-    """
-    Returns a dictionary giving the number of results for each function.
-    """
-    nvalout = dict()
-    calls = dict()
-
-    for node in tree.body:
-        if isinstance(node, ast.FunctionDef):
-            func_nval, func_calls = nvalout_funcdef(node)
-            if True or func_nval is not None:
-                nvalout[node.name] = func_nval
-            calls[node.name] = func_calls
-
-    for func in nvalout:
-        nval = set()
-        nval.add(nvalout[func])
-        for f in call_closure(func, calls):
-            if f in nvalout:
-                nval.add(nvalout[f])
-            else:
-                # TODO: not defined or lib
-                pass
-        if None in nval:
-            nval.discard(None)
-        if len(nval) == 1:
-            nvalout[func] = next(iter(nval))
-        else:
-            check_error('different numbers of return values', func, None)
-
-    return nvalout
-
-
-def nvalout_funcdef(node):
-    """
-    Return the number of result values and the set of static calls in
-    return position.
-    """
-    nval = set()
-    calls = set()
-    nvalout_body(node.body, nval, calls, terminal=True)
-    print(nval)
-    if len(nval) == 0:
-        return None, calls
-    elif len(nval) == 1:
-        return next(iter(nval)), calls
-    else:
-        check_error('various numbers of result values', node.name, node)
-
-
-def nvalout_body(body, nval, calls, terminal):
-    for node in body:
-        last = node == body[-1]
-        if isinstance(node, ast.Return):
-            nvalout_return(node.value, nval, calls)
-        elif isinstance(node, (ast.If, ast.While)):
-            nvalout_body(node.body, nval, calls, terminal and last)
-            nvalout_body(node.orelse, nval, calls, terminal and last)
-        elif terminal and last:
-            nval.add(0)
-        else:
-            pass
-
-
-def nvalout_return(value, nval, calls):
-    if value is None:
-        nval.add(0)
-    elif isinstance(value, (ast.Num, ast.Name, ast.UnaryOp, ast.BinOp, ast.BoolOp, ast.Compare)):
-        nval.add(1)
-    elif isinstance(value, ast.Tuple):
-        nval.add(len(value.elts))
-    elif isinstance(value, ast.IfExp):
-        nvalout_return(value.body, nval, calls)
-        nvalout_return(value.orelse, nval, calls)
-    elif isinstance(value, ast.Call):
-        calls.add(value.func.id)
-    else:
-        check_error('unexpected return value', codegen.to_source(value), value)
-
-
-def call_closure(func, calls_dict):
-    """
-    calls_dict contains the functions called in function definitions
-    returns the set of functions transitively called from func
-    """
-    heap = calls_dict[func]
-    calls = set()
-    while heap:
-        call = next(iter(heap))
-        heap.discard(call)
-        if call != 'divmod' and call not in calls:
-            calls.add(call)
-            for f in calls_dict[call]:
-                heap.add(f)
-    return calls
 
 
 def parent_node(tree, node):
