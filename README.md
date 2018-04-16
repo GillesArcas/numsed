@@ -27,11 +27,11 @@ numsed is compatible with python 2 and 3.
 The subset of Python used by numsed is made of:
 
 * signed integer constants and variables, with no limitation in size,
-* arithmetic operators (+, -, *, //, %, **)
+* arithmetic operators (+, -, *, //, %, **) and divmod function
 * comparison operators (==, !=, <, <=, >, >=)
 * logical if
 * logical operators (and , or, not)
-* assignments, including augmented assignments and chained assignments,
+* assignments, including multiple assignments, augmented assignments and chained assignments,
 * control flow statements (if-elif-else, while-else, break, continue, pass)
 * function definitions and calls
 * print function
@@ -42,9 +42,9 @@ The subset of Python used by numsed is made of:
 
 The following limitations are checked during conversion:
 
-* there is no list and as a consequence no parallel assignments nor multiple return results
+* functions must be defined as module level instructions
 * functions have only positional arguments with no default values
-* it is not possible to define a function inside a function
+* functions must return integer (with the exception of he predefined function divmod)
 * print has always a single argument
 
 Some choices in implementation break the comparison with python script results:
