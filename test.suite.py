@@ -919,87 +919,17 @@ print(x)
 print(y)
 print(z)
 # ---
-# Multiple function results (2)
+# function result must be an integer (tuple)
 def foo(x, y):
     return x + y, x - y
-
-x, y = foo(13, 5)
-
-print(x)
-print(y)
-# ---
-# Multiple function results (2bis)
-def foo(x, y):
-    return x if x < y else y, x if x > y else y
-
-x, y = foo(13, 5)
-print(x)
-print(y)
-x, y = foo(5, 13)
-print(x)
-print(y)
-# ---
-# Multiple function results (3)
-def foo(x, y):
-    return x + y, x - y, x * y
-
-x, y, z = foo(13, 5)
-
-print(x)
-print(y)
-print(z)
-# ---
-# Multiple function results (4)
-def foo(x, y):
-    return x + y, x - y, x * y, x // y
-
-x, y, z, t = foo(13, 5)
-
-print(x)
-print(y)
-print(z)
-print(t)
-# ---
-# Multiple function results: len error
-def foo(x, y):
-    return x + y, x - y, x * y, x // y
-
-x, y, z = foo(13, 5)
 # ===
-numsed error: targets and values must have same length
-line 5 col 0: x, y, z = foo(13, 5)
+numsed error: function result must be an integer
+line 3 col 4: (x + y, x - y)
 # ---
-# Multiple function results: nested calls depth 2
-def foo(x):
-    return x, x + 1
-
-def bar(x):
-    return foo(x)
-
-x, y = bar(7)
-print(x)
-print(y)
-# ---
-# Multiple function results: nested calls depth 3
-def foo(x):
-    return x, x + 1
-
-def bar(x):
-    return foo(x)
-
-def spam(x):
-    return bar(x)
-
-x, y = spam(7)
-print(x)
-print(y)
-# ---
-# call in tuples should return a single result
-def foo():
-    return 1, 2
-
-x, y = 1, foo()
+# function result must be an integer (divmod)
+def foo(x, y):
+    return divmod(x, y)
 # ===
-numsed error: call in tuples should return a single result
-line 5 col 7: (1, foo())
+numsed error: divmod results must be assigned immediately
+line 3 col 11: divmod(x, y)
 # ---
