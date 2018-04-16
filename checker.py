@@ -21,6 +21,7 @@ The following is tested:
 """
 from __future__ import division, print_function
 
+import sys
 import inspect
 import types
 import ast
@@ -66,9 +67,10 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         self.lib_functions.add('print')
 
     def visit_Module(self, node):
+        self.tree = node
         self.modulebody = node.body
-        self.numvalout = nvalout_functions(node)
-        self.numvalout['divmod'] = 2
+        #self.numvalout = nvalout_functions(node)
+        #self.numvalout['divmod'] = 2
         self.visit_child_nodes(node)
 
     def visit_ImportFrom(self, node):
@@ -93,7 +95,11 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         if isinstance(node.value, ast.Tuple):
             numv = len(node.value.elts)
         elif isinstance(node.value, ast.Call):
-            numv = self.numvalout[node.value.func.id]
+            #numv = self.numvalout[node.value.func.id]
+            if node.value.func.id == 'divmod':
+                numv = 2
+            else:
+                numv = 1
         else:
             numv = 1
         if numv != num:
@@ -126,7 +132,7 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
                 check_error('elements of tuples may not be tuples',
                             codegen.to_source(node), node)
             elif isinstance(elt, ast.Call):
-                if self.numvalout[elt.func.id] > 1:
+                if False: # self.numvalout[elt.func.id] > 1:
                     check_error('call in tuples should return a single result',
                                 codegen.to_source(node), node)
         self.visit_child_nodes(node)
@@ -166,6 +172,9 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         if isinstance(node.func, ast.Name):
             if node.func.id == 'print':
                 self.visit_CallPrint(node)
+            elif node.func.id == 'divmod':
+                #print(node, file=sys.stderr)
+                self.visit_CallDivmod(node)
             else:
                 self.visit_child_nodes(node)
         else:
@@ -178,6 +187,14 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
             pass
         else:
             self.visit_child_nodes(node)
+
+    def visit_CallDivmod(self, node):
+        parent = parent_node(self.tree, node)
+        if isinstance(parent, ast.Assign):
+            pass
+        else:
+            check_error('divmod results must be assigned immediately', codegen.to_source(node), node)
+        self.visit_child_nodes(node)
 
     def visit_If(self, node):
         self.visit_child_nodes(node)
@@ -195,6 +212,9 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         pass
 
     def visit_Return(self, node):
+        if isinstance(node.value, ast.Tuple):
+            check_error('function result must be an integer',
+                        codegen.to_source(node.value), node)
         self.visit_child_nodes(node)
 
     def visit_Global(self, node):
@@ -312,11 +332,18 @@ def call_closure(func, calls_dict):
     while heap:
         call = next(iter(heap))
         heap.discard(call)
-        if call not in calls:
+        if call != 'divmod' and call not in calls:
             calls.add(call)
             for f in calls_dict[call]:
                 heap.add(f)
     return calls
+
+
+def parent_node(tree, node):
+    for nod in ast.walk(tree):
+        for _ in ast.iter_child_nodes(nod):
+            if _ == node:
+                return nod
 
 
 class CheckException(Exception):
