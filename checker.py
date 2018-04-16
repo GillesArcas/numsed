@@ -59,6 +59,17 @@ BINOP = (ast.Add, ast.Sub, ast.Mult, ast.FloorDiv, ast.Mod, ast.Pow,
 
 
 class NumsedCheckAstVisitor(ast.NodeVisitor):
+    """
+    two problems remain to handle multiple results n functions. First, it is not
+    always possible to determine the number of results. for instance:
+
+    def foo():
+        while x:
+            return x
+
+    does this return 1 result (in the loop) or none (after the loop). Second,
+    at least the dimension should be tested for any argument of print
+    """
 
     def __init__(self, source_functions):
         # list of functions defined in lib
