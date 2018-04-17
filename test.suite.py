@@ -717,7 +717,8 @@ def fac(n):
         return n * fac(n - 1)
 
 n = 10
-print(fac(n))
+r = fac(n)
+print(r)
 # ---
 # recursion: fib
 def fib(n):
@@ -733,7 +734,7 @@ def G(n):
     if n == 0:
         return 0
     else:
-        return  n - G(G(n - 1))
+        return n - G(G(n - 1))
 
 print(G(10))
 # ---
@@ -742,7 +743,7 @@ def H(n):
     if n == 0:
         return 0
     else:
-        return  n - H(H(H(n - 1)))
+        return n - H(H(H(n - 1)))
 
 print(H(10))
 # ---
