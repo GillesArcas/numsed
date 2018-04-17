@@ -153,31 +153,31 @@ class NumsedAstTransformer(ast.NodeTransformer):
 # -- List of library functions -----------------------------------------------
 
 
-class NumsedAstVisitor(ast.NodeVisitor):
-
-    def __init__(self):
-        self.required_func = set()
-
-    def visit_Call(self, node):
-        self.generic_visit(node)
-        if type(node.func) is ast.Name:
-            self.required_func.add(node.func.id)
+def called_functions(func):
+    """
+    func is the name of a function. Returns the names of all functions called
+    in func.
+    """
+    textfunc = '\n'.join(inspect.getsourcelines(globals()[func])[0])
+    tree = ast.parse(textfunc)
+    called = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            # it is tested in checker.check that node.func is an ast.Name
+            called.add(node.func.id)
+    return called
 
 
 def function_calls(libfuncs):
     """
-    Argument is the list of library functions called in script
-    Output is the list of all library functions required in script
+    libfuncs is the list of library functions called in script. Returns ths
+    list of all library functions required in script
     """
     libfuncs2 = set()
     while libfuncs:
         func = libfuncs.pop()
         libfuncs2.add(func)
-        textfunc = '\n'.join(inspect.getsourcelines(globals()[func])[0])
-        tree = ast.parse(textfunc)
-        numsed_ast_visitor = NumsedAstVisitor()
-        numsed_ast_visitor.visit(tree)
-        for func in numsed_ast_visitor.required_func:
+        for func in called_functions(func):
             if func not in libfuncs and func not in libfuncs2:
                 libfuncs.add(func)
     return sorted(list(libfuncs2))
@@ -186,18 +186,15 @@ def function_calls(libfuncs):
 # -- Unsigned transformation -------------------------------------------------
 
 
-def transform_unsigned(script_in, script_out, include_prim_def=True):
+def transform_unsigned(script_in, script_out):
     tree = ast.parse(open(script_in).read())
     numsed_ast_transformer = UnsignedTransformer(Unsigned_func)
     numsed_ast_transformer.visit(tree)
 
     libfuncs = numsed_ast_transformer.required_func
-    libfuncs2 = function_calls(libfuncs)
-    if include_prim_def is False:
-        for func in numsed_lib.PRIMITIVES:
-            if func in libfuncs2:
-                libfuncs2.remove(func)
-    libfuncs = [globals()[x] for x in libfuncs2]
+    libfuncs = function_calls(libfuncs)
+    libfuncs = [globals()[x] for x in libfuncs]
+
     return save_new_script(tree, libfuncs, getsourcetext, script_out)
 
 
@@ -210,18 +207,14 @@ Unsigned_func = {
 # -- Positive transformation -------------------------------------------------
 
 
-def transform_positive(script_in, script_out, include_prim_def=True):
+def transform_positive(script_in, script_out):
     tree = ast.parse(open(script_in).read())
     numsed_ast_transformer = NumsedAstTransformer(signed_func)
     numsed_ast_transformer.visit(tree)
 
     libfuncs = numsed_ast_transformer.required_func
-    libfuncs2 = function_calls(libfuncs)
-    if include_prim_def is False:
-        for func in numsed_lib.PRIMITIVES:
-            if func in libfuncs2:
-                libfuncs2.remove(func)
-    libfuncs = [globals()[x] for x in libfuncs2]
+    libfuncs = function_calls(libfuncs)
+    libfuncs = [globals()[x] for x in libfuncs]
 
     return save_new_script(tree, libfuncs, getsourcetext, script_out)
 
@@ -394,17 +387,13 @@ class AstConversion(common.NumsedConversion):
 class ScriptConversion(common.NumsedConversion):
     def __init__(self, source, transformation):
         common.NumsedConversion.__init__(self, source, transformation)
-        if transformation == LITERAL or transformation == LITERAL + 10:
+        if transformation == LITERAL:
             self.code = open(source).read()
             open('~.py', 'wt').write(self.code)
         elif transformation == UNSIGNED:
             self.code = transform_unsigned(source, '~.py')
         elif transformation == SIGNED:
             self.code = transform_positive(source, '~.py')
-        elif transformation == UNSIGNED + 10:
-            self.code = transform_unsigned(source, '~.py', include_prim_def=False)
-        elif transformation == SIGNED + 10:
-            self.code = transform_positive(source, '~.py', include_prim_def=False)
         else:
             self.code = ''
     def trace(self):
