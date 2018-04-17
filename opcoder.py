@@ -39,7 +39,7 @@ OPCODES = ('LOAD_CONST', 'LOAD_NAME', 'LOAD_GLOBAL', 'STORE_NAME', 'STORE_GLOBAL
 class DisassemblyConversion(common.NumsedConversion):
     def __init__(self, source, transformation):
         common.NumsedConversion.__init__(self, source, transformation)
-        script_trans = transformer.ScriptConversion(source, transformation + 10)
+        script_trans = transformer.ScriptConversion(source, transformation)
         self.code = disassemble(script_trans.trace())
     def trace(self):
         return '\n'.join(self.code)
