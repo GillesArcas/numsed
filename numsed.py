@@ -163,10 +163,20 @@ def test_script(args, source, result, checked, msg):
     """
     if result is None, the test has to be compared with the python script
     if result is not None, the test has to be compared with it
+    checked and msg are the results of syntax checking
     """
     if not source.endswith('.py'):
         return False
 
+    # run original script and store results
+    if result is None or (checked is True and (args.ast or args.script)):
+        ref = subprocess.check_output('python ' + source)
+        ref = ref.decode('ascii') # py3
+    else:
+        ref = ''.join(result)
+    print(ref)
+
+    # run original or use result of syntax checking
     if checked is False:
         res = msg #+ '\n'
         time_sed = 0
@@ -180,14 +190,6 @@ def test_script(args, source, result, checked, msg):
         time_sed = time.time() - t0
         if target.print_run_result():
             print(res)
-
-    # run original script and store results
-    if result is None or (checked is True and (args.ast or args.script)):
-        ref = subprocess.check_output('python ' + source)
-        ref = ref.decode('ascii') # py3
-    else:
-        ref = ''.join(result)
-    print(ref)
 
     # compare
     status, diff = common.list_compare('ref', 'res', ref.splitlines(), res.splitlines())
