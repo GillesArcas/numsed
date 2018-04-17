@@ -4,11 +4,11 @@ The following is tested:
 - the script respects python syntax
 - the only scalar type is integer
 - strings are allowed only as print arguments
-- tuples are allowed as multiple assignments and function results. A tuple
-  may not contain tuples. A tuple must be assigned to a tuple of the same
+- tuples are allowed as multiple assignments. Tuples are not allowed as
+  function results. A tuple must be assigned to a tuple of the same
   length.
 - unary operators are - and +
-- binary operators are -, +, *, //, % and **
+- binary operators are -, +, *, //, % and **, divmod function
 - comparison operators are ==, !=, <, <=, >, and >=
 - boolean operators are or, and and not
 - functions are defined at module level
@@ -166,7 +166,6 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
             if node.func.id == 'print':
                 self.visit_CallPrint(node)
             elif node.func.id == 'divmod':
-                #print(node, file=sys.stderr)
                 self.visit_CallDivmod(node)
             else:
                 self.visit_child_nodes(node)
