@@ -5,8 +5,8 @@ Transform into positive form:
   x + y --> signed_add(x, y), idem -, *, //, ==, !=, <, <=, >, >=
 - all operands of operators and binary comparisons inside signed_xxx functions
   must be positive integers.
-- two functions handling negative values remain: is_positive and negative. They
-  are treated separately when testing python positive form or compiling into sed.
+- one function handling negative values remains: is_positive. It is is treated
+  separately when testing python positive form or compiling into sed.
 - augmented assignments are replaced with simple assignments.
 
 A testing mode of the transformer program generates code testing that arguments

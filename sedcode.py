@@ -718,8 +718,14 @@ def UNARY_NEGATIVE():
     """
     Implements TOS = -TOS.
     """
-    snippet = '''
-        NEGATIVE
+    snippet = r'''                      # PS: ?         HS: N;X
+        g                               # PS: N;X       HS: N;X
+        s/^-/!/                         # use marker to avoid another substitution
+        s/^\+/-/                        #
+        s/^[0-9]/-&/                    #
+        s/^-0;/0;/                      # handle N = -0
+        s/^!//                          # remove marker
+        h                               # PS: R;X       HS: R;X  R = -N
     '''
     return snippet
 
@@ -827,19 +833,6 @@ def IS_POSITIVE():
         s/^[0-9+][^;]*/1/               # PS: 1;X       HS: N;X  if pos
         s/^-[^;]+/0/                    # PS: 0;X       HS: N;X  if neg
         h                               # PS: r;X       HS: r;X  r = 0 or 1
-    '''
-    return snippet
-
-
-def NEGATIVE():
-    snippet = r'''                      # PS: ?         HS: N;X
-        g                               # PS: N;X       HS: N;X
-        s/^-/!/                         # use marker to avoid another substitution
-        s/^\+/-/                        #
-        s/^[0-9]/-&/                    #
-        s/^-0;/0;/                      # handle N = -0
-        s/^!//                          # remove marker
-        h                               # PS: R;X       HS: R;X  R = -N
     '''
     return snippet
 

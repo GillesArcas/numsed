@@ -28,7 +28,7 @@ OPCODES = ('LOAD_CONST', 'LOAD_NAME', 'LOAD_GLOBAL', 'STORE_NAME', 'STORE_GLOBAL
            'MAKE_FUNCTION', 'CALL_FUNCTION', 'RETURN_VALUE',
            'SETUP_LOOP', 'POP_BLOCK',
            'STARTUP', 'MAKE_CONTEXT', 'POP_CONTEXT',
-           'IS_POSITIVE', 'NEGATIVE', 'ABS', 'IS_ODD',
+           'IS_POSITIVE', 'ABS', 'IS_ODD',
            'DIVIDE_BY_TWO', 'DIVIDE_BY_TEN', 'MODULO_TEN', 'DIVMOD10',
            'TRACE')
 
@@ -43,9 +43,6 @@ class DisassemblyConversion(common.NumsedConversion):
         self.code = disassemble(script_trans.trace())
     def trace(self):
         return '\n'.join(self.code)
-
-
-IS64BITS = sys.maxsize > 2**32
 
 
 def disassemble(source):
@@ -630,9 +627,6 @@ def interpreter(code, coverage=False):
         elif opc == 'IS_POSITIVE':
             tos = stack.pop()
             stack.append(tos >= 0)
-        elif opc == 'NEGATIVE':
-            tos = stack.pop()
-            stack.append(-tos)
         elif opc == 'IS_ODD':
             tos = stack.pop()
             stack.append(tos % 2)

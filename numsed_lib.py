@@ -21,8 +21,7 @@ def signed_eq(x, y):
         if is_positive(y):
             return 0
         else:
-            return negative(x) == negative(y)
-
+            return -x == -y
 def signed_noteq(x, y):
     return not signed_eq(x, y)
 
@@ -36,7 +35,7 @@ def signed_lt(x, y):
         if is_positive(y):
             return 1
         else:
-            return negative(x) > negative(y)
+            return -x > -y
 
 def signed_lte(x, y):
     if is_positive(x):
@@ -48,7 +47,7 @@ def signed_lte(x, y):
         if is_positive(y):
             return 1
         else:
-            return negative(x) >= negative(y)
+            return -x >= -y
 
 def signed_gt(x, y):
     return not signed_lte(x, y)
@@ -162,21 +161,21 @@ def signed_add(x, y):
         if is_positive(y):
             r = x + y
         else:
-            y = negative(y)
+            y = -y
             if x > y:
                 r = x - y
             else:
-                r = negative(y - x)
+                r = -(y - x)
     else:
-        x = negative(x)
+        x = -x
         if is_positive(y):
             if x > y:
-                r = negative(x - y)
+                r = -(x - y)
             else:
                 r = y - x
         else:
-            y = negative(y)
-            r = negative(x + y)
+            y = -y
+            r = -(x + y)
     return r
 
 
@@ -186,17 +185,17 @@ def signed_sub(x, y):
             if x > y:
                 return x - y
             else:
-                return negative(y - x)
+                return -(y - x)
         else:
-            return x + negative(y)
+            return x + -y
     else:
-        abs_x = negative(x)
+        abs_x = -x
         if is_positive(y):
-            return negative(abs_x + y)
+            return -(abs_x + y)
         else:
-            abs_y = negative(y)
+            abs_y = -y
             if abs_x > abs_y:
-                return negative(abs_x - abs_y)
+                return -(abs_x - abs_y)
             else:
                 return abs_y - abs_x
 
@@ -206,35 +205,33 @@ def signed_mult(x, y):
         if is_positive(y):
             return x * y
         else:
-            abs_y = negative(y)
-            return negative(x * abs_y)
+            return -(x * -y)
     else:
-        abs_x = negative(x)
         if is_positive(y):
-            return negative(abs_x * y)
+            return -(-x * y)
         else:
-            abs_y = negative(y)
-            return abs_x * abs_y
+            return -x * -y
 
 
 def signed_div(x, y):
     abs_x = abs(x)
     abs_y = abs(y)
     q, r = udivmod(abs_x, abs_y)
+
     if is_positive(x):
         if is_positive(y):
             return q
         else:
             if r == 0:
-                return negative(q)
+                return -q
             else:
-                return negative(q + 1)
+                return -(q + 1)
     else:
         if is_positive(y):
             if r == 0:
-                return negative(q)
+                return -q
             else:
-                return negative(q + 1)
+                return -(q + 1)
         else:
             return q
 
@@ -243,28 +240,17 @@ def signed_mod(x, y):
     abs_x = abs(x)
     abs_y = abs(y)
     r = umod(abs_x, abs_y)
-    if is_positive(y):
-        if is_positive(x):
+
+    if is_positive(x):
+        if is_positive(y):
             return r
         else:
-            return 0 if r == 0 else y - r
-    else:
-        if is_positive(x):
             return 0 if r == 0 else -(abs_y - r)
-        else:
-            return negative(r)
-
-
-def signed_mod(x, y):
-    abs_x = abs(x)
-    abs_y = abs(y)
-    q, r = udivmod(abs_x, abs_y)
-    if r == 0:
-        return 0
-    elif is_positive(y):
-        return r if is_positive(x) else y - r
     else:
-        return -(abs_y - r) if is_positive(x) else -r
+        if is_positive(y):
+            return 0 if r == 0 else y - r
+        else:
+            return -r
 
 
 def signed_divmod(x, y):
@@ -274,29 +260,20 @@ def signed_divmod(x, y):
 
     if is_positive(x):
         if is_positive(y):
-            pass
+            return q, r
         else:
             if r == 0:
-                q = negative(q)
+                return -q, 0
             else:
-                q = negative(q + 1)
+                return -(q + 1), -(abs_y - r)
     else:
         if is_positive(y):
             if r == 0:
-                q = negative(q)
+                return -q, 0
             else:
-                q = negative(q + 1)
+                return -(q + 1), y - r
         else:
-            pass
-
-    if r == 0:
-        pass
-    elif is_positive(y):
-        r = r if is_positive(x) else y - r
-    else:
-        r = -(abs_y - r) if is_positive(x) else -r
-
-    return q, r
+            return q, -r
 
 
 def signed_pow(base, exp):
@@ -307,8 +284,8 @@ def signed_pow(base, exp):
     if is_positive(base):
         return upow(base, exp)
     else:
-        r = upow(negative(base), exp)
-        return negative(r) if is_odd(exp) else r
+        r = upow(-base, exp)
+        return -r if is_odd(exp) else r
 
 
 # -- Primitives --------------------------------------------------------------
@@ -325,15 +302,12 @@ as an argument of a primitive function and there is no control to check that.
 """
 
 
-PRIMITIVES = ('is_positive', 'negative', 'abs', 'is_odd', 'divide_by_two',
+PRIMITIVES = ('is_positive', 'abs', 'is_odd', 'divide_by_two',
               'divide_by_ten', 'modulo_ten', 'divmod10')
 
 
 def is_positive(x):
     return x > 0
-
-def negative(x):
-    return -x
 
 def abs(x):
     return x if x >= 0 else -x
