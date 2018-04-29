@@ -39,14 +39,14 @@ OPCODES = ('LOAD_CONST', 'LOAD_NAME', 'LOAD_GLOBAL', 'STORE_NAME', 'STORE_GLOBAL
 class DisassemblyConversion(common.NumsedConversion):
     def __init__(self, source, transformation):
         common.NumsedConversion.__init__(self, source, transformation)
-        script_trans = transformer.ScriptConversion(source, transformation)
-        self.code = disassemble(script_trans.trace())
+        ast_trans = transformer.AstConversion(source, transformation)
+        self.code = disassemble(ast_trans.tree)
     def trace(self):
         return '\n'.join(self.code)
 
 
-def disassemble(source):
-    code = compile(source, '<string>', "exec")
+def disassemble(tree):
+    code = compile(tree, '<ast>', "exec")
 
     with common.ListStream() as x:
         dis.dis(code)
@@ -590,6 +590,17 @@ def interpreter(code, coverage=False):
             if not result:
                 result.append('')
             result[-1] += '%s' % tos
+        # elif opc == 'PRINT_ITEMS':
+        #     r = ''
+        #     while True:
+        #         tos = stack.pop()
+        #         if tos == '@':
+        #             break
+        #         r = str(tos) + ' ' + r
+        #     print(r, end='')
+        #     if not result:
+        #         result.append('')
+        #     result[-1] += '%s ' % tos
         elif opc == 'PRINT_NEWLINE':
             print()
             result.append('')
@@ -606,6 +617,8 @@ def interpreter(code, coverage=False):
                 args.append(stack.pop())
             func = stack.pop()
             stack.append(instr_pointer)
+            # if func == 'print':
+            #     stack.append('@')
             for _ in range(int(arg)):
                 stack.append(args.pop())
             instr_pointer = labels[func]
