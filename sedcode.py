@@ -386,18 +386,20 @@ def CALL_FUNCTION(argc):
 
     return_label = new_return()
     return_labels.append(return_label)
+    nargs = 'x' * int(argc) # number of arguments unary encoded
 
     # argc parameters on top of stack above name of function
     # add return label and swap parameters and name
     snippet = r'''
         x
         s/^(([^;]+;){argc})([^;]+;)/\3\1return_label;/
+        ### s/^print;/print;nargs/
         x
         POP
         b call_function
         :return_label
     '''
-    return snippet.replace('argc', argc).replace('return_label', return_label)
+    return snippet.replace('argc', argc).replace('return_label', return_label).replace('nargs', nargs)
 
 
 def RETURN_VALUE():
