@@ -91,6 +91,7 @@ def sedcode(opcode):
 
 def normalize(snippet):
 
+    # TODO: describe labels
     labels = []
     for line in snippet.splitlines():
         m = re.match(r' *:(\.\S+)', line)
@@ -267,6 +268,7 @@ def ROT_THREE():
 
 
 def LOAD_CONST(const):
+    const = re.sub(r'^([\'"])(.*)\1$', r'\2', const) # remove quotes
     snippet = r'''                      # PS: ?         HS: X
         g                               # PS: X         HS: X
         s/^/const;/                     # PS: const;X   HS: X
@@ -386,14 +388,14 @@ def CALL_FUNCTION(argc):
 
     return_label = new_return()
     return_labels.append(return_label)
-    nargs = 'x' * int(argc) # number of arguments unary encoded
+    nargs = '~' * int(argc) # number of arguments unary encoded
 
     # argc parameters on top of stack above name of function
     # add return label and swap parameters and name
     snippet = r'''
         x
-        s/^(([^;]+;){argc})([^;]+;)/\3\1return_label;/
-        ### s/^print;/print;nargs/
+        s/^(([^;]*;){argc})([^;]+;)/\3\1return_label;/
+        s/^print;/print;nargs;/
         x
         POP
         b call_function
@@ -930,8 +932,25 @@ def PRINT_ITEM():
      '''
     return snippet
 
+
 def PRINT_NEWLINE():
     return ''
+
+
+def PRINT_ITEMS():
+    snippet = r'''                      # PS: ?         HS: ~~~;C;B;A;X
+        g
+        :.loop                          # PS: C ~~;B;A;X
+        s/([^~]*)~(~*);([^;]*);/\3 \1\2;/
+                                        # PS: A B ~;C;X
+        t.loop
+        s/ ;/;/                         # remove extra space
+                                        # PS: A B C ;X
+        h                               # PS: A B C ;X  HX: A B C ;X
+        POP                             # PS: A B C     HX: X
+        p
+     '''
+    return snippet
 
 
 # -- Debug -------------------------------------------------------------------
