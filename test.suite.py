@@ -7,18 +7,6 @@ print(42)
 # print long int constant
 print(10000000000000000000)
 # ---
-# print admits one and only one argument (0 given)
-print()
-# ===
-numsed error: print admits one and only one argument
-line 2 col 0: print()
-# ---
-# print admits one and only one argument (2 given)
-print(1, 2)
-# ===
-numsed error: print admits one and only one argument
-line 2 col 0: print(1, 2)
-# ---
 # constant error
 n = 42.0
 # ===
@@ -28,7 +16,7 @@ line 2 col 4: 42.0
 # constant error
 n = 'foo'
 # ===
-numsed error: strings not handled (less as print argument)
+numsed error: strings not handled (unless as print argument)
 line 2 col 4: 'foo'
 # ---
 # variable names
@@ -66,17 +54,11 @@ line 2 col 0: x[0]
 # ---
 # chained assignment
 m = n = 42
-print(m)
-print(n)
+print(m, n)
 m = n = p = 42
-print(m)
-print(n)
-print(p)
+print(m, n, p)
 m = n = p = q = 42
-print(m)
-print(n)
-print(p)
-print(q)
+print(m, n, p, q)
 # ---
 # assign add
 m = 42
@@ -365,8 +347,7 @@ m = -10
 while m <= 10:
     n = -10
     while n <= m:
-        print(m)
-        print(n)
+        print(m, n)
         n += 1
     m += 1
 # ---
@@ -375,8 +356,7 @@ m = 10
 while m >= -10:
     n = 10
     while n >= m:
-        print(m)
-        print(n)
+        print(m, n)
         n -= 1
     m -= 1
 # ---
@@ -513,8 +493,7 @@ while m <= 10:
     while n <= 10:
         if n != 0:
             q, r = divmod(m, n)
-            print(q)
-            print(r)
+            print(q, r)
         n += 1
     m += 1
 # ---
@@ -533,12 +512,12 @@ m = -2
 while m <= 2:
     n = -2
     while n <= 2:
-        print(1 if m == n else 0)
-        print(1 if m != n else 0)
-        print(1 if m <  n else 0)
-        print(1 if m <= n else 0)
-        print(1 if m >  n else 0)
-        print(1 if m >= n else 0)
+        print(1 if m == n else 0,
+              1 if m != n else 0,
+              1 if m <  n else 0,
+              1 if m <= n else 0,
+              1 if m >  n else 0,
+              1 if m >= n else 0)
         n += 1
     m += 1
 # ---
@@ -630,12 +609,12 @@ m = -2
 while m <= 2:
     n = -2
     while n <= 2:
-        print(1 if not(m == n) else 0)
-        print(1 if not(m != n) else 0)
-        print(1 if not(m <  n) else 0)
-        print(1 if not(m <= n) else 0)
-        print(1 if not(m >  n) else 0)
-        print(1 if not(m >= n) else 0)
+        print(1 if not(m == n) else 0,
+              1 if not(m != n) else 0,
+              1 if not(m <  n) else 0,
+              1 if not(m <= n) else 0,
+              1 if not(m >  n) else 0,
+              1 if not(m >= n) else 0)
         n += 1
     m += 1
 # ---
@@ -839,59 +818,65 @@ print("Hello word!")
 print('Hello "word"!')
 print("Hello 'word'!")
 # ---
+# print several arguments
+print()
+print(1)
+print(1, 2)
+print(1, 2, 3)
+print('foo')
+print('foo', 'bar')
+print('foo', 'bar', 'baz')
+print('')
+print(' ')
+print('  ')
+print('   ')
+print('    ')
+x = 1
+print(1 + x, 'foo', 2 + x)
+print(1, ' ', 2, '  ', 3, '   ', 4)
+print(1, '', 2, '', 3, '', 4)
+# ---
+# print: forbidden characters
+print('foo;bar')
+# ===
+numsed error: character not handled (@|;~)
+line 2 col 0: print('foo;bar')
+# ---
 # Multiple assignment (constants)
 a, = 1,
 x, = a,
 print(x)
 a, b = 1, 2
 x, y = a, b
-print(x)
-print(y)
+print(x, y)
 a, b, c = 1, 2, 3
 x, y, z = a, b, c
-print(x)
-print(y)
-print(z)
+print(x, y, z)
 a, b, c, d = 1, 2, 3, 4
 x, y, z, t = a, b, c, d
-print(x)
-print(y)
-print(z)
-print(t)
+print(x, y, z, t)
 # ---
 # Multiple assignment (expressions)
 a, b = 1, 2
 x, y = a + b, a - b
-print(x)
-print(y)
+print(x, y)
 a, b, c = 1, 2, 3
 x, y, z = a + b, b + c, c + a
-print(x)
-print(y)
-print(z)
+print(x, y, z)
 a, b, c, d = 1, 2, 3, 4
 x, y, z, t = a, a - b, a - b + c, a - b + c - d
-print(x)
-print(y)
-print(z)
-print(t)
+print(x, y, z, t)
 # ---
 # Swap and permutation
 x, y = 1, 2
 x, y = y, x
-print(x)
-print(y)
+print(x, y)
 x, y, z = 1, 2, 3
 x, y, z = z, x, y
-print(x)
-print(y)
-print(z)
+print(x, y, z)
 x, y, z, t = 1, 2, 3, 4
 x, y, z, t = t, z, y, x
-print(x)
-print(y)
-print(z)
-print(t)
+print(x, y, z, t)
 # ---
 # target and value must have same length
 a, b, c = 1, 2
@@ -916,9 +901,7 @@ def foo(n):
     return 2 * n + 1
 
 x, y, z = foo(13), foo(17), foo(19)
-print(x)
-print(y)
-print(z)
+print(x, y, z)
 # ---
 # function result must be an integer (tuple)
 def foo(x, y):
