@@ -25,6 +25,7 @@ import sys
 import inspect
 import types
 import ast
+import re
 import codegen
 import common
 import numsed_lib
@@ -120,7 +121,7 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
             check_error('not an integer', node.n, node)
 
     def visit_Str(self, node):
-        check_error('strings not handled (less as print argument)',
+        check_error('strings not handled (unless as print argument)',
                     codegen.to_source(node), node)
 
     def visit_Tuple(self, node):
@@ -179,6 +180,16 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
             pass
         else:
             self.visit_child_nodes(node)
+
+    def visit_CallPrint(self, node):
+        for arg in node.args:
+            if isinstance(arg, ast.Str):
+                if re.match('^[ -~]*$', arg.s) and re.search('[@|;~]', arg.s) is None:
+                    pass
+                else:
+                    check_error('character not handled (@|;~)', codegen.to_source(node), node)
+            else:
+                self.visit(arg)
 
     def visit_CallDivmod(self, node):
         parent = parent_node(self.tree, node)
