@@ -24,7 +24,7 @@ OPCODES = ('LOAD_CONST', 'LOAD_NAME', 'LOAD_GLOBAL', 'STORE_NAME', 'STORE_GLOBAL
            'COMPARE_OP', 'UNARY_NOT',
            'JUMP', 'POP_JUMP_IF_TRUE', 'POP_JUMP_IF_FALSE',
            'JUMP_IF_TRUE_OR_POP', 'JUMP_IF_FALSE_OR_POP',
-           'PRINT_ITEM', 'PRINT_NEWLINE',
+           'PRINT_ITEM', 'PRINT_ITEMS', 'PRINT_NEWLINE',
            'MAKE_FUNCTION', 'CALL_FUNCTION', 'RETURN_VALUE',
            'SETUP_LOOP', 'POP_BLOCK',
            'STARTUP', 'MAKE_CONTEXT', 'POP_CONTEXT',
@@ -268,9 +268,6 @@ def opcodes(dis_code):
     # add print definition
     newcode.extend(PRINT())
 
-    # remove quotes
-    clean_strings(newcode)
-
     # return list of formated instructions
     return pprint_opcode(newcode)
 
@@ -366,21 +363,11 @@ def PRINT_DECL():
 def PRINT():
     return (                            # PS: ?         HS: N;label;X
         ':print',
-        'PRINT_ITEM',                   # PS: N         HS: label;X
+        'PRINT_ITEMS',                  # PS: N         HS: label;X
         'PRINT_NEWLINE',
         'LOAD_CONST 0',                 # PS: N         HS: 0;label;X
         'RETURN_VALUE'
     )
-
-
-def clean_strings(opcodes):
-    """
-    remove quotes from strings
-    """
-    for index, (_, opc, arg) in enumerate(scancodes(opcodes)):
-        if opc == 'LOAD_CONST' and re.match(r'^([\'"]).*\1$', arg):
-            arg = arg[1:-1]
-            opcodes[index] = '%s %s' % (opc, arg)
 
 
 def link_opcode(code):
@@ -590,17 +577,14 @@ def interpreter(code, coverage=False):
             if not result:
                 result.append('')
             result[-1] += '%s' % tos
-        # elif opc == 'PRINT_ITEMS':
-        #     r = ''
-        #     while True:
-        #         tos = stack.pop()
-        #         if tos == '@':
-        #             break
-        #         r = str(tos) + ' ' + r
-        #     print(r, end='')
-        #     if not result:
-        #         result.append('')
-        #     result[-1] += '%s ' % tos
+        elif opc == 'PRINT_ITEMS':
+            args = [str(stack.pop()) for _ in range(stack.pop())]
+            args = [re.sub(r'^([\'"])(.*)\1$', r'\2', _) for _ in args] # remove quotes
+            r = ' '.join(reversed(args))
+            print(r, end='')
+            if not result:
+                result.append('')
+            result[-1] += '%s ' % r
         elif opc == 'PRINT_NEWLINE':
             print()
             result.append('')
@@ -617,10 +601,10 @@ def interpreter(code, coverage=False):
                 args.append(stack.pop())
             func = stack.pop()
             stack.append(instr_pointer)
-            # if func == 'print':
-            #     stack.append('@')
             for _ in range(int(arg)):
                 stack.append(args.pop())
+            if func == 'print':
+                stack.append(int(arg))
             instr_pointer = labels[func]
         elif opc == 'RETURN_VALUE':
             ret_value = stack.pop()
