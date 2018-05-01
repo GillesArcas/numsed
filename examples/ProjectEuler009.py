@@ -8,13 +8,7 @@ def find():
         while b <= a:
             c = 1000 - a - b
             if a * a + b * b == c * c:
-                print(a)
-                print(b)
-                print(c)
-                print(a + b + c)
-                print(a * a + b * b)
-                print(c * c)
-                print(a * b * c)
+                print(a, b, c, 'sum:', a + b + c, 'sqr1:', a * a + b * b, 'sqr2:', c * c, 'product:', a * b * c)
                 return
             b += 1
         a += 1
