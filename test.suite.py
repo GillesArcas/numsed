@@ -664,16 +664,18 @@ if 1:
     def foo():
         return 42
 # ===
-numsed error: function definitions allowed only at module level
-line 3 col 4: foo
+numsed error: line 3 col 5: function definitions allowed only at module level
+    def foo():
+    ^
 # ---
 # function definitions allowed only at module level - 2
 def spam():
     def foo():
         return 42
 # ===
-numsed error: function definitions allowed only at module level
-line 3 col 4: foo
+numsed error: line 3 col 5: function definitions allowed only at module level
+    def foo():
+    ^
 # ---
 # callable not handled
 foo(x)(y)
@@ -685,8 +687,33 @@ line 2 col 0: foo(x)
 def udivmod(x, y):
     return 0
 # ===
-numsed error: not allowed to redefine numsed_lib functions
-line 2 col 0: udivmod
+numsed error: line 2 col 1: not allowed to redefine numsed_lib functions
+def udivmod(x, y):
+^
+# ---
+# no vararg arguments
+def foo(*args):
+    print(args)
+# ===
+numsed error: line 2 col 1: no vararg arguments
+def foo(*args):
+^
+# ---
+# no kwarg arguments
+def foo(**kwargs):
+    print(kwargs)
+# ===
+numsed error: line 2 col 1: no kwarg arguments
+def foo(**kwargs):
+^
+# ---
+# no default arguments
+def spam(x=42):
+    return x
+# ===
+numsed error: line 2 col 1: no default arguments
+def spam(x=42):
+^
 # ---
 # recursion: fac
 def fac(n):

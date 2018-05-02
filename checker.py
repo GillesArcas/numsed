@@ -15,7 +15,6 @@ The following is tested:
 - functions from numsed_lib may not be redefined
 - functions accept only positional arguments with no default value
 - names are the only callables accepted
-- print admits only one argument
 - control flow statements are if-elif-else, while-else, break, continue,
   return, pass
 """
@@ -36,6 +35,7 @@ FUTURE_FUNCTION = 'from __future__ import print_function\n'
 def check(source):
     try:
         with open(source) as f:
+            # compile to catch syntax errors
             script = f.read()
             code = compile(script, source, "exec")
     except SyntaxError as e:
@@ -49,6 +49,23 @@ def check(source):
         return True, ''
     except CheckException as e:
         return False, e.args[0]
+    except CheckException2 as e:
+        msg, node = e.args
+        return False, error_message(msg, node, script)
+
+
+def error_message(msg, node, script):
+    script = script.splitlines()
+
+    # has to remove the line added for from future
+    lineno = node.lineno - 1
+    # count column from 1
+    col_offset = node.col_offset + 1
+
+    msg = 'numsed error: line %d col %d: %s\n' % (lineno, col_offset, msg)
+    msg += script[lineno - 1] + '\n'
+    msg += ' ' * (col_offset - 1) + '^'
+    return msg
 
 
 BINOP = (ast.Add, ast.Sub, ast.Mult, ast.FloorDiv, ast.Mod, ast.Pow,
@@ -212,16 +229,16 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
 
     def visit_FunctionDef(self, node):
         if node not in self.modulebody:
-            check_error('function definitions allowed only at module level', node.name, node)
+            raise CheckException2('function definitions allowed only at module level', node)
 
         if node.name in self.lib_functions:
-            check_error('not allowed to redefine numsed_lib functions', node.name, node)
+            raise CheckException2('not allowed to redefine numsed_lib functions', node)
         if node.args.vararg is not None:
-            check_error('no vararg', node.args.vararg, node)
+            raise CheckException2('no vararg arguments', node)
         if node.args.kwarg is not None:
-            check_error('no kwarg', node.args.kwarg, node)
+            raise CheckException2('no kwarg arguments', node)
         if len(node.args.defaults) > 0:
-            check_error('no defaults', node.args.defaults, node)
+            raise CheckException2('no default arguments', node)
         for _ in node.body: self.visit(_)
 
     def visit_child_nodes(self, node):
@@ -240,6 +257,10 @@ def parent_node(tree, node):
 
 
 class CheckException(Exception):
+    pass
+
+
+class CheckException2(Exception):
     pass
 
 
