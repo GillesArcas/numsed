@@ -21,9 +21,7 @@ The following is tested:
 """
 from __future__ import division, print_function
 
-import sys
 import inspect
-import types
 import ast
 import re
 import codegen
@@ -44,11 +42,8 @@ def check(source):
         msg = 'SyntaxError: %s\nline %d: %s'% (e.args[0], e.args[1][1], e.args[1][3])
         return False, msg
 
-    # list of functions defined in source
-    source_functions = {x.co_name for x in code.co_consts if isinstance(x, types.CodeType)}
-
     tree = ast.parse(FUTURE_FUNCTION + script)
-    numsed_check_ast_visitor = NumsedCheckAstVisitor(source_functions)
+    numsed_check_ast_visitor = NumsedCheckAstVisitor()
     try:
         numsed_check_ast_visitor.visit(tree)
         return True, ''
@@ -62,7 +57,7 @@ BINOP = (ast.Add, ast.Sub, ast.Mult, ast.FloorDiv, ast.Mod, ast.Pow,
 
 class NumsedCheckAstVisitor(ast.NodeVisitor):
 
-    def __init__(self, source_functions):
+    def __init__(self):
         # list of functions defined in lib
         self.lib_functions = {x[0] for x in inspect.getmembers(numsed_lib, inspect.isfunction)}
         self.lib_functions.add('print')
@@ -172,14 +167,6 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
                 self.visit_child_nodes(node)
         else:
             check_error('callable not handled', codegen.to_source(node.func), node)
-
-    def visit_CallPrint(self, node):
-        if len(node.args) != 1:
-            check_error('print admits one and only one argument', codegen.to_source(node), node)
-        elif isinstance(node.args[0], ast.Str):
-            pass
-        else:
-            self.visit_child_nodes(node)
 
     def visit_CallPrint(self, node):
         for arg in node.args:
