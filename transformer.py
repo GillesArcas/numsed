@@ -18,10 +18,8 @@ from __future__ import print_function
 import sys
 import inspect
 import ast
-import subprocess
 import codegen
 import common
-import numsed_lib
 from numsed_lib import *
 
 
@@ -35,7 +33,7 @@ FUTURE_FUNCTION = 'from __future__ import print_function\n'
 class PrepareTransformer(ast.NodeTransformer):
     """
     - replace augmented assignments with standard assignments
-    - replace chained comparisons with and-ed comparisons
+    - replace chained comparisons with and of comparisons
     """
 
     def visit_AugAssign(self, node):
@@ -64,15 +62,6 @@ class PrepareTransformer(ast.NodeTransformer):
 
 class NumsedTransformer(ast.NodeTransformer):
 
-    def __init__(self, func):
-        """
-        func is a dict giving the functions replacing operators. Can be
-        the functions from library, or testing functions checking all
-        operands are positive.
-        """
-        self.func = func
-        self.required_func = set()
-
     def transform(self, tree):
         self.visit(tree)
         if common.PY2:
@@ -94,6 +83,10 @@ class NumsedTransformer(ast.NodeTransformer):
         return ast.Call(func=ast.Name(id=func, ctx=ast.Load()),
                         args=list(args),
                         keywords=[], starargs=None, kwargs=None)
+
+
+def getsourcetext(func):
+    return ''.join(inspect.getsourcelines(func)[0])
 
 
 # -- List of library functions ------------------------------------------------
@@ -132,7 +125,17 @@ def function_calls(libfuncs):
 # -- Unsigned transformer -----------------------------------------------------
 
 
+UNSIGNED_FUNC = {
+    ast.FloorDiv: 'udiv',
+    ast.Mod: 'umod',
+    ast.Pow: 'upow'}
+
+
 class UnsignedTransformer(NumsedTransformer):
+
+    def __init__(self):
+        self.func = UNSIGNED_FUNC
+        self.required_func = set()
 
     def visit_BinOp(self, node):
         self.generic_visit(node)
@@ -159,14 +162,31 @@ class UnsignedTransformer(NumsedTransformer):
 # -- Signed transformer -------------------------------------------------------
 
 
+SIGNED_FUNC = {
+    ast.Add: 'signed_add',
+    ast.Sub: 'signed_sub',
+    ast.Mult: 'signed_mult',
+    ast.FloorDiv: 'signed_div',
+    ast.Mod: 'signed_mod',
+    ast.Pow: 'signed_pow',
+    ast.Eq: 'signed_eq',
+    ast.NotEq: 'signed_noteq',
+    ast.Lt: 'signed_lt',
+    ast.LtE: 'signed_lte',
+    ast.Gt: 'signed_gt',
+    ast.GtE: 'signed_gte'}
+
+
 class SignedTransformer(NumsedTransformer):
 
+    def __init__(self):
+        self.func = SIGNED_FUNC
+        self.required_func = set()
+
     def visit_BinOp(self, node):
+        # node.op in self.func ensured by checker.check()
         self.generic_visit(node)
-        if type(node.op) in self.func:
             return self.make_call(node.op, node.left, node.right)
-        else:
-            raise Exception('Operator not handled: ' + str(type(node.op)))
 
     def visit_Compare(self, node):
         self.generic_visit(node)
@@ -190,68 +210,7 @@ class SignedTransformer(NumsedTransformer):
 # -- Assert transformer -------------------------------------------------------
 
 
-class AssertTransformer(NumsedTransformer):
-
-    def visit_BinOp(self, node):
-        self.generic_visit(node)
-        if type(node.op) in self.func:
-            return self.make_call(node.op, node.left, node.right)
-        else:
-            return node
-
-    def visit_Compare(self, node):
-        self.generic_visit(node)
-        if len(node.ops) == 1:
-            return self.make_call(node.ops[0], node.left, node.comparators[0])
-        else:
-            raise Exception('Operator not handled: ' + str(type(node.op)))
-
-    def visit_FunctionDef(self, node):
-        if node.name in ('is_positive', 'abs'):
-            return node
-        else:
-            self.generic_visit(node)
-            return node
-
-    def transform(self, tree):
-        self.visit(tree)
-        for func in self.required_func:
-            treefunc = ast.parse(make_assert_positive_func(func))
-            tree.body.insert(0, treefunc.body[0])
-
-
-# -- Unsigned transformation --------------------------------------------------
-
-
-Unsigned_func = {
-    ast.FloorDiv: 'udiv',
-    ast.Mod: 'umod',
-    ast.Pow: 'upow'}
-
-
-signed_func = {
-    ast.Add: 'signed_add',
-    ast.Sub: 'signed_sub',
-    ast.Mult: 'signed_mult',
-    ast.FloorDiv: 'signed_div',
-    ast.Mod: 'signed_mod',
-    ast.Pow: 'signed_pow',
-    ast.Eq: 'signed_eq',
-    ast.NotEq: 'signed_noteq',
-    ast.Lt: 'signed_lt',
-    ast.LtE: 'signed_lte',
-    ast.Gt: 'signed_gt',
-    ast.GtE: 'signed_gte'}
-
-
-def getsourcetext(func):
-    return ''.join(inspect.getsourcelines(func)[0])
-
-
-# -- Testing transformation ---------------------------------------------------
-
-
-assert_positive_func = {
+ASSERT_POSITIVE_FUNC = {
     ast.Add: 'assert_positive_add',
     ast.Sub: 'assert_positive_sub',
     ast.Mult: 'assert_positive_mult',
@@ -266,7 +225,7 @@ assert_positive_func = {
     ast.GtE: 'assert_positive_gte'}
 
 
-assert_positive_func_pattern = """
+ASSERT_POSITIVE_FUNC_PATTERN = """
 def %s(x, y):
     assert x >= 0, 'x < 0'
     assert y >= 0, 'y < 0'
@@ -290,7 +249,39 @@ def make_assert_positive_func(name):
         'assert_positive_gt': '>',
         'assert_positive_gte': '>='}
 
-    return assert_positive_func_pattern % (name, unsigned_op[name])
+    return ASSERT_POSITIVE_FUNC_PATTERN % (name, unsigned_op[name])
+
+
+class AssertTransformer(NumsedTransformer):
+
+    def __init__(self):
+        self.func = ASSERT_POSITIVE_FUNC
+        self.required_func = set()
+
+    def visit_BinOp(self, node):
+        self.generic_visit(node)
+        if type(node.op) in self.func:
+            return self.make_call(node.op, node.left, node.right)
+        else:
+            return node
+
+    def visit_Compare(self, node):
+        # len(node.ops) == 1 ensured by PrepareTransformer
+        self.generic_visit(node)
+        return self.make_call(node.ops[0], node.left, node.comparators[0])
+
+    def visit_FunctionDef(self, node):
+        if node.name in ('is_positive', 'abs'):
+            return node
+        else:
+            self.generic_visit(node)
+            return node
+
+    def transform(self, tree):
+        self.visit(tree)
+        for func in self.required_func:
+            treefunc = ast.parse(make_assert_positive_func(func))
+            tree.body.insert(0, treefunc.body[0])
 
 
 # -- AST pretty print ---------------------------------------------------------
@@ -343,11 +334,11 @@ class AstConversion(common.NumsedConversion):
             pass
         elif transformation == UNSIGNED:
             PrepareTransformer().visit(self.tree)
-            transformer = UnsignedTransformer(Unsigned_func)
+            transformer = UnsignedTransformer()
             transformer.transform(self.tree)
         elif transformation == SIGNED:
             PrepareTransformer().visit(self.tree)
-            transformer = SignedTransformer(signed_func)
+            transformer = SignedTransformer()
             transformer.transform(self.tree)
         else:
             pass
@@ -360,7 +351,6 @@ class AstConversion(common.NumsedConversion):
 
     def run(self):
         with common.ListStream() as x:
-            # TODO ast.fix_missing_locations(self.tree)
             code = compile(self.tree, filename="<ast>", mode="exec")
             # giving a new namespace is necessary to avoid exec interfering
             # with current context (x variable from with construct)
@@ -378,9 +368,8 @@ class ScriptConversion(AstConversion):
     def __init__(self, source, transformation):
         AstConversion.__init__(self, source, transformation)
 
-        #TODO: always ?
-        if 1 or self.transformation == SIGNED:
-            transformer = AssertTransformer(assert_positive_func)
+        if self.transformation in (UNSIGNED, SIGNED):
+            transformer = AssertTransformer()
             transformer.transform(self.tree)
 
         self.code = codegen.to_source(self.tree)
