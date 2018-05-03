@@ -10,14 +10,16 @@ print(10000000000000000000)
 # constant error
 n = 42.0
 # ===
-numsed error: not an integer
-line 2 col 4: 42.0
+numsed error: line 2 col 5: not an integer
+n = 42.0
+    ^
 # ---
 # constant error
 n = 'foo'
 # ===
-numsed error: strings not handled (unless as print argument)
-line 2 col 4: 'foo'
+numsed error: line 2 col 5: strings not handled (unless as print argument)
+n = 'foo'
+    ^
 # ---
 # variable names
 _ = 1
@@ -49,8 +51,9 @@ line 2: 1 = 2
 # cannot assign to
 x[0] = 1
 # ===
-numsed error: cannot assign to
-line 2 col 0: x[0]
+numsed error: line 2 col 1: cannot assign to
+x[0] = 1
+^
 # ---
 # chained assignment
 m = n = 42
@@ -105,8 +108,9 @@ print(p)
 # binary operator not handled
 x = 5 & 7
 # ===
-numsed error: operator not handled
-line 2 col 4: 5 & 7
+numsed error: line 2 col 5: operator not handled
+x = 5 & 7
+    ^
 # ---
 # unary arithmetical operators
 if +5 == 5:
@@ -121,8 +125,9 @@ else:
 # unary operator operator not handled
 x = ~5
 # ===
-numsed error: operator not handled
-line 2 col 4: ~5
+numsed error: line 2 col 5: operator not handled
+x = ~5
+    ^
 # ---
 # augmented assign add
 m = 42
@@ -574,8 +579,9 @@ while m <= 2:
 # comparator not handled
 x = 1 is 2
 # ===
-numsed error: comparator not handled
-line 2 col 4: 1 is 2
+numsed error: line 2 col 5: comparator not handled
+x = 1 is 2
+    ^
 # ---
 # not
 print(not 0)
@@ -639,8 +645,9 @@ while m <= 2:
 # construct is not handled
 x = []
 # ===
-numsed error: construct is not handled
-line 2 col 4: []
+numsed error: line 2 col 5: construct is not handled
+x = []
+    ^
 # ---
 # function
 def foo(n):
@@ -680,8 +687,9 @@ numsed error: line 3 col 5: function definitions allowed only at module level
 # callable not handled
 foo(x)(y)
 # ===
-numsed error: callable not handled
-line 2 col 0: foo(x)
+numsed error: line 2 col 1: callable not handled
+foo(x)(y)
+^
 # ---
 # not allowed to redefine numsed_lib functions
 def udivmod(x, y):
@@ -866,8 +874,9 @@ print(1, '', 2, '', 3, '', 4)
 # print: forbidden characters
 print('foo;bar')
 # ===
-numsed error: character not handled (@|;~)
-line 2 col 0: print('foo;bar')
+numsed error: line 2 col 7: character not handled (@|;~)
+print('foo;bar')
+      ^
 # ---
 # Multiple assignment (constants)
 a, = 1,
@@ -908,20 +917,23 @@ print(x, y, z, t)
 # target and value must have same length
 a, b, c = 1, 2
 # ===
-numsed error: targets and values must have same length
-line 2 col 0: a, b, c = 1, 2
+numsed error: line 2 col 1: targets and values must have same length
+a, b, c = 1, 2
+^
 # ---
 # multiple assignment must have same number of variables
 a, b, c = e, f = 1, 2
 # ===
-numsed error: multiple assignment must have same number of variables
-line 2 col 0: a, b, c = e, f = 1, 2
+numsed error: line 2 col 1: multiple assignment must have same number of variables
+a, b, c = e, f = 1, 2
+^
 # ---
 # elements of tuples may not be tuples
 x, y = 1, (2, 3)
 # ===
-numsed error: elements of tuples may not be tuples
-line 2 col 7: (1, (2, 3))
+numsed error: line 2 col 12: elements of tuples may not be tuples
+x, y = 1, (2, 3)
+           ^
 # ---
 # Multiple assignment with function results
 def foo(n):
@@ -934,13 +946,15 @@ print(x, y, z)
 def foo(x, y):
     return x + y, x - y
 # ===
-numsed error: function result must be an integer
-line 3 col 4: (x + y, x - y)
+numsed error: line 3 col 12: function result must be an integer
+    return x + y, x - y
+           ^
 # ---
 # function result must be an integer (divmod)
 def foo(x, y):
     return divmod(x, y)
 # ===
-numsed error: divmod results must be assigned immediately
-line 3 col 11: divmod(x, y)
+numsed error: line 3 col 12: divmod results must be assigned immediately
+    return divmod(x, y)
+           ^
 # ---

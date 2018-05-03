@@ -4,9 +4,10 @@ The following is tested:
 - the script respects python syntax
 - the only scalar type is integer
 - strings are allowed only as print arguments
-- tuples are allowed as multiple assignments. Tuples are not allowed as
-  function results. A tuple must be assigned to a tuple of the same
-  length.
+- tuples are allowed as multiple assignments but tuples must be assigned to
+  tuples of the same length.
+- Tuples are not allowed as function results less for builtin divmod, but
+  divmod results must be assigned immediately.
 - unary operators are - and +
 - binary operators are -, +, *, //, % and **, divmod function
 - comparison operators are ==, !=, <, <=, >, and >=
@@ -18,15 +19,13 @@ The following is tested:
 - control flow statements are if-elif-else, while-else, break, continue,
   return, pass
 """
-from __future__ import division, print_function
+from __future__ import print_function
 
 import inspect
 import ast
 import re
-import codegen
 import common
 import numsed_lib
-from numsed_lib import *
 
 
 FUTURE_FUNCTION = 'from __future__ import print_function\n'
@@ -48,8 +47,6 @@ def check(source):
         numsed_check_ast_visitor.visit(tree)
         return True, ''
     except CheckException as e:
-        return False, e.args[0]
-    except CheckException2 as e:
         msg, node = e.args
         return False, error_message(msg, node, script)
 
@@ -57,7 +54,7 @@ def check(source):
 def error_message(msg, node, script):
     script = script.splitlines()
 
-    # has to remove the line added for from future
+    # remove the line added for from future
     lineno = node.lineno - 1
     # count column from 1
     col_offset = node.col_offset + 1
@@ -95,13 +92,12 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
             elif isinstance(elt, ast.Tuple):
                 return len(elt.elts)
             else:
-                check_error('cannot assign to', codegen.to_source(elt), node)
+                raise CheckException('cannot assign to', node)
 
         num = len_of_target(node.targets[0])
         for elt in node.targets[1:]:
             if len_of_target(elt) != num:
-                check_error('multiple assignment must have same number of variables',
-                            codegen.to_source(node), node)
+                raise CheckException('multiple assignment must have same number of variables', node)
 
         if isinstance(node.value, ast.Tuple):
             numv = len(node.value.elts)
@@ -113,8 +109,7 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         else:
             numv = 1
         if numv != num:
-            check_error('targets and values must have same length',
-                        codegen.to_source(node), node)
+            raise CheckException('targets and values must have same length', node)
 
         self.visit_child_nodes(node)
 
@@ -130,17 +125,15 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
 
     def visit_Num(self, node):
         if not isinstance(node.n, int) and not (common.PY2 and isinstance(node.n, long)):
-            check_error('not an integer', node.n, node)
+            raise CheckException('not an integer', node)
 
     def visit_Str(self, node):
-        check_error('strings not handled (unless as print argument)',
-                    codegen.to_source(node), node)
+        raise CheckException('strings not handled (unless as print argument)', node)
 
     def visit_Tuple(self, node):
         for elt in node.elts:
             if isinstance(elt, ast.Tuple):
-                check_error('elements of tuples may not be tuples',
-                            codegen.to_source(node), node)
+                raise CheckException('elements of tuples may not be tuples', elt)
         self.visit_child_nodes(node)
 
     def visit_Store(self, node):
@@ -151,19 +144,19 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
 
     def visit_UnaryOp(self, node):
         if not isinstance(node.op, (ast.UAdd, ast.USub, ast.Not)):
-            check_error('operator not handled', codegen.to_source(node), node)
+            raise CheckException('operator not handled', node)
         self.visit(node.operand)
 
     def visit_BinOp(self, node):
         if not isinstance(node.op, BINOP):
-            check_error('operator not handled', codegen.to_source(node), node)
+            raise CheckException('operator not handled', node)
         self.visit(node.left)
         self.visit(node.right)
 
     def visit_Compare(self, node):
         for op in node.ops:
             if not isinstance(op, (ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE)):
-                check_error('comparator not handled', codegen.to_source(node), node)
+                raise CheckException('comparator not handled', node)
             else:
                 self.visit(node.left)
                 for _ in node.comparators: self.visit(_)
@@ -183,7 +176,7 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
             else:
                 self.visit_child_nodes(node)
         else:
-            check_error('callable not handled', codegen.to_source(node.func), node)
+            raise CheckException('callable not handled', node)
 
     def visit_CallPrint(self, node):
         for arg in node.args:
@@ -191,7 +184,7 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
                 if re.match('^[ -~]*$', arg.s) and re.search('[@|;~]', arg.s) is None:
                     pass
                 else:
-                    check_error('character not handled (@|;~)', codegen.to_source(node), node)
+                    raise CheckException('character not handled (@|;~)', arg)
             else:
                 self.visit(arg)
 
@@ -200,7 +193,7 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         if isinstance(parent, ast.Assign):
             pass
         else:
-            check_error('divmod results must be assigned immediately', codegen.to_source(node), node)
+            raise CheckException('divmod results must be assigned immediately', node)
         self.visit_child_nodes(node)
 
     def visit_If(self, node):
@@ -220,8 +213,7 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
 
     def visit_Return(self, node):
         if isinstance(node.value, ast.Tuple):
-            check_error('function result must be an integer',
-                        codegen.to_source(node.value), node)
+            raise CheckException('function result must be an integer', node.value)
         self.visit_child_nodes(node)
 
     def visit_Global(self, node):
@@ -229,16 +221,16 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
 
     def visit_FunctionDef(self, node):
         if node not in self.modulebody:
-            raise CheckException2('function definitions allowed only at module level', node)
+            raise CheckException('function definitions allowed only at module level', node)
 
         if node.name in self.lib_functions:
-            raise CheckException2('not allowed to redefine numsed_lib functions', node)
+            raise CheckException('not allowed to redefine numsed_lib functions', node)
         if node.args.vararg is not None:
-            raise CheckException2('no vararg arguments', node)
+            raise CheckException('no vararg arguments', node)
         if node.args.kwarg is not None:
-            raise CheckException2('no kwarg arguments', node)
+            raise CheckException('no kwarg arguments', node)
         if len(node.args.defaults) > 0:
-            raise CheckException2('no default arguments', node)
+            raise CheckException('no default arguments', node)
         for _ in node.body: self.visit(_)
 
     def visit_child_nodes(self, node):
@@ -246,7 +238,7 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
             self.visit(_)
 
     def generic_visit(self, node):
-        check_error('construct is not handled', codegen.to_source(node), node)
+        raise CheckException('construct is not handled', node)
 
 
 def parent_node(tree, node):
@@ -258,15 +250,3 @@ def parent_node(tree, node):
 
 class CheckException(Exception):
     pass
-
-
-class CheckException2(Exception):
-    pass
-
-
-def check_error(msg, arg, node):
-    # has to remove the line added for from future
-    lineno = node.lineno - 1
-
-    msg = 'numsed error: %s\nline %d col %d: %s' % (msg, lineno, node.col_offset, arg)
-    raise CheckException(msg)
