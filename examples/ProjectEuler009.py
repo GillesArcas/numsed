@@ -1,7 +1,8 @@
 # Project Euler #9: Special Pythagorean triplet
 
 def find():
-    a = 300 # start at 300 for numsed testing rather than 1
+    a = 1   # euler prject
+    a = 350 # numsed testing
     while a <= 998:
         print(a)
         b = 1
