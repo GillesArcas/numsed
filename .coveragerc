@@ -1,0 +1,8 @@
+# coverage configuration file
+
+[report]
+omit =
+    codegen.py
+    numsed_lib.py
+    snippet_test.py
+    
