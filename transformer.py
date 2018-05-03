@@ -144,13 +144,6 @@ class UnsignedTransformer(NumsedTransformer):
         else:
             return node
 
-    def visit_FunctionDef(self, node):
-        if node.name in PRIMITIVES:
-            return node
-        else:
-            self.generic_visit(node)
-            return node
-
     def visit_Call(self, node):
         if node.func.id == 'divmod':
             node.func.id = 'udivmod'
@@ -186,18 +179,11 @@ class SignedTransformer(NumsedTransformer):
     def visit_BinOp(self, node):
         # node.op in self.func ensured by checker.check()
         self.generic_visit(node)
-            return self.make_call(node.op, node.left, node.right)
+        return self.make_call(node.op, node.left, node.right)
 
     def visit_Compare(self, node):
         self.generic_visit(node)
         return self.make_call(node.ops[0], node.left, node.comparators[0])
-
-    def visit_FunctionDef(self, node):
-        if node.name in PRIMITIVES:
-            return node
-        else:
-            self.generic_visit(node)
-            return node
 
     def visit_Call(self, node):
         if node.func.id == 'divmod':
@@ -382,10 +368,3 @@ class ScriptConversion(AstConversion):
             code = compile(self.code, filename="<script>", mode="exec")
             exec(code, {})
         return x.singlestring()
-
-
-# -- Main ---------------------------------------------------------------------
-
-
-if __name__ == "__main__":
-    pass
