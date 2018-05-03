@@ -44,6 +44,7 @@ def parse_command_line(argstring=None):
     xgroup.add_argument("--coverage", help="run intermediate opcode and display opcode coverage (--opcode only)", action="store_true")
     xgroup.add_argument("--test", help="run conversion and compare with original python script", action="store_true")
     xgroup.add_argument("--all", help="complete test", action="store_true")
+    xgroup.add_argument("--batch", help="batch test", action="store_true")
 
     agroup = parser.add_argument_group('Formats')
     xgroup = agroup.add_mutually_exclusive_group()
@@ -279,6 +280,15 @@ def process_all(args):
     print('ALL TESTS OK' if status else 'ONE TEST FAILURE')
 
 
+def process_batch(args):
+    status = True
+    with open(args.source) as batch:
+        for line in batch:
+            if line.strip() and line[0] != ';':
+                status = status and numsed(line)
+    print('ALL TESTS OK' if status else 'ONE TEST FAILURE')
+
+
 def numsed(argstring=None):
 
     parser, args = parse_command_line(argstring)
@@ -291,6 +301,9 @@ def numsed(argstring=None):
 
     elif args.all:
         process_all(args)
+
+    elif args.batch:
+        process_batch(args)
 
     else:
         if os.path.isdir(args.source):
