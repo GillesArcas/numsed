@@ -29,37 +29,6 @@ class NumsedConversion:
     def print_run_result(self):
         return True
 
-    def test(self, result):
-        """
-        if result is None, the test has to be compared with the python script
-        if result is not None, the test has to be compared with it
-        """
-        if not self.source.endswith('.py'):
-            return False
-
-        # run original script and store results
-        if result is None:
-            ref = subprocess.check_output('python ' + self.source)
-            ref = ref.decode('ascii') # py3
-        else:
-            ref = ''.join(result)
-        print(ref)
-
-        # run conversion
-        t0 = time.time()
-        res = self.run()
-        time_sed = time.time() - t0
-        if self.print_run_result():
-            print(res)
-
-        # compare
-        status, diff = list_compare('ref', 'res', ref.splitlines(), res.splitlines())
-        if not status:
-            for _ in diff:
-                print(_)
-
-        return status, time_sed
-
 
 class ListStream:
     def __enter__(self):
