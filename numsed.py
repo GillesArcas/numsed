@@ -120,7 +120,7 @@ def transformation(args):
 
 def numsed_conversion(args):
     if args.ast:
-        return transformer.AstConversion
+        return transformer.AstAssertConversion
     elif args.script:
         return transformer.ScriptConversion
     elif args.disassembly:
@@ -285,8 +285,9 @@ def process_batch(args):
     with open(args.source) as batch:
         for line in batch:
             if line.strip() and line[0] != ';':
+                print(line.strip())
                 status = status and numsed(line)
-    print('ALL TESTS OK' if status else 'ONE TEST FAILURE')
+    print('ALL TESTS OK' if status else 'ONE TEST FAILURE in ' + line.strip())
 
 
 def numsed(argstring=None):
@@ -310,8 +311,17 @@ def numsed(argstring=None):
             result = process_tests(args, tests_from_dir)
         elif args.source.endswith('.suite.py'):
             result = process_tests(args, tests_from_suite)
-        else:
+        elif args.source.endswith('.py'):
             result = process_script(args, args.source)
+        elif args.source.endswith('.opc'):
+            if args.run:
+                opcode = open(args.source).readlines()
+                opcode = [_.rstrip() for _ in opcode]
+                result = opcoder.interpreter(opcode)
+            else:
+                pass
+        else:
+            pass
         if args.coverage:
             opcoder.display_coverage()
         return result
