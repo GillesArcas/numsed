@@ -476,7 +476,7 @@ def interpreter(code, coverage=False):
     instr_pointer = 0
     while instr_pointer < len(opcodes):
         opc, arg = opcodes[instr_pointer]
-        print(instr_pointer, opc, arg, stack, file=sys.stderr)
+        # print(instr_pointer, opc, arg, stack, file=sys.stderr)
 
         # increment coverage
         if opc != ':':
