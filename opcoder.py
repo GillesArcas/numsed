@@ -184,6 +184,9 @@ def opcodes(dis_code):
     # add print declaration
     newcode.extend(PRINT_DECL())
 
+    if divmod_required(dis_code):
+        newcode.extend(DIVMOD_DECL())
+
     # normalize disassembly labels and opcode arguments
     newcode.extend(dis_code)
 
@@ -267,6 +270,9 @@ def opcodes(dis_code):
 
     # add print definition
     newcode.extend(PRINT())
+
+    if divmod_required(dis_code):
+        newcode.extend(DIVMOD_DEF())
 
     # return list of formated instructions
     return pprint_opcode(newcode)
@@ -370,6 +376,34 @@ def PRINT():
     )
 
 
+def DIVMOD_DECL():
+    return (
+        'LOAD_CONST               divmod',
+        'MAKE_FUNCTION            0',
+        'STORE_NAME               divmod'
+    )
+
+def DIVMOD_DEF():
+    return (
+        ':divmod',
+        'DIVMOD',
+        'RETURN_VALUE'
+    )
+
+def divmod_required(code):
+    """
+    Detects if divmod definition is required. This is the case with --literal.
+    """
+    load_name_detected = False
+    label_name_detected = False
+    for _, opc, arg in scancodes(code):
+        if opc == 'LOAD_NAME' and arg == 'divmod':
+            load_name_detected = True
+        elif opc == ':' and arg == 'divmod':
+            label_name_detected = True
+    return load_name_detected and not label_name_detected
+
+
 def link_opcode(code):
     """
     After disassembly of functions, labels in each function starts from 0.
@@ -442,7 +476,7 @@ def interpreter(code, coverage=False):
     instr_pointer = 0
     while instr_pointer < len(opcodes):
         opc, arg = opcodes[instr_pointer]
-        # print(instr_pointer, opc, arg, stack, file=sys.stderr)
+        print(instr_pointer, opc, arg, stack, file=sys.stderr)
 
         # increment coverage
         if opc != ':':
@@ -642,6 +676,10 @@ def interpreter(code, coverage=False):
         elif opc == 'DIVMOD10':
             tos = stack.pop()
             stack.append([tos // 10, tos % 10])
+        elif opc == 'DIVMOD':
+            tos = stack.pop()
+            tos1 = stack.pop()
+            stack.append([tos1 // tos, tos1 % tos])
         elif opc == 'TRACE':
             pass
         else:
