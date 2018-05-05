@@ -27,7 +27,7 @@ LITERAL, UNSIGNED, SIGNED = range(3)
 FUTURE_FUNCTION = 'from __future__ import print_function\n'
 
 
-# -- Basic transformer --------------------------------------------------------
+# -- Basic transformer -------------------------------------------------------
 
 
 class PrepareTransformer(ast.NodeTransformer):
@@ -57,10 +57,14 @@ class PrepareTransformer(ast.NodeTransformer):
             return ast.BoolOp(op=ast.And(), values=list_compare)
 
 
-# -- Generic transformer ------------------------------------------------------
+# -- Generic transformer -----------------------------------------------------
 
 
 class NumsedTransformer(ast.NodeTransformer):
+
+    def __init__(self):
+        self.func = []
+        self.required_func = set()
 
     def transform(self, tree):
         self.visit(tree)
@@ -85,11 +89,15 @@ class NumsedTransformer(ast.NodeTransformer):
                         keywords=[], starargs=None, kwargs=None)
 
 
+class IdentityTransformer(NumsedTransformer):
+    pass
+
+
 def getsourcetext(func):
     return ''.join(inspect.getsourcelines(func)[0])
 
 
-# -- List of library functions ------------------------------------------------
+# -- List of library functions -----------------------------------------------
 
 
 def called_functions(func):
@@ -122,7 +130,7 @@ def function_calls(libfuncs):
     return sorted(list(libfuncs2))
 
 
-# -- Unsigned transformer -----------------------------------------------------
+# -- Unsigned transformer ----------------------------------------------------
 
 
 UNSIGNED_FUNC = {
@@ -152,7 +160,7 @@ class UnsignedTransformer(NumsedTransformer):
         return node
 
 
-# -- Signed transformer -------------------------------------------------------
+# -- Signed transformer ------------------------------------------------------
 
 
 SIGNED_FUNC = {
@@ -193,7 +201,7 @@ class SignedTransformer(NumsedTransformer):
         return node
 
 
-# -- Assert transformer -------------------------------------------------------
+# -- Assert transformer ------------------------------------------------------
 
 
 ASSERT_POSITIVE_FUNC = {
@@ -270,7 +278,7 @@ class AssertTransformer(NumsedTransformer):
             tree.body.insert(0, treefunc.body[0])
 
 
-# -- AST pretty print ---------------------------------------------------------
+# -- AST pretty print --------------------------------------------------------
 #
 # adapted from http://code.activestate.com/recipes/533146-ast-pretty-printer/
 
@@ -306,7 +314,7 @@ def rec_node(node, level, indent, write):
         print(pfx, repr(node), sep='', end='')
 
 
-# -- Ast conversion -----------------------------------------------------------
+# -- Ast conversion ----------------------------------------------------------
 
 
 class AstConversion(common.NumsedConversion):
@@ -316,18 +324,14 @@ class AstConversion(common.NumsedConversion):
         if common.PY2:
             sourcelines = FUTURE_FUNCTION + sourcelines
         self.tree = ast.parse(sourcelines)
-        if transformation == LITERAL:
-            pass
-        elif transformation == UNSIGNED:
-            PrepareTransformer().visit(self.tree)
-            transformer = UnsignedTransformer()
-            transformer.transform(self.tree)
-        elif transformation == SIGNED:
-            PrepareTransformer().visit(self.tree)
-            transformer = SignedTransformer()
-            transformer.transform(self.tree)
-        else:
-            pass
+        transformers = {
+            LITERAL: IdentityTransformer,
+            UNSIGNED: UnsignedTransformer,
+            SIGNED: SignedTransformer
+        }
+        PrepareTransformer().visit(self.tree)
+        transformer = transformers[transformation]()
+        transformer.transform(self.tree)
 
     def trace(self):
         print(ast.dump(self.tree))
@@ -347,17 +351,21 @@ class AstConversion(common.NumsedConversion):
         return x.singlestring()
 
 
-# -- Script conversion --------------------------------------------------------
-
-
-class ScriptConversion(AstConversion):
+class AstAssertConversion(AstConversion):
     def __init__(self, source, transformation):
         AstConversion.__init__(self, source, transformation)
-
         if self.transformation in (UNSIGNED, SIGNED):
             transformer = AssertTransformer()
             transformer.transform(self.tree)
+            ast.fix_missing_locations(self.tree)
 
+
+# -- Script conversion -------------------------------------------------------
+
+
+class ScriptConversion(AstAssertConversion):
+    def __init__(self, source, transformation):
+        AstAssertConversion.__init__(self, source, transformation)
         self.code = codegen.to_source(self.tree)
 
     def trace(self):
