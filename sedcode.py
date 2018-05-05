@@ -173,12 +173,16 @@ def STARTUP():
         s/^([^;]+;[^;]+).*/NotAnInteger: an operand is not an integer: \1/
         p
         q
+        :NotImplemented
+        s/.*/NotImplemented: not available with --literal, use --unsigned or --signed: &/
+        p
+        q
         :.start
     '''
     return snippet
 
 
-# -- Stack ------------------------------------------------------------------
+# -- Stack -------------------------------------------------------------------
 
 
 def PUSH():
@@ -817,15 +821,26 @@ def BINARY_MULTIPLY():
 
 def BINARY_FLOOR_DIVIDE():
     # not implemented in sed, implemented in python
-    return ''
+    return '''
+        s/.*/div/
+        b NotImplemented
+    '''
+
 
 def BINARY_MODULO():
     # not implemented in sed, implemented in python
-    return ''
+    return '''
+        s/.*/mod/
+        b NotImplemented
+    '''
+
 
 def BINARY_POWER():
     # not implemented in sed, implemented in python
-    return ''
+    return '''
+        s/.*/power/
+        b NotImplemented
+    '''
 
 
 # -- Helper opcodes ----------------------------------------------------------
