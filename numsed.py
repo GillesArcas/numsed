@@ -44,6 +44,7 @@ def parse_command_line(argstring=None):
     xgroup.add_argument("--coverage", help="run intermediate opcode and display opcode coverage (--opcode only)", action="store_true")
     xgroup.add_argument("--test", help="run conversion and compare with original python script", action="store_true")
     xgroup.add_argument("--all", help="complete test", action="store_true")
+    xgroup.add_argument("--snippets", help="test snippets", action="store_true")
     xgroup.add_argument("--batch", help="batch test", action="store_true")
 
     agroup = parser.add_argument_group('Formats')
@@ -69,7 +70,7 @@ def parse_command_line(argstring=None):
 
     information = (args.help, args.fullhelp)
 
-    actions = (args.trace, args.run, args.coverage, args.test, args.all)
+    actions = (args.trace, args.run, args.coverage, args.test, args.batch, args.snippets)
     if not any(actions):
         args.run = True
 
@@ -87,7 +88,7 @@ def parse_command_line(argstring=None):
         parser.exit(1)
 
     # some action but no filename
-    if not any(information) and args.source is None:
+    if not any(information) and args.source is None and not args.snippets:
         print('numsed.py: error: filename required')
         parser.exit(1)
 
@@ -194,7 +195,7 @@ def test_script(args, source, result, checked, msg):
     if not source.endswith('.py'):
         return False
 
-    # make reference by runnung original script or using result lines in suite
+    # make reference by running original script or using result lines in suite
     ref = expected_result(args, source, result, checked, msg)
     print(ref)
 
@@ -286,7 +287,9 @@ def process_batch(args):
         for line in batch:
             if line.strip() and line[0] != ';':
                 print(line.strip())
-                status = status and numsed(line)
+                status = numsed(line)
+                if not status:
+                    break
     print('ALL TESTS OK' if status else 'ONE TEST FAILURE in ' + line.strip())
 
 
@@ -305,6 +308,9 @@ def numsed(argstring=None):
 
     elif args.batch:
         process_batch(args)
+
+    elif args.snippets:
+        return snippet_test.main()
 
     else:
         if os.path.isdir(args.source):
