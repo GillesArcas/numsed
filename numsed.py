@@ -43,7 +43,6 @@ def parse_command_line(argstring=None):
     xgroup.add_argument("--trace", help="trace generated script", action="store_true")
     xgroup.add_argument("--coverage", help="run intermediate opcode and display opcode coverage (--opcode only)", action="store_true")
     xgroup.add_argument("--test", help="run conversion and compare with original python script", action="store_true")
-    xgroup.add_argument("--all", help="complete test", action="store_true")
     xgroup.add_argument("--snippets", help="test snippets", action="store_true")
     xgroup.add_argument("--batch", help="batch test", action="store_true")
 
@@ -258,29 +257,6 @@ def process_tests(args, tests_from_source):
     return status
 
 
-def process_all(args):
-    # use --trace when -test is not relevant. This completes coverage and may
-    # catch some errors
-    test_args = ('--ast    --literal  --test ',
-                 '--ast    --unsigned --trace',
-                 '--ast    --signed   --test ',
-                 '--script --literal  --test ',
-                 '--script --unsigned --trace',
-                 '--script --signed   --test ',
-                 '--dis    --literal  --trace',
-                 '--dis    --unsigned --trace',
-                 '--dis    --signed   --trace',
-                #'--opcode --literal  --test ', # remove because divmod TODO use again
-                 '--opcode --unsigned --trace',
-                 '--opcode --signed   --test ',
-                 '--sed    --literal  --trace',
-                 '--sed    --unsigned --trace',
-                 '--sed    --signed   --test ')
-    status = all(numsed('%s %s' % (x, args.source)) for x in test_args)
-    status = status and snippet_test.main()
-    print('ALL TESTS OK' if status else 'ONE TEST FAILURE')
-
-
 def process_batch(args):
     status = True
     with open(args.source) as batch:
@@ -302,9 +278,6 @@ def numsed(argstring=None):
 
     elif args.fullhelp:
         do_fullhelp()
-
-    elif args.all:
-        process_all(args)
 
     elif args.batch:
         process_batch(args)
