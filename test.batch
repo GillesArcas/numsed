@@ -45,4 +45,8 @@
 --opc --signed   --test  test.suite.py
 --sed --signed   --test  test.suite.py
 
+--opc --literal  --coverage test.suite.py
+--opc --unsigned  --coverage unsigned.suite.py
+--opc --signed  --coverage test.suite.py
+
 --snippets
