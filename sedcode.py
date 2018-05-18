@@ -47,16 +47,13 @@ def make_sed_header(source):
         return ''
 
 def run_sed(sed):
-    name_script = 'tmp.sed'
-    name_input = 'tmp.input'
-
-    with open(name_script, 'w') as f:
+    with open(common.TMP_SED, 'w') as f:
         print(sed, file=f)
 
-    with open(name_input, 'w') as f:
+    with open(common.TMP_INPUT, 'w') as f:
         print('0', file=f)
 
-    com = 'sed -u -n -r -f %s %s' % (name_script, name_input)
+    com = 'sed -u -n -r -f %s %s' % (common.TMP_SED, common.TMP_INPUT)
 
     if 0:
         res = subprocess.check_output(com).decode('ascii')

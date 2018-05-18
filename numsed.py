@@ -231,9 +231,9 @@ def tests_from_dir(source):
 def tests_from_suite(source):
     for test, result in common.testlines(source):
         print(test[0].rstrip())
-        with open('tmp.py', 'w') as f:
+        with open(common.TMP_PY, 'w') as f:
             f.writelines(test)
-        yield 'tmp.py', test[0].rstrip(), result
+        yield common.TMP_PY, test[0].rstrip(), result
 
 
 def process_tests(args, tests_from_source):

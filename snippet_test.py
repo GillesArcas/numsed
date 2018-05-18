@@ -2,6 +2,8 @@ from __future__ import print_function
 
 import subprocess
 import random
+
+import common
 from sedcode import (normalize,
                  STARTUP, MAKE_CONTEXT, POP_CONTEXT, PUSH, POP,
                  LOAD_GLOBAL, STORE_GLOBAL, LOAD_FAST, STORE_FAST,
@@ -602,18 +604,14 @@ def test_odd():
 
 
 def test_gen(descr, func, inplist, outlist):
-    with open('test.sed', 'w') as f:
+    with open(common.TMP_SED, 'w') as f:
         print(normalize(func()), file=f)
 
-    with open('test.input', 'w') as f:
+    with open(common.TMP_INPUT, 'w') as f:
         for line in inplist:
             print(line, file=f)
 
-    with open('test.output', 'w') as f:
-        for line in outlist:
-            print(line, file=f)
-
-    com = 'sed -r -f %s %s' % ('test.sed', 'test.input')
+    com = 'sed -r -f %s %s' % (common.TMP_SED, common.TMP_INPUT)
 
     res = subprocess.check_output(com).decode('ascii').splitlines()
 

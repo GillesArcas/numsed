@@ -8,8 +8,13 @@ try:
 except ImportError:
     from io import StringIO  # Python3
 
+
 PY2 = sys.version_info < (3,)
 PY3 = sys.version_info > (3,)
+
+TMP_SED = 'tmp.sed'
+TMP_INPUT = 'tmp.input'
+TMP_PY = 'tmp.py'
 
 
 class NumsedConversion:
