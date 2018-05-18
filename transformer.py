@@ -254,10 +254,7 @@ class AssertTransformer(NumsedTransformer):
 
     def visit_BinOp(self, node):
         self.generic_visit(node)
-        if type(node.op) in self.func:
-            return self.make_call(node.op, node.left, node.right)
-        else:
-            return node
+        return self.make_call(node.op, node.left, node.right)
 
     def visit_Compare(self, node):
         # len(node.ops) == 1 ensured by PrepareTransformer
@@ -293,8 +290,7 @@ def rec_node(node, level, indent, write):
     if (common.PY2 and isinstance(node, (ast.Name, ast.Num)) or
         common.PY3 and isinstance(node, (ast.Name, ast.Num, ast.arg))):
         print(pfx, ast.dump(node), sep='', end='')
-
-    elif isinstance(node, ast.AST):
+    else:
         print(pfx, node.__class__.__name__, '(', sep='', end='')
 
         if any(isinstance(child, ast.AST) for child in ast.iter_child_nodes(node)):
@@ -310,8 +306,6 @@ def rec_node(node, level, indent, write):
             print(', '.join(repr(child) for child in ast.iter_child_nodes(node)), sep='', end='')
 
         print(')', sep='', end='')
-    else:
-        print(pfx, repr(node), sep='', end='')
 
 
 # -- Ast conversion ----------------------------------------------------------
