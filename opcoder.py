@@ -285,10 +285,9 @@ def current_loop(opcode, instr_pointer):
         pointer -= 1
         if opcode[pointer] == 'POP_BLOCK':
             depth += 1
-        elif opcode[pointer].startswith('SETUP_LOOP'):
+        if opcode[pointer].startswith('SETUP_LOOP'):
             depth -= 1
-        else:
-            pass
+
     assert opcode[pointer].startswith('SETUP_LOOP')
     return pointer
 
