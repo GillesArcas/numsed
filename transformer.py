@@ -20,7 +20,7 @@ import inspect
 import ast
 import codegen
 import common
-from numsed_lib import *
+import numsed_lib
 
 
 LITERAL, UNSIGNED, SIGNED = range(3)
@@ -73,7 +73,7 @@ class NumsedTransformer(ast.NodeTransformer):
 
         libfuncs = self.required_func
         libfuncs = function_calls(libfuncs)
-        libfuncs = [globals()[x] for x in libfuncs]
+        libfuncs = [getattr(numsed_lib, x) for x in libfuncs]
 
         for func in libfuncs:
             treefunc = ast.parse(getsourcetext(func))
@@ -100,12 +100,13 @@ def getsourcetext(func):
 # -- List of library functions -----------------------------------------------
 
 
-def called_functions(func):
+def called_functions(funcname):
     """
     func is the name of a function. Returns the names of all functions called
     in func.
     """
-    functext = '\n'.join(inspect.getsourcelines(globals()[func])[0])
+    func = getattr(numsed_lib, funcname)
+    functext = '\n'.join(inspect.getsourcelines(func)[0])
     tree = ast.parse(functext)
     called = set()
     for node in ast.walk(tree):
