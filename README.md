@@ -18,7 +18,7 @@ Computing with sed: compiling python into sed
 
 ## Description
 
-numsed compiles a small subset of python into sed scripts. This subset is sufficient to make any calculation using integer numbers. The compilation to sed uses python opcodes as intermediate format. These opcodes can be interpreted as independent programs. Opcodes are replaced by sed snippets to obtain the final script.
+numsed compiles a small subset of python into sed scripts. This subset is sufficient to make any calculation using integer numbers. The compilation to sed uses python opcodes as intermediate format. Opcodes are replaced by sed snippets to obtain the final script.
 
 numsed is compatible with python 2 and 3.
 
@@ -30,7 +30,7 @@ The subset of Python used by numsed is made of:
 * arithmetic operators (+, -, *, //, %, **) and divmod function,
 * comparison operators (==, !=, <, <=, >, >=),
 * logical if,
-* logical operators (and , or, not),
+* logical operators (and, or, not),
 * assignments, including multiple assignments, augmented assignments and chained assignments,
 * control flow statements (if-elif-else, while-else, break, continue, pass),
 * function definitions and calls,
@@ -57,6 +57,17 @@ Compiling a python script into sed is made in four passes:
 * The disassembly is simplified and completed to obtain an opcode program which can be interpreted independently. The interpretation of opcodes is used for testing.
 * Finally, the sed script is obtained by replacing each opcode by a sed snippet.
 
+## Getting started
+
+To install, just clone or download the depository zip file. There is no dependency.
+
+Use the following command to compile and run a numsed python script:
+
+`numsed.py filename`
+
+The resulting sed script is obtained with:
+
+`numsed.py --trace filename`
 
 ## Command line
 
@@ -64,11 +75,15 @@ The command line enables to specify several output formats, several transformati
 
 `numsed.py <action> <transformation> <format> filename`
 
-To focus on the goal of the project, compiling a python script  into sed and running it, is done with:
+Compiling a python script into sed and running it, is done with:
 
 `numsed.py --run --signed --sed filename`
 
-The other parameters are used for development and testing.
+As all these options are defaults, this can be abbreviated into:
+
+`numsed.py filename`
+
+The other parameters are mainly used for development and testing.
 
 ###### Filename parameter
 
@@ -82,58 +97,62 @@ The other parameters are used for development and testing.
 
 `--trace`
 
-- trace the result of the conversion. Available for all formats and transformations.
+* traces the result of the conversion. Available for all formats and transformations.
 
-`--run`
+`--run (default)`
 
-- execute the result of the conversion. Available for all formats (except disassembly)  and transformations.
+* executes the result of the conversion. Available for all formats (except disassembly)  and transformations.
 
 `--coverage`
 
-- available only for opcode format. Execute the opcodes and counts the number of calls for each opcode.
+* available only for opcode format. Executes the opcodes and counts the number of calls for each opcode.
 
 `--test` 
 
-- compare the result of the original python script with the execution of the conversion. Available for all formats (except disassembly)  and transformations.
+* compares the result of the original python script with the execution of the conversion. Available for all formats (except disassembly)  and transformations.
+
+`--batch`
+
+* runs several sets of command line parameters. See test.batch.
 
 ###### Transformation parameter
 
  `--literal` 
 
-* no transformation is applied to the python script. When compiling into sed, this assumes that the script  does not handle signed integers, and does not use division, modulo or power operators.
+* no transformation is applied to the python script. When compiling into sed, this assumes that the script does not handle signed integers, and does not use division, modulo or power operators.
 
 `--unsigned` 
 
 * the python script is assumed to handle only unsigned integers, and the transformation replaces the division, modulo and power operators by functions implementing these operators.
 
-`--signed`
+`--signed (default)`
 
 * the python script handles signed integers and the transformation replaces all operators with function implementing the signed operators.
 
 Notes: 
 
-* It must be kept in mind that using the literal or unsigned transformation on scripts using negative integers or all operators can lead to unexpected behaviour (crash, infinite loops).
+* Using the literal or unsigned transformations on scripts using negative integers or all operators can lead to unexpected behaviour (crash, infinite loops).
 * When running or testing the signed transformation with AST or script format, an additional transformation is applied to check that all operands are positive.
 
 ###### Format parameter
 
 `--ast`
 
-* generate the abstract syntax tree (AST) after transformation
+* generate the abstract syntax tree (AST)
 
 `--script` 
 
-* generates the python script after transformation
+* generates the python script
 
 `--dis` 
 
-* generates the disassembly after transformation
+* generates the disassembly
 
 `--opcode`
 
 * generates opcodes
 
-`--sed`
+`--sed (default)`
 
 * generates the sed script
 
@@ -146,12 +165,6 @@ Testing is done with the `--test` action with a test suite:
 
 This displays a message describing the result when terminated.
 
-To test all the possible formats and transformations, use the `--all` parameter.
-
-`numsed_test.py --all test.suite.py`
-
-Finally, the `snippet_test.py` script enables to test some opcodes with hardcoded inputs.
-
 ## numsed virtual machine
 
 Using the same opcodes as python, numsed uses machine model close to the one of python:
@@ -162,33 +175,24 @@ Using the same opcodes as python, numsed uses machine model close to the one of 
 
 In numsed, stack and namespaces are implemented in sed hold space (HS). HS is organized with the stack on the left and namespaces on the right separated by a "@":
 
-​                                  	HS: <stack>@<namespaces>
+                           HS: <stack>@<namespaces>
 
 The stack grows at the beginning and contains integer values and addresses. Items are separated by semicolons. For instance:
 
-​                                   	HS: x;y;z;@<namespaces>
-
-LOAD_CONST  42    	HS: 42;x;y;z;@<namespaces>
-
-LOAD_CONST  13    	HS: 13;42;x;y;z;@<namespaces>
-
-BINARY_ADD	           	HS: 55;x;y;z;@<namespaces>
+                           HS: x;y;z;@<namespaces>
+    LOAD_CONST  42         HS: 42;x;y;z;@<namespaces>
+    LOAD_CONST  13         HS: 13;42;x;y;z;@<namespaces>
+    BINARY_ADD             HS: 55;x;y;z;@<namespaces>
 
 Name spaces grow at the end of HS and are separated by a vertical bar character "|". First name space is the global name space. Other name spaces are local and created for each function call. Name spaces contain pairs of names and values separated by semicolons. 
 
-​                                   	HS: x;y;z;@
-
-LOAD_CONST  42   	HS: 42;x;y;z;@
-
-STORE_GLOBAL x		HS: x;y;z;@x;42;
-
-MAKE_CONTEXT		HS: x;y;z;@x;42;|
-
-LOAD_CONST  13    	HS: 13;x;y;z;@x;42;|
-
-STORE_FAST x		HS: 55;x;y;z;@x;42;|x;13;
-
-POP_CONTEXT		HS: 55;x;y;z;@x;42;
+                           HS: x;y;z;@
+    LOAD_CONST  42         HS: 42;x;y;z;@
+    STORE_GLOBAL x         HS: x;y;z;@x;42;
+    MAKE_CONTEXT           HS: x;y;z;@x;42;|
+    LOAD_CONST  13         HS: 13;x;y;z;@x;42;|
+    STORE_FAST x           HS: 55;x;y;z;@x;42;|x;13;
+    POP_CONTEXT            HS: 55;x;y;z;@x;42;
 
 ## Links
 
