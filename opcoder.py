@@ -161,14 +161,15 @@ class OpcodeConversion(common.NumsedConversion):
 
 def scancodes(code):
     for instr in code:
-        yield scancode(instr)
+        opc, arg = scancode(instr)
+        yield instr, opc, arg
 
 
 def scancode(instr):
     x = instr.split(None, 1)
     opc = x[0]
     arg = x[1] if len(x) > 1 else None
-    return instr, opc, arg
+    return opc, arg
 
 
 def opcodes(dis_code):
@@ -214,42 +215,31 @@ def opcodes(dis_code):
     newcode = tmp
 
     # rename jump opcodes
-    tmp = []
-    for instr, opc, arg in scancodes(newcode):
+    for index, (instr, opc, arg) in enumerate(scancodes(newcode)):
         if opc in ('JUMP_ABSOLUTE', 'JUMP_FORWARD'):
-            tmp.append('JUMP ' + arg)
-        else:
-            tmp.append(instr)
-    newcode = tmp
+            newcode[index] = 'JUMP ' + arg
 
     # link
     link_opcode(newcode)
 
     # replace INPLACE_* with BINARY_ equivalent
-    tmp = []
-    for instr in newcode:
-        instr = re.sub('^INPLACE_', 'BINARY_', instr)
-        tmp.append(instr)
-    newcode = tmp
+    for index, instr in enumerate(newcode):
+        newcode[index] = re.sub('^INPLACE_', 'BINARY_', instr)
 
     # clean long int representation (python2)
-    tmp = []
-    for instr in newcode:
+    for index, instr in enumerate(newcode):
         if re.match(r'LOAD_CONST +\d+L', instr):
-            tmp.append(instr[:-1])
-        else:
-            tmp.append(instr)
-    newcode = tmp
+            newcode[index] = instr[:-1]
 
     # handle break: find associated start of loop, retrieve label of end of loop
     # and replace break with jump to end of loop
-    for instr_pointer, instr in enumerate(newcode):
+    for index, instr in enumerate(newcode):
         if instr == 'BREAK_LOOP':
-            setup_loop = newcode[current_loop(newcode, instr_pointer)]
+            setup_loop = newcode[current_loop(newcode, index)]
             endblock_label = setup_loop.split(None, 1)[1]
-            newcode[instr_pointer] = 'JUMP ' + endblock_label
+            newcode[index] = 'JUMP ' + endblock_label
 
-    # ignore some opcodes
+    # remove some opcodes
     tmp = []
     for index, (instr, opc, arg) in enumerate(scancodes(newcode)):
         if opc == 'EXTENDED_ARG':
@@ -257,7 +247,7 @@ def opcodes(dis_code):
             # have been written in argument position
             pass
         elif (opc == 'LOAD_CONST' and re.match(r"^'.*'$", arg) and
-              scancode(newcode[index + 1])[1] == 'MAKE_FUNCTION'):
+              scancode(newcode[index + 1])[0] == 'MAKE_FUNCTION'):
             # use in py3, the name of a function is pushed before MAKE_FUNCTION
             # keep other strings
             pass
@@ -317,40 +307,36 @@ def inline_helper_opcodes(code):
     variables, consts and operators, i.e. no call functions inside the XXX
     sequence of opcodes.
     """
-    code2 = []
+    newcode = []
     i = 0
     while i < len(code):
         instr = code[i]
         i += 1
-        if instr.strip() == '':
-            continue
-        x = instr.split()
-        opc = x[0]
-        arg = x[1] if len(x) > 1 else None
+        opc, arg = scancode(instr)
         if opc == 'LOAD_CONST':
             if any(arg.startswith(_) for _ in numsed_lib.PRIMITIVES):
                 i += 2
             else:
-                code2.append(instr)
+                newcode.append(instr)
         elif opc == 'LOAD_GLOBAL':
             func = arg
             if func not in numsed_lib.PRIMITIVES:
-                code2.append(instr)
+                newcode.append(instr)
             else:
                 argseq = []
                 while not code[i].startswith('CALL_FUNCTION'):
                     argseq.append(code[i])
                     i += 1
                 i += 1                                      # skip call and return label
-                code2.extend(argseq)                        # append sequence
-                code2.append(primitive_opcode(func))        # append opcode
+                newcode.extend(argseq)                      # append sequence
+                newcode.append(primitive_opcode(func))      # append opcode
         elif opc == 'FUNCTION' and any(arg.startswith(_) for _ in numsed_lib.PRIMITIVES):
             while not code[i].startswith('RETURN_VALUE'):   # ignore code from primitive
                 i += 1
             i += 1
         else:
-            code2.append(instr)
-    return code2
+            newcode.append(instr)
+    return newcode
 
 
 # print() is also a primitive but is handled as a function. Its opcode
@@ -461,7 +447,7 @@ def interpreter(code, coverage=False):
     for x in code:
         if x.strip() == '':
             continue
-        x, opcode, argument = scancode(x)
+        opcode, argument = scancode(x)
         if opcode[0] == ':':
             opcode, argument = opcode[0], opcode[1:]
             labels[argument] = len(opcodes)
@@ -693,7 +679,3 @@ def interpreter(code, coverage=False):
 def display_coverage():
     for x in OPCODES:
         print('%-20s %10d' % (x, counter[x]))
-
-
-if __name__ == "__main__":
-    pass
