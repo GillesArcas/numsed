@@ -778,7 +778,7 @@ def MULBYDIGIT():
     return snippet
 
 
-def UMUL(a, b):
+def UMUL_python(a, b):
     r = 0
     m = 1
     while b > 0:
