@@ -121,7 +121,8 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         self.visit_child_nodes(node)
 
     def visit_Name(self, node):
-        pass
+        if node.id in self.lib_functions and isinstance(node.ctx, ast.Store):
+            raise CheckException('reserved word', node)
 
     def visit_Num(self, node):
         if not isinstance(node.n, int) and not (common.PY2 and isinstance(node.n, long)):

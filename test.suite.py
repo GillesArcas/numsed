@@ -55,6 +55,13 @@ numsed error: line 2 col 1: cannot assign to
 x[0] = 1
 ^
 # ---
+# reserved word
+is_positive = 1
+# ===
+numsed error: line 2 col 1: reserved word
+is_positive = 1
+^
+# ---
 # chained assignment
 m = n = 42
 print(m, n)
