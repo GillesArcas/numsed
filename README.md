@@ -5,6 +5,7 @@ Computing with sed: compiling python into sed
 * [Description](#description)
 * [Language](#language)
 * [Compilation process](#compilation-process)
+* [Getting started](#getting-started)
 * [ Command line](#command-line)
   * [Filename parameter](#filename-parameter)
   * [Action parameter](#action-parameter)
@@ -15,6 +16,7 @@ Computing with sed: compiling python into sed
 * [ Links](#links)
   * [Abstract syntax tree](#abstract-syntax-tree)
   * [Opcodes](#opcodes)
+  * [Sed](#sed)
 
 ## Description
 
@@ -38,13 +40,11 @@ The subset of Python used by numsed is made of:
 * global statement,
 * string constants only allowed as print arguments.
 
-
-
 The following limitations are checked during conversion:
 
 * functions must be defined as module level instructions,
 * functions have only positional arguments with no default values,
-* functions must return integer (with the exception of he predefined function divmod),
+* functions must return integer (with the exception of the predefined function divmod),
 
 Note also that there is no limitations (less memory) on recursion.
 
@@ -83,7 +83,7 @@ As all these options are defaults, this can be abbreviated into:
 
 `numsed.py filename`
 
-The other parameters are mainly used for development and testing.
+The other parameters are mainly used for development, testing or optimization.
 
 ###### Filename parameter
 
@@ -196,23 +196,39 @@ Name spaces grow at the end of HS and are separated by a vertical bar character 
 
 ## Links
 
-###### Abstract syntax tree
+#### Abstract syntax trees
 
 The official documentation:
 
-https://docs.python.org/3/library/ast.html
+* https://docs.python.org/3/library/ast.html
 
-More detailed description
+A more detailed description:
 
-https://greentreesnakes.readthedocs.io/en/latest/
+* https://greentreesnakes.readthedocs.io/en/latest/
 
-###### dis and opcodes
+#### dis and opcodes
 
 The official documentation:
 
-https://docs.python.org/3/library/dis.html
+* https://docs.python.org/3/library/dis.html
 
 The implementation gives all details of opcode working:
 
-[cpython/ceval.c](https://github.com/python/cpython/blob/2bdba08bd0eb6f1b2a20d14558a4ea2009b46438/Python/ceval.c) 
+* [cpython/ceval.c](https://github.com/python/cpython/blob/2bdba08bd0eb6f1b2a20d14558a4ea2009b46438/Python/ceval.c) 
+
+#### Sed
+
+The original documentation:
+
+* http://sed.sourceforge.net/grabbag/tutorials/sed_mcmahon.txt
+
+Description of using lookup tables with sed by Greg Ubben:
+
+* [Using lookup tables with s///](http://sed.sourceforge.net/grabbag/tutorials/lookup_tables.txt)
+* [A lookup-table counter](http://sed.sourceforge.net/grabbag/tutorials/lookup_table_counter.txt)
+
+The inspiring sed implementation of dc by Greg Ubben:
+
+* [dc.sed](http://sed.sourceforge.net/grabbag/scripts/dc.sed)
+
 
