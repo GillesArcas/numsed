@@ -277,8 +277,7 @@ def signed_divmod(x, y):
 
 
 def signed_pow(base, exp):
-    # TODO not is_positive ?
-    if exp < 0:
+    if not is_positive(exp):
         return 0
         # raise Exception('Exponent should be positive')
 
