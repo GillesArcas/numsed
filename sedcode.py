@@ -1,3 +1,7 @@
+"""
+Generation of sed code for numsed.
+"""
+
 from __future__ import print_function
 
 import re
@@ -87,8 +91,15 @@ def sedcode(opcode):
 
 
 def normalize(snippet):
+    """
+    Replace opcodes with sed instructions.
 
-    # TODO: describe labels
+    Each opcode is replaced with a sed snippet. Two conventions help to write
+    the snippets:
+    - identifiers beginning with a dot are labels and are replaced with sed
+      labels avoiding conflicts if the opcode is used several times.
+    - \d, which does not exist in sed, is replaced with [0-9]
+    """
     labels = []
     for line in snippet.splitlines():
         m = re.match(r' *:(\.\S+)', line)
@@ -166,8 +177,8 @@ def STARTUP():
         s/.*/UnknownLabel: label & is not defined/
         p
         q
-        :NotAnInteger
-        s/^([^;]+;[^;]+).*/NotAnInteger: an operand is not an integer: \1/
+        :NotPositiveInteger
+        s/^([^;]+;[^;]+).*/NotPositiveInteger: an operand is not a positive integer: \1/
         p
         q
         :NotImplemented
@@ -483,8 +494,9 @@ def POP_BLOCK():
 
 def CHECKINT2():
     snippet = r'''                      # PS: X;Y         HS: X;Y;Z
-        /^\d+;\d+/!b NotAnInteger
+        /^\d+;\d+/!b NotPositiveInteger
     '''
+
     return snippet
 
 
@@ -981,7 +993,3 @@ def TRACE(msg):
     '''
     #return ''
     return snippet.replace('msg', msg)
-
-
-if __name__ == "__main__":
-    pass
