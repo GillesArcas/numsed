@@ -4,5 +4,6 @@
 omit =
     codegen.py
     numsed_lib.py
-    snippet_test.py
     
+exclude_lines =
+    not used
