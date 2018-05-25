@@ -73,8 +73,8 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
 
     def __init__(self):
         # list of functions defined in lib
+        # used to check there is no redefinition
         self.lib_functions = {x[0] for x in inspect.getmembers(numsed_lib, inspect.isfunction)}
-        self.lib_functions.add('print')
 
     def visit_Module(self, node):
         self.tree = node
