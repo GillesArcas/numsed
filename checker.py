@@ -38,7 +38,7 @@ def check(source):
             script = f.read()
             code = compile(script, source, "exec")
     except SyntaxError as e:
-        msg = 'SyntaxError: %s\nline %d: %s'% (e.args[0], e.args[1][1], e.args[1][3])
+        msg = 'SyntaxError: %s\nline %d: %s' % (e.args[0], e.args[1][1], e.args[1][3])
         return False, msg
 
     tree = ast.parse(FUTURE_FUNCTION + script)

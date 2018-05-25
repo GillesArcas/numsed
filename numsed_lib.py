@@ -7,6 +7,8 @@ arithmetic and comparison signed operators using only numsed
 operators.
 """
 
+from __future__ import print_function
+
 
 # signed comparison operators
 
@@ -278,8 +280,8 @@ def signed_divmod(x, y):
 
 def signed_pow(base, exp):
     if not is_positive(exp):
-        return 0
-        # raise Exception('Exponent should be positive')
+        print('numsed error: Exponent should be positive: ', exp)
+        exit()
 
     if is_positive(base):
         return upow(base, exp)
@@ -307,7 +309,7 @@ PRIMITIVES = ('is_positive', 'abs', 'is_odd', 'divide_by_two',
 
 
 def is_positive(x):
-    return x > 0
+    return x >= 0
 
 def abs(x):
     return x if x >= 0 else -x
