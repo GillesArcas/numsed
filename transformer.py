@@ -69,15 +69,16 @@ class NumsedTransformer(ast.NodeTransformer):
     def transform(self, tree):
         self.visit(tree)
         if common.PY2:
+            # remove import
             tree.body = tree.body[1:]
 
         libfuncs = self.required_func
         libfuncs = function_calls(libfuncs)
-        libfuncs = [getattr(numsed_lib, x) for x in libfuncs]
+        libfuncs = [getattr(numsed_lib, x) for x in libfuncs if x not in ('exit', 'print')]
 
         for func in libfuncs:
-            treefunc = ast.parse(getsourcetext(func))
-            tree.body.insert(0, treefunc.body[0])
+            functree = getfuncast(func)
+            tree.body.insert(0, functree.body[0])
 
         ast.fix_missing_locations(tree)
 
@@ -93,8 +94,14 @@ class IdentityTransformer(NumsedTransformer):
     pass
 
 
-def getsourcetext(func):
-    return ''.join(inspect.getsourcelines(func)[0])
+def getfuncast(func):
+    funcdef = ''.join(inspect.getsourcelines(func)[0])
+    if common.PY2:
+        funcdef = FUTURE_FUNCTION + funcdef
+    funcast = ast.parse(funcdef)
+    if common.PY2:
+        funcast.body = funcast.body[1:]
+    return funcast
 
 
 # -- List of library functions -----------------------------------------------
@@ -105,7 +112,9 @@ def called_functions(funcname):
     func is the name of a function. Returns the names of all functions called
     in func.
     """
-    func = getattr(numsed_lib, funcname)
+    func = getattr(numsed_lib, funcname, None)
+    if func is None:
+        return set()
     functext = '\n'.join(inspect.getsourcelines(func)[0])
     tree = ast.parse(functext)
     called = set()
@@ -335,14 +344,17 @@ class AstConversion(common.NumsedConversion):
         return x.singlestring()
 
     def run(self):
-        with common.ListStream() as x:
-            code = compile(self.tree, filename="<ast>", mode="exec")
-            # giving a new namespace is necessary to avoid exec interfering
-            # with current context (x variable from with construct)
-            # giving global and local namespace (or equivalently only global
-            # namespace) is necessary to handle recursive function definitions
-            # see https://stackoverflow.com/questions/871887/using-exec-with-recursive-functions
-            exec(code, {})
+        try:
+            with common.ListStream() as x:
+                code = compile(self.tree, filename="<ast>", mode="exec")
+                # giving a new namespace is necessary to avoid exec interfering
+                # with current context (x variable from with construct)
+                # giving global and local namespace (or equivalently only global
+                # namespace) is necessary to handle recursive function definitions
+                # see https://stackoverflow.com/questions/871887/using-exec-with-recursive-functions
+                exec(code, {})
+        except SystemExit:
+            pass
         return x.singlestring()
 
 
@@ -367,7 +379,10 @@ class ScriptConversion(AstAssertConversion):
         return self.code
 
     def run(self):
-        with common.ListStream() as x:
-            code = compile(self.code, filename="<script>", mode="exec")
-            exec(code, {})
+        try:
+            with common.ListStream() as x:
+                code = compile(self.code, filename="<script>", mode="exec")
+                exec(code, {})
+        except SystemExit:
+            pass
         return x.singlestring()
