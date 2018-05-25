@@ -603,7 +603,7 @@ def COMPARE_OP(opname):
 # - Addition and subtraction -------------------------------------------------
 
 
-def HALFADD():
+def HALFADD():  # for reference, not used
     snippet = r'''
         s/^(..)/&;9876543210;9876543210;/
         s/(.)(.);\d*\1(\d*);\d*(\2\d*);/\3\49876543210;/
@@ -790,7 +790,7 @@ def MULBYDIGIT():
     return snippet
 
 
-def UMUL_python(a, b):
+def UMUL_python(a, b):  # for reference, not used
     r = 0
     m = 1
     while b > 0:
@@ -993,3 +993,9 @@ def TRACE(msg):
     '''
     #return ''
     return snippet.replace('msg', msg)
+
+def EXIT():
+    snippet = '''
+        q
+    '''
+    return snippet

@@ -30,7 +30,7 @@ OPCODES = ('LOAD_CONST', 'LOAD_NAME', 'LOAD_GLOBAL', 'STORE_NAME', 'STORE_GLOBAL
            'STARTUP', 'MAKE_CONTEXT', 'POP_CONTEXT',
            'IS_POSITIVE', 'ABS', 'IS_ODD',
            'DIVIDE_BY_TWO', 'DIVIDE_BY_TEN', 'MODULO_TEN', 'DIVMOD10',
-           'TRACE')
+           'TRACE', 'EXIT')
 
 
 # -- Disassembly -------------------------------------------------------------
@@ -41,6 +41,7 @@ class DisassemblyConversion(common.NumsedConversion):
         common.NumsedConversion.__init__(self, source, transformation)
         ast_trans = transformer.AstConversion(source, transformation)
         self.code = disassemble(ast_trans.tree)
+
     def trace(self):
         return '\n'.join(self.code)
 
@@ -68,6 +69,7 @@ def disassemble(tree):
 
 def make_function_label(func):
     return func + '.func'
+
 
 def is_function_label(x):
     return re.match(r':\w+\.func', x)
@@ -188,6 +190,9 @@ def opcodes(dis_code):
     if divmod_required(dis_code):
         newcode.extend(DIVMOD_DECL())
 
+    if exit_required(dis_code):
+        newcode.extend(EXIT_DECL())
+
     # normalize disassembly labels and opcode arguments
     newcode.extend(dis_code)
 
@@ -263,6 +268,9 @@ def opcodes(dis_code):
 
     if divmod_required(dis_code):
         newcode.extend(DIVMOD_DEF())
+
+    if exit_required(dis_code):
+        newcode.extend(EXIT_DEF())
 
     # return list of formated instructions
     return pprint_opcode(newcode)
@@ -368,12 +376,29 @@ def DIVMOD_DECL():
         'STORE_NAME               divmod'
     )
 
+
 def DIVMOD_DEF():
     return (
         ':divmod',
         'DIVMOD',
         'RETURN_VALUE'
     )
+
+
+def EXIT_DECL():
+    return (
+        'LOAD_CONST               exit.func',
+        'MAKE_FUNCTION            0',
+        'STORE_NAME               exit'
+    )
+
+
+def EXIT_DEF():
+    return (
+        ':exit.func',
+        'EXIT'
+    )
+
 
 def divmod_required(code):
     """
@@ -387,6 +412,14 @@ def divmod_required(code):
         elif opc == ':' and arg == 'divmod':
             label_name_detected = True
     return load_name_detected and not label_name_detected
+
+
+def exit_required(code):
+    for _, opc, arg in scancodes(code):
+        if opc == 'LOAD_GLOBAL' and arg == 'exit':
+            return True
+    else:
+        return False
 
 
 def link_opcode(code):
@@ -474,7 +507,7 @@ def interpreter(code, coverage=False):
         elif opc == 'LOAD_CONST':
             try:
                 x = int(arg)
-            except:
+            except ValueError:
                 if ',' in arg:
                     x = arg.split(',')
                 else:
@@ -552,7 +585,7 @@ def interpreter(code, coverage=False):
         elif opc == 'UNARY_NOT':
             tos = stack.pop()
             stack.append(1 if tos == 0 else 0)
-            #stack.append(True if tos == 0 else False)
+            # stack.append(True if tos == 0 else False)
         elif opc == 'COMPARE_OP':
             tos = stack.pop()
             tos1 = stack.pop()
@@ -598,7 +631,7 @@ def interpreter(code, coverage=False):
             result[-1] += '%s' % tos
         elif opc == 'PRINT_ITEMS':
             args = [str(stack.pop()) for _ in range(stack.pop())]
-            args = [re.sub(r'^([\'"])(.*)\1$', r'\2', _) for _ in args] # remove quotes
+            args = [re.sub(r'^([\'"])(.*)\1$', r'\2', _) for _ in args]  # remove quotes
             r = ' '.join(reversed(args))
             print(r, end='')
             if not result:
@@ -667,6 +700,8 @@ def interpreter(code, coverage=False):
             stack.append([tos1 // tos, tos1 % tos])
         elif opc == 'TRACE':
             pass
+        elif opc == 'EXIT':
+            instr_pointer = len(opcodes)
         else:
             raise Exception('numsed: Unknown opcode: %s' % opc)
 

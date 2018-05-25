@@ -106,6 +106,14 @@ n = 5
 p = m ** n
 print(p)
 # ---
+# Exponent should be positive
+m = 42
+n = -1
+p = m ** n
+print(p)
+# ===
+numsed error: Exponent should be positive:  -1
+# ---
 # assign expression
 m = 42
 n = 5

@@ -8,9 +8,9 @@
 --opc --literal  --run test.suite.py
 --sed --literal  --run test.suite.py
 
---ast --literal  --test test.suite.py
---scr --literal  --test test.suite.py
---opc --literal  --test test.suite.py
+;--ast --literal  --test test.suite.py
+;--scr --literal  --test test.suite.py
+;--opc --literal  --test test.suite.py
 ;--sed --literal  --test test.suite.py
 
 --ast --unsigned --trace unsigned.suite.py
