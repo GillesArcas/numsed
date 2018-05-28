@@ -613,7 +613,8 @@ def test_gen(descr, func, inplist, outlist):
 
     com = 'sed -r -f %s %s' % (common.TMP_SED, common.TMP_INPUT)
 
-    res = subprocess.check_output(com).decode('ascii').splitlines()
+    #res = subprocess.check_output(com).decode('ascii').splitlines()
+    res = common.run(com, echo=False).splitlines()
 
     if res == outlist:
         print('%-15s %s' % (descr, 'OK'))

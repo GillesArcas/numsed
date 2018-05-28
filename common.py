@@ -48,7 +48,7 @@ class ListStream:
         return self.result.getvalue()
 
 
-def run(cmd):
+def run(cmd, echo=True):
     try:
         p = subprocess.Popen(cmd.split(),
                             #shell=True,
@@ -67,7 +67,8 @@ def run(cmd):
         else:
             line = line.rstrip('\n\r')
             res.append(line)
-            print(line)
+            if echo:
+                print(line)
     return '\n'.join(res)
 
 
