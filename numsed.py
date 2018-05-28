@@ -165,8 +165,11 @@ def expected_result(args, source, result, checked, msg):
     def result_from_script(source):
         source_lines = open(source).read()
         code = compile(source_lines, '<string>', 'exec')
-        with common.ListStream() as x:
-            exec(code, {})
+        try:
+            with common.ListStream() as x:
+                exec(code, {})
+        except SystemExit:
+            pass
         return x.singlestring()
 
     def result_from_suite():

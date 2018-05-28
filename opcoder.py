@@ -114,8 +114,13 @@ def parse_dis_instruction(s):
     elif 'code object' in arg:
         m = re.search(r'code object (\w+)', arg)
         arg = make_function_label(m.group(1))
+    elif instr == 'CALL_FUNCTION':
+        # keep number of arguments, remove parentheses if any
+        arg = re.sub(r'\(.*\)', '', arg)
+        arg = arg.strip()
     elif '(' in arg:
-        # if any quotes, they are kept until end of formating opcodes
+        # if parentheses, content is used as argument
+        # if any quotes, they are kept
         m = re.search(r'\((.*)\) *$', arg)
         arg = m.group(1)
         if arg.startswith('to '):
@@ -416,7 +421,7 @@ def divmod_required(code):
 
 def exit_required(code):
     for _, opc, arg in scancodes(code):
-        if opc == 'LOAD_GLOBAL' and arg == 'exit':
+        if opc in ('LOAD_GLOBAL', 'LOAD_NAME') and arg == 'exit':
             return True
     else:
         return False
