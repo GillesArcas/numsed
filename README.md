@@ -34,7 +34,7 @@ The subset of Python used by numsed is made of:
 * logical if,
 * logical operators (and, or, not),
 * assignments, including multiple assignments, augmented assignments and chained assignments,
-* control flow statements (if-elif-else, while-else, break, continue, pass),
+* control flow statements (if-elif-else, while-else, break, continue, pass, exit),
 * function definitions and calls,
 * print function,
 * global statement,
@@ -52,7 +52,7 @@ Note also that there is no limitations (less memory) on recursion.
 
 Compiling a python script into sed is made in four passes:
 
-* the python script is transformed into another python script where all operators are replaced with functions. These functions are defined in the module numsed_lib. These definitions used the standard operators assuming they work on positive operands. Let's call the resulting script the positive form.
+* the python script is transformed into another python script where all operators are replaced with functions. These functions are defined in the numsed_lib module. These definitions used the standard operators assuming they work on positive operands. Let's call the resulting script the positive form.
 * The positive form is then compiled and disassembled with the dis module into opcodes.
 * The disassembly is simplified and completed to obtain an opcode program which can be interpreted independently. The interpretation of opcodes is used for testing.
 * Finally, the sed script is obtained by replacing each opcode by a sed snippet.
