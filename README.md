@@ -14,8 +14,8 @@ Computing with sed: compiling python into sed
 * [ Testing](#testing)
 * [ numsed virtual machine](#numsed-virtual-machine)
 * [ Links](#links)
-  * [Abstract syntax tree](#abstract-syntax-tree)
-  * [Opcodes](#opcodes)
+  * [Abstract syntax tree](#abstract-syntax-trees)
+  * [Opcodes](#dis-and-opcodes)
   * [Sed](#sed)
 
 ## Description
