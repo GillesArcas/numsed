@@ -38,8 +38,6 @@ The subset of Python used by numsed is made of:
 * function definitions and calls,
 * print function, 
 * string constants only allowed as print arguments,
-* characters in strings are limited to ASCII-32 (space) to ASCII-125 ("}")
-  less the characters "@", "|" and ";" which are used in sed snippets,
 * global statement.
 
 The following limitations are checked during conversion:
@@ -47,6 +45,8 @@ The following limitations are checked during conversion:
 * functions must be defined as module level instructions,
 * functions have only positional arguments with no default values,
 * functions must return an integer (with the exception of the predefined function divmod),
+* characters in strings are limited to ASCII-32 (space) to ASCII-125 ("}")
+  less the characters "@", "|" and ";" which are used in sed snippets.
 
 Note also that there is no limitations (less memory) on recursion.
 
