@@ -14,8 +14,8 @@ Computing with sed: compiling python into sed
 * [ Testing](#testing)
 * [ numsed virtual machine](#numsed-virtual-machine)
 * [ Links](#links)
-  * [Abstract syntax tree](#abstract-syntax-tree)
-  * [Opcodes](#opcodes)
+  * [Abstract syntax tree](#abstract-syntax-trees)
+  * [Opcodes](#dis-and-opcodes)
   * [Sed](#sed)
 
 ## Description
@@ -36,15 +36,17 @@ The subset of Python used by numsed is made of:
 * assignments, including multiple assignments, augmented assignments and chained assignments,
 * control flow statements (if-elif-else, while-else, break, continue, pass, exit),
 * function definitions and calls,
-* print function,
-* global statement,
-* string constants only allowed as print arguments.
+* print function, 
+* string constants only allowed as print arguments,
+* global statement.
 
 The following limitations are checked during conversion:
 
 * functions must be defined as module level instructions,
 * functions have only positional arguments with no default values,
-* functions must return integer (with the exception of the predefined function divmod),
+* functions must return an integer (with the exception of the predefined function divmod),
+* characters in strings are limited to ASCII-32 (space) to ASCII-125 ("}")
+  less the characters "@", "|" and ";" which are used in sed snippets.
 
 Note also that there is no limitations (less memory) on recursion.
 
