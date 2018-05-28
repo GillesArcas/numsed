@@ -536,6 +536,13 @@ while i < 10:
         exit()
     i += 1
 # ---
+# exit
+exit(0)
+# ===
+numsed error: line 2 col 1: arguments are not allowed
+exit(0)
+^
+# ---
 # comparison operators
 m = -2
 while m <= 2:
