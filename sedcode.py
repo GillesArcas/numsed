@@ -91,7 +91,7 @@ def sedcode(opcode):
 
 
 def normalize(snippet):
-    """
+    r"""
     Replace opcodes with sed instructions.
 
     Each opcode is replaced with a sed snippet. Two conventions help to write
@@ -134,6 +134,7 @@ def new_label():
     r = 'L%d' % label_counter
     label_counter += 1
     return r
+
 
 return_counter = 0
 def new_return():
@@ -280,7 +281,7 @@ def ROT_THREE():
 
 
 def LOAD_CONST(const):
-    const = re.sub(r'^([\'"])(.*)\1$', r'\2', const) # remove quotes
+    const = re.sub(r'^([\'"])(.*)\1$', r'\2', const)  # remove quotes
     snippet = r'''                      # PS: ?         HS: X
         g                               # PS: X         HS: X
         s/^/const;/                     # PS: const;X   HS: X
@@ -302,6 +303,7 @@ def BUILD_TUPLE(n):
         h
     '''
     return snippet.replace('lhs', lhs).replace('rhs', rhs)
+
 
 def UNPACK_SEQUENCE(n):
     n = int(n)
@@ -403,7 +405,7 @@ def CALL_FUNCTION(argc):
 
     return_label = new_return()
     return_labels.append(return_label)
-    nargs = '~' * int(argc) # number of arguments unary encoded
+    nargs = '~' * int(argc)  # number of arguments unary encoded
 
     # argc parameters on top of stack above name of function
     # add return label and swap parameters and name
@@ -489,11 +491,18 @@ def POP_BLOCK():
     return ''
 
 
+def EXIT():
+    snippet = '''
+        q
+    '''
+    return snippet
+
+
 # -- Type checking -----------------------------------------------------------
 
 
 def CHECKINT2():
-    snippet = r'''                      # PS: X;Y         HS: X;Y;Z
+    snippet = r'''                      # PS: X;Y       HS: X;Y;Z
         /^\d+;\d+/!b NotPositiveInteger
     '''
 
@@ -513,6 +522,7 @@ def UNARY_NOT():
     '''
     return snippet
 
+
 def BINARY_AND():
     snippet = r'''
         SWAP
@@ -522,6 +532,7 @@ def BINARY_AND():
         PUSH
     '''
     return snippet
+
 
 def BINARY_OR():
     snippet = r'''
@@ -655,7 +666,7 @@ def UADD():
     snippet = r'''
                                         # PS: M;N*
         s/\d*;\d*/0;&;/                 # PS; 0;M;N;*
-        :.loop                           # PS: cR;Mm;Nn;*
+        :.loop                          # PS: cR;Mm;Nn;*
         s/^(\d*);(\d*)(\d);(\d*)(\d)/\3\5\1;\2;\4/
                                         # PS: mncR;M;N;*
         FULLADD                         # PS: abR;M;N;*
@@ -670,7 +681,7 @@ def UADD():
             b.loop
         }
         s/^0(\d*);(\d*);(\d*);/\2\3\1/
-        :.exit                           # PS: R*
+        :.exit                          # PS: R*
     '''
     return snippet
 
@@ -679,7 +690,7 @@ def USUB():
     snippet = r'''
                                         # PS: M;N*
         s/\d*;\d*/0;&;/                 # PS; 0;M;N;*
-        :.loop                           # PS: cR;Mm;Nn;*
+        :.loop                          # PS: cR;Mm;Nn;*
         s/(\d*);(\d*)(\d);(\d*)(\d);/\3\5\1;\2;\4;/
                                         # PS: mncR;M;N;*
         FULLSUB                         # PS: c'rR;M;N;*
@@ -693,9 +704,9 @@ def USUB():
         s/^0(\d*);(\d*);;/\2\1/         # add remaining part of first operand
         s/^0*(\d)/\1/                   # del leading 0
         b.end
-        :.nan                            # if invalid subtraction
+        :.nan                           # if invalid subtraction
         s/^\d*;\d*;\d*;/NAN/            # PS: NAN*
-        :.end                            # PS: M-N|NAN
+        :.end                           # PS: M-N|NAN
      '''
     return snippet
 
@@ -753,11 +764,13 @@ def UNARY_NEGATIVE():
 # -- Multiplication ----------------------------------------------------------
 
 
-def FULLMUL(): # dc.sed version
-    # Multiply two digits with carry
-    #
-    # Input  PS: abcX with a, b and c = 0 to 9
-    # Output PS: rX   with r = a * b + c padded on two digits
+def FULLMUL():
+    """
+    Multiply two digits with carry (dc.sed version)
+
+    Input  PS: abcX with a, b and c = 0 to 9
+    Output PS: rX   with r = a * b + c padded on two digits
+    """
     snippet = r'''
         /^(0.|.0)/ {
             s/^../0/
@@ -776,8 +789,12 @@ def FULLMUL(): # dc.sed version
 
 
 def MULBYDIGIT():
-    # Input  PS: aN;X with a = 0 to 9
-    # Output PS: R;X
+    """
+    Multiply an integer by a digit
+
+    Input  PS: aN;X with a = 0 to 9
+    Output PS: R;X
+    """
     snippet = r'''                      # PS: aNX
         s/(.)(\d*)/0;\1;\2;/
         :.loop
@@ -800,10 +817,14 @@ def UMUL_python(a, b):  # for reference, not used
         m *= 10
     return r
 
+
 def UMUL():
+    """
+    Multiply two integers
+    """
     snippet = r'''                      # PS: A;M;
         s/^/0;;/                        # PS: 0;;A;M;
-        :.loop                           # PS: P;S;A;Mm;
+        :.loop                          # PS: P;S;A;Mm;
                                         # P partial result to add, S last digits
         s/(\d*;\d*;(\d*;)\d*)(\d)/\3\2\1/
                                         # PS: mA;P;S;A;M;
@@ -821,6 +842,9 @@ def UMUL():
 
 
 def BINARY_MULTIPLY():
+    """
+    Implements TOS = TOS1 * TOS on unsigned integers (R = N * M).
+    """
     snippet = r'''                      # PS: ?         HS: M;N;X
         POP2                            # PS: M;N       HS: X
         CHECKINT2
@@ -911,6 +935,7 @@ def ODD():
     '''
     return snippet
 
+
 def IS_ODD():
     snippet = r'''                      # PS: ?         HS: N;X
         g                               # PS: N;X       HS: N;X
@@ -973,8 +998,8 @@ def PRINT_ITEMS():
         t.loop
         s/ ;/;/                         # remove extra space
                                         # PS: A B C ;X
-        h                               # PS: A B C ;X  HX: A B C ;X
-        POP                             # PS: A B C     HX: X
+        h                               # PS: A B C ;X  HS: A B C ;X
+        POP                             # PS: A B C     HS: X
         p
      '''
     return snippet
@@ -991,11 +1016,5 @@ def TRACE(msg):
         p
         x
     '''
-    #return ''
+    # return ''
     return snippet.replace('msg', msg)
-
-def EXIT():
-    snippet = '''
-        q
-    '''
-    return snippet
