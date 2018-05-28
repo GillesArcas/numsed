@@ -4,12 +4,14 @@ The following is tested:
 - the script respects python syntax
 - the only scalar type is integer
 - strings are allowed only as print arguments
+- characters in strings are limited to ASCII-32 (space) to ASCII-125 ("}")
+  less the characters "@", "|" and ";" which are used by sed snippets
 - tuples are allowed as multiple assignments but tuples must be assigned to
   tuples of the same length.
-- Tuples are not allowed as function results less for builtin divmod, but
+- tuples are not allowed as function results less for builtin divmod, but
   divmod results must be assigned immediately.
 - unary operators are - and +
-- binary operators are -, +, *, //, % and **, divmod function
+- binary operators are -, +, *, //, % and **, divmod function is available
 - comparison operators are ==, !=, <, <=, >, and >=
 - boolean operators are or, and and not
 - functions are defined at module level
@@ -18,6 +20,7 @@ The following is tested:
 - names are the only callables accepted
 - control flow statements are if-elif-else, while-else, break, continue,
   return, pass
+- all other constructs are not allowed
 """
 from __future__ import print_function
 
@@ -160,10 +163,12 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
                 raise CheckException('comparator not handled', node)
             else:
                 self.visit(node.left)
-                for _ in node.comparators: self.visit(_)
+                for _ in node.comparators:
+                    self.visit(_)
 
     def visit_BoolOp(self, node):
-        for _ in node.values: self.visit(_)
+        for _ in node.values:
+            self.visit(_)
 
     def visit_IfExp(self, node):
         self.visit_child_nodes(node)
@@ -174,6 +179,8 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
                 self.visit_CallPrint(node)
             elif node.func.id == 'divmod':
                 self.visit_CallDivmod(node)
+            elif node.func.id == 'exit':
+                self.visit_CallExit(node)
             else:
                 self.visit_child_nodes(node)
         else:
@@ -196,6 +203,10 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         else:
             raise CheckException('divmod results must be assigned immediately', node)
         self.visit_child_nodes(node)
+
+    def visit_CallExit(self, node):
+        if len(node.args) > 0:
+           raise CheckException('arguments are not allowed', node)
 
     def visit_If(self, node):
         self.visit_child_nodes(node)
@@ -232,7 +243,8 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
             raise CheckException('no kwarg arguments', node)
         if len(node.args.defaults) > 0:
             raise CheckException('no default arguments', node)
-        for _ in node.body: self.visit(_)
+        for _ in node.body:
+            self.visit(_)
 
     def visit_child_nodes(self, node):
         for _ in ast.iter_child_nodes(node):
