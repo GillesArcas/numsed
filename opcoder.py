@@ -358,7 +358,7 @@ def inline_helper_opcodes(code):
 
 def PRINT_DECL():
     return (
-        'LOAD_CONST               print',
+        'LOAD_CONST               print.func',
         'MAKE_FUNCTION            0',
         'STORE_NAME               print'
     )
@@ -366,7 +366,7 @@ def PRINT_DECL():
 
 def PRINT():
     return (                            # PS: ?         HS: N;label;X
-        ':print',
+        ':print.func',
         'PRINT_ITEMS',                  # PS: N         HS: label;X
         'PRINT_NEWLINE',
         'LOAD_CONST 0',                 # PS: N         HS: 0;label;X
@@ -660,7 +660,7 @@ def interpreter(code, coverage=False):
             stack.append(instr_pointer)
             for _ in range(int(arg)):
                 stack.append(args.pop())
-            if func == 'print':
+            if func == 'print.func':
                 stack.append(int(arg))
             instr_pointer = labels[func]
         elif opc == 'RETURN_VALUE':

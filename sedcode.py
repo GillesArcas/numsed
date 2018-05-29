@@ -73,7 +73,7 @@ def run_sed(sed):
 def sedcode(opcode):
     global function_labels, return_labels
 
-    function_labels = ['print']
+    function_labels = ['print.func']
     return_labels = []
 
     for instr in opcode:
@@ -412,7 +412,7 @@ def CALL_FUNCTION(argc):
     snippet = r'''
         x
         s/^(([^;]*;){argc})([^;]+;)/\3\1return_label;/
-        s/^print;/print;nargs;/
+        s/^print.func;/print.func;nargs;/
         x
         POP
         b call_function
