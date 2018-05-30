@@ -186,9 +186,6 @@ def opcodes(dis_code):
     newcode = []
     newcode.append('STARTUP')
 
-    # add dummy context to be removed by final RETURN_VALUE
-    newcode.append('MAKE_CONTEXT')
-
     # add print declaration
     newcode.extend(PRINT_DECL())
 
@@ -200,6 +197,9 @@ def opcodes(dis_code):
 
     # normalize disassembly labels and opcode arguments
     newcode.extend(dis_code)
+
+    # handle script termination
+    replace_script_return_with_exit(newcode)
 
     # inline helper functions (is_positive, negative, divide_by_ten)
     newcode = inline_helper_opcodes(newcode)
@@ -296,6 +296,16 @@ def current_loop(opcode, instr_pointer):
 
 
 # -- Other code transformations ----------------------------------------------
+
+
+def replace_script_return_with_exit(code):
+    for index, instr in enumerate(code):
+        if 'RETURN_VALUE' in instr:
+            # replace script RETURN_VALUE (first RETURN_VALUE in disassembly) with EXIT
+            code[index] = 'EXIT'
+            # delete previous LOAD_CONST None
+            del code[index - 1]
+            break
 
 
 def primitive_opcode(func):
@@ -490,9 +500,6 @@ def interpreter(code, coverage=False):
             opcode, argument = opcode[0], opcode[1:]
             labels[argument] = len(opcodes)
         opcodes.append((opcode, argument))
-
-    # add label for final RETURN_VALUE
-    stack.append(1000000000)
 
     result = []
 
