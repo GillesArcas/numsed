@@ -761,9 +761,29 @@ def fac(n):
     else:
         return n * fac(n - 1)
 
-n = 10
-r = fac(n)
-print(r)
+print(fac(10))
+# ---
+# recursion: fac
+def fac(n):
+    if n == 1:
+        return 1
+    else:
+        r = fac(n - 1)
+        return n * r
+
+print(fac(10))
+# ---
+# tail recursion (no tco): fac
+def fac(n):
+    return fac_aux(n, n, 1)
+
+def fac_aux(n, i, r):
+    if i == 1:
+        return r
+    else:
+        return fac_aux(n, i - 1, i * r)
+
+print(fac(100))
 # ---
 # recursion: fib
 def fib(n):
@@ -773,6 +793,43 @@ def fib(n):
         return fib(n - 1) + fib(n - 2)
 
 print(fib(10))
+# ---
+# tail recursion (no tco): fib
+def fib(n):
+    if n < 3:
+        return 1
+    else:
+        return fib_aux(2, n, 1, 1)
+
+def fib_aux(i, n, r, rm1):
+    if i == n:
+        return r
+    else:
+        return fib_aux(i + 1, n, rm1 + r, r)
+
+print(fib(100))
+# ---
+# recursion: binomial coefficient
+def binomial(n, k):
+    if k == 0 or k == n:
+        return 1
+    else:
+        return binomial(n - 1, k - 1) + binomial(n - 1, k)
+
+n = 8
+k = 0
+while k <= n:
+    print(binomial(n, k))
+    k += 1
+# ---
+# recursion: McCarthy 91 function
+def f91(n):
+    if n > 100:
+        return n - 10
+    else:
+        return f91(f91(n + 11))
+        
+print(f91(87))
 # ---
 # recursion: Hofstadter G sequence
 def G(n):
@@ -801,18 +858,27 @@ def Q(n):
 
 print(Q(10))
 # ---
-# recursion: binomial coefficient
-def binomial(n, k):
-    if k == 0 or k == n:
-        return 1
+# recursion: tak
+def tak(x, y, z):
+    if x <= y:
+        return z
     else:
-        return binomial(n - 1, k - 1) + binomial(n - 1, k)
+        return tak(tak(x - 1, y, z),
+                   tak(y - 1, z, x),
+                   tak(z - 1, x, y))
 
-n = 8
-k = 0
-while k <= n:
-    print(binomial(n, k))
-    k += 1
+print(tak(12, 8, 4))
+# ---
+# recursion: ackermann
+def ack(m, n):
+    if m == 0:
+        return n + 1
+    elif n == 0:
+        return ack(m - 1, 1)
+    else:
+        return ack(m - 1, ack(m, n - 1))
+
+print(ack(3, 2))
 # ---
 # mutual recursion: odd/even
 def even(n):
