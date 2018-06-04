@@ -10,11 +10,11 @@ fpdef: NAME
 
 stmt: simple_stmt | compound_stmt
 simple_stmt: small_stmt (';' small_stmt)* [';'] NEWLINE
-small_stmt: (expr_stmt | print_stmt  | pass_stmt | flow_stmt | global_stmt)
-expr_stmt: test (augassign test | ('=' test)*)
+small_stmt: (expr_stmt | print_stmt | pass_stmt | flow_stmt | global_stmt)
+expr_stmt: testlist (augassign testlist | ('=' testlist)*)
 augassign: ('+=' | '-=' | '*=' | '//=' | '%=' | **=')
 
-print_stmt: 'print' '(' test ')'
+print_stmt: 'print' '(' [testlist] ')'
 pass_stmt: 'pass'
 flow_stmt: break_stmt | continue_stmt | return_stmt
 break_stmt: 'break'
@@ -39,6 +39,8 @@ arith_expr: term (('+'|'-') term)*
 term: factor (('*'|'//'|'%'') factor)*
 factor: ('+'|'-') factor | power
 power: atom trailer* ['**' factor]
+
+# STRING are allowed only as print arguments
 atom: NAME | NUMBER | STRING
 
 trailer: '(' [arglist] ')'
