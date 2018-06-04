@@ -93,7 +93,9 @@ The other parameters are mainly used for development, testing or optimization.
 
 `filename` can be file containing opcodes with `.opc` extension. In that case, the transformation argument may be `--opcodes` or `--sed`. The opcodes contained in the file are executed, or used to generate sed instructions depending on the action.
 
-`filename` is a collection of scripts if ended with `.suite.py`. Several python scripts are contained in the same file, separated by a comment with at least two dashes (`# --`). In that case, the action is applied separately to each script in the collection.
+`filename` is a collection of scripts if ended with `.suite.py`. Several python scripts are contained in the same file, separated by a comment with at least two dashes (`# ---`). In that case, the action is applied separately to each script in the collection.
+
+`filename` can be the name of directory. In that case, the action is applied to each python script in this directory. 
 
 ###### Action parameter
 
