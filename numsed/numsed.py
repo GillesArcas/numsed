@@ -11,12 +11,12 @@ import glob
 import subprocess
 import time
 
-import common
-import checker
-import transformer
-import opcoder
-import sedcode
-import snippet_test
+from . import common
+from . import checker
+from . import transformer
+from . import opcoder
+from . import sedcode
+from . import snippet_test
 
 
 VERSION = '0.01'
@@ -275,7 +275,6 @@ def process_batch(args):
 def numsed(argstring=None):
 
     parser, args = parse_command_line(argstring)
-
     if args.help:
         parser.print_help()
 

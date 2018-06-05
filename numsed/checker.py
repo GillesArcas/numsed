@@ -27,8 +27,8 @@ from __future__ import print_function
 import inspect
 import ast
 import re
-import common
-import numsed_lib
+from . import common
+from . import numsed_lib
 
 
 FUTURE_FUNCTION = 'from __future__ import print_function\n'

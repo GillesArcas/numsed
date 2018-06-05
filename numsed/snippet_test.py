@@ -3,8 +3,8 @@ from __future__ import print_function
 import subprocess
 import random
 
-import common
-from sedcode import (normalize,
+from . import common
+from .sedcode import (normalize,
                  STARTUP, MAKE_CONTEXT, POP_CONTEXT, PUSH, POP,
                  LOAD_GLOBAL, STORE_GLOBAL, LOAD_FAST, STORE_FAST,
                  CMP, FULLADD, FULLSUB, UADD, USUB, FULLMUL,

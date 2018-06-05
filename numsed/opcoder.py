@@ -9,9 +9,9 @@ import re
 import dis
 import types
 
-import common
-import transformer
-import numsed_lib
+from . import common
+from . import transformer
+from . import numsed_lib
 
 
 OPCODES = ('LOAD_CONST', 'LOAD_NAME', 'LOAD_GLOBAL', 'STORE_NAME', 'STORE_GLOBAL',
