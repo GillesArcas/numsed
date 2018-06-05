@@ -322,24 +322,26 @@ def UNPACK_SEQUENCE(n):
 
 def MAKE_CONTEXT():
     snippet = '''
-        x
+        g
         s/$/|/
-        x
+        h
     '''
     return snippet
 
 
 def POP_CONTEXT():
     snippet = '''
-        x
+        g
         s/[|][^|]*$//
-        x
+        h
     '''
     return snippet
 
 
 def LOAD_GLOBAL(name):
-    # TOS = val(name)
+    """
+    TOS = val(name)
+    """
     snippet = r'''                      # PS: ?         HS: ?;v;x?
         g                               # PS: ?;v;x?    HS: ?;v;x?
         /@[^|]*;name;/! { s/.*/name/; b NameError }
@@ -352,7 +354,9 @@ def LOAD_GLOBAL(name):
 
 
 def STORE_GLOBAL(name):
-    # name = POP()
+    """
+    name = POP()
+    """
     snippet = r'''                      # PS: ?         HS: x;X
         g
         s/(@[^|]*);name;[^;|]*/\1/      # PS: x;X'      HS: ? (del ;var;val in PS)
@@ -367,7 +371,9 @@ LOAD_NAME = LOAD_GLOBAL
 
 
 def LOAD_FAST(name):
-    # TOS = val(name)
+    """
+    TOS = val(name)
+    """
     snippet = r'''                      # PS: ?         HS: ?;v;x?
         g                               # PS: ?;v;x?    HS: ?;v;x?
         t.reset                         # reset t flag
@@ -382,7 +388,9 @@ def LOAD_FAST(name):
 
 
 def STORE_FAST(name):
-    # name = POP()
+    """
+    name = POP()
+    """
     snippet = r'''                      # PS: ?         HS: x;X
         g                               # PS: x;X       HS: ?
         s/;name;[^;|]*([^|]*)$/\1/      # PS: x;X'      HS: ? (del ;var;val in PS)
@@ -410,10 +418,10 @@ def CALL_FUNCTION(argc):
     # argc parameters on top of stack above name of function
     # add return label and swap parameters and name
     snippet = r'''
-        x
+        g
         s/^(([^;]*;){argc})([^;]+;)/\3\1return_label;/
         s/^print.func;/print.func;nargs;/
-        x
+        h
         POP
         b call_function
         :return_label
