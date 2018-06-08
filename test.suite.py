@@ -893,7 +893,6 @@ def odd(n):
     else:
         return even(n - 1)
 
-n = 10
 print(even(10))
 print(odd(10))
 # ---

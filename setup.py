@@ -1,16 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from setuptools import setup, find_packages
+import os
 import re
 import codecs
-import os
-
-
-here = os.path.abspath(os.path.dirname(__file__))
+from setuptools import setup, find_packages
 
 
 def read(*parts):
+    here = os.path.abspath(os.path.dirname(__file__))
     # intentionally *not* adding an encoding option to open, See:
     #   https://github.com/pypa/virtualenv/issues/201#issuecomment-3145690
     with codecs.open(os.path.join(here, *parts), 'r') as fp:
@@ -27,15 +25,19 @@ def find_version(*file_paths):
 
 
 if __name__ == "__main__":
-	setup(
-		name='numsed',
-		version=find_version("numsed", "numsed.py"),
-		author="Gilles Arcas",
-		description='Program that gives a reputation score to url\'s\n.',
-		packages=find_packages(),
+    setup(
+        name='numsed',
+        version=find_version("numsed", "numsed.py"),
+        licence='MIT',
+        url='https://github.com/gillesArcas/numsed',
+        author='Gilles Arcas',
+        author_email='gilles.arcas@gmail.com',
+        description='Computing with sed: a compiler from python to sed\n',
+        packages=find_packages(),
+        data_files=[('', ['LICENSE', 'README.md'])],
         py_package='test.suite.py',
-		entry_points = {
-			'console_scripts': ['numsed = numsed.numsed:numsed']
-    },
-    zip_safe=True,
-   )
+        entry_points={
+            'console_scripts': ['numsed = numsed.numsed:numsed_main']
+        },
+        zip_safe=True,
+    )

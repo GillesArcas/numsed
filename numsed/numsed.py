@@ -290,26 +290,37 @@ def numsed(argstring=None):
     else:
         if os.path.isdir(args.source):
             result = process_tests(args, tests_from_dir)
-        elif args.source.endswith('.suite.py'):
-            result = process_tests(args, tests_from_suite)
-        elif args.source.endswith('.py'):
-            result = process_script(args, args.source)
-        elif args.source.endswith('.opc'):
-            if args.run:
-                opcode = open(args.source).readlines()
-                opcode = [_.rstrip() for _ in opcode]
-                result = opcoder.interpreter(opcode)
+        elif os.path.isfile(args.source):
+            if args.source.endswith('.suite.py'):
+                result = process_tests(args, tests_from_suite)
+            elif args.source.endswith('.py'):
+                result = process_script(args, args.source)
+            elif args.source.endswith('.opc'):
+                if args.run:
+                    opcode = open(args.source).readlines()
+                    opcode = [_.rstrip() for _ in opcode]
+                    result = opcoder.interpreter(opcode)
+                else:
+                    pass
             else:
-                pass
+                print('numsed error: file type not handled:', args.source)
+                return ''
         else:
-            pass
+            print('numsed error: file not found:', args.source)
+            return ''
+
         if args.coverage:
             opcoder.display_coverage()
+
         return result
 
 
-if __name__ == "__main__":
+def numsed_main():
     if numsed():
         exit(0)
     else:
         exit(1)
+
+
+if __name__ == "__main__":
+    numsed_main()
