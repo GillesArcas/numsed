@@ -1,26 +1,14 @@
-[tox]
-envlist = py27, py34, py35, p36, pypy, docs
-skipsdist = true
+# Config file for automatic testing at travis-ci.org
 
-[travis]
-python =
-    3.6: py36
-    3.5: py35
-    3.4: py34
-    2.7: py27
+language: python
+python:
+  - 3.6
+  - 3.5
+  - 3.4
+  - 2.7
 
-[testenv:docs]
-basepython=python
-changedir=docs
-deps=sphinx
-commands=
-    sphinx-build -b html -d {envtmpdir}/doctrees . {envtmpdir}/html
+# command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
+install: pip install -U tox-travis
 
-[testenv]
-setenv =
-    PYTHONPATH = {toxinidir}
-deps =
-    -r{toxinidir}/requirements_dev.txt
-commands =
-    pip install -U pip
-    py.test
+# command to run tests, e.g. python setup.py test
+script: tox
