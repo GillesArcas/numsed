@@ -33,6 +33,7 @@ if __name__ == "__main__":
 		author="Gilles Arcas",
 		description='Program that gives a reputation score to url\'s\n.',
 		packages=find_packages(),
+        py_package='test.suite.py',
 		entry_points = {
 			'console_scripts': ['numsed = numsed.numsed:numsed']
     },
