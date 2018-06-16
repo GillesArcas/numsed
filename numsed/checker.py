@@ -27,7 +27,6 @@ from __future__ import print_function
 import inspect
 import ast
 import re
-
 try:
     import common
     import numsed_lib

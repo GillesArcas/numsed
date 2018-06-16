@@ -35,6 +35,7 @@ if __name__ == "__main__":
         description='Computing with sed: a compiler from python to sed\n',
         packages=find_packages(),
         data_files=[('', ['LICENSE', 'README.md'])],
+        py_package='test.suite.py',
         entry_points={
             'console_scripts': ['numsed = numsed.numsed:numsed_main']
         },

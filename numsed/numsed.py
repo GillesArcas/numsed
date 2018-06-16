@@ -301,7 +301,6 @@ def process_batch(args):
 def numsed(argstring=None):
 
     parser, args = parse_command_line(argstring)
-
     if args.help:
         parser.print_help()
 
