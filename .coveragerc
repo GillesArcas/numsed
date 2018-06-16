@@ -2,8 +2,8 @@
 
 [report]
 omit =
-    codegen.py
-    numsed_lib.py
+    numsed/codegen.py
+    numsed/numsed_lib.py
     
 exclude_lines =
     not used
