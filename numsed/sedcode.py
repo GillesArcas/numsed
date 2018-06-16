@@ -7,8 +7,12 @@ from __future__ import print_function
 import re
 import subprocess
 
-from . import common
-from . import opcoder
+try:
+    import common
+    import opcoder
+except:
+    from . import common
+    from . import opcoder
 
 
 class SedConversion(common.NumsedConversion):
@@ -51,9 +55,11 @@ def make_sed_header(source):
         return ''
 
 def run_sed(sed):
+    # save sed script
     with open(common.TMP_SED, 'w') as f:
         print(sed, file=f)
 
+    # save minimal input file
     with open(common.TMP_INPUT, 'w') as f:
         print('0', file=f)
 
@@ -322,18 +328,18 @@ def UNPACK_SEQUENCE(n):
 
 def MAKE_CONTEXT():
     snippet = '''
-        g
+        x
         s/$/|/
-        h
+        x
     '''
     return snippet
 
 
 def POP_CONTEXT():
     snippet = '''
-        g
+        x
         s/[|][^|]*$//
-        h
+        x
     '''
     return snippet
 
@@ -519,6 +525,10 @@ def CHECKINT2():
 
 # -- Boolean operations ------------------------------------------------------
 
+# Only UNARY_NOT is implemented. BINARY_AND and BINARY_OR implement
+# binary operations (& and |) are not implemented. Logical or and and are
+# compiled with tests and jumps.
+
 
 def UNARY_NOT():
     snippet = r'''
@@ -527,28 +537,6 @@ def UNARY_NOT():
         s/^\d+/0/
         s/^!/1/
         h
-    '''
-    return snippet
-
-
-def BINARY_AND():
-    snippet = r'''
-        SWAP
-        POP2
-        s/^0;[+-]?\d+;/0/
-        s/^[+-1-9]\d+;([+-]?\d+);/\1/
-        PUSH
-    '''
-    return snippet
-
-
-def BINARY_OR():
-    snippet = r'''
-        SWAP
-        POP2
-        s/^([+-1-9]\d+);[+-]?\d+;/\1/
-        s/^0;[+-]?\d+;/0/
-        PUSH
     '''
     return snippet
 

@@ -6,20 +6,29 @@ from __future__ import print_function
 
 import argparse
 import os
+import sys
 import webbrowser
 import glob
 import subprocess
 import time
 
-from . import common
-from . import checker
-from . import transformer
-from . import opcoder
-from . import sedcode
-from . import snippet_test
+try:
+    import common
+    import checker
+    import transformer
+    import opcoder
+    import sedcode
+    import snippet_test
+except:
+    from . import common
+    from . import checker
+    from . import transformer
+    from . import opcoder
+    from . import sedcode
+    from . import snippet_test
 
 
-VERSION = '0.01'
+VERSION = '0.21'
 
 USAGE = '''
 %s
@@ -60,6 +69,9 @@ def parse_command_line(argstring=None):
     xgroup.add_argument("--unsigned", help="replace division, modulo and power by functions", action="store_true")
     xgroup.add_argument("--signed", help="replace all operators by functions (default)", action="store_true")
 
+    # do not use, it is intended to pass batch directory ni batch mode
+    parser.add_argument("--batchdir", help=argparse.SUPPRESS, action="store")
+
     parser.add_argument("source", nargs='?', help=argparse.SUPPRESS)
 
     if argstring is None:
@@ -94,6 +106,15 @@ def parse_command_line(argstring=None):
     if args.coverage and not args.opcode:
         print('numsed.py: error: argument --coverage requires argument --opcode')
         parser.exit(1)
+
+    if args.batch:
+        # if batch, tests are looked for in batch directory
+        args.batchdir = os.path.dirname(args.source)
+    else:
+        # look for test file in argument test directory
+        # args.source may be None (cf --snippets)
+        if args.batchdir and args.source and not os.path.isabs(args.source):
+            args.source = os.path.join(args.batchdir, args.source)
 
     return parser, args
 
@@ -191,7 +212,7 @@ def expected_result(args, source, result, checked, msg):
 def test_script(args, source, result, checked, msg):
     """
     if result is None, the test has to be compared with the python script
-    if result is not None, the test has to be compared with it
+    if result is not None, the test has to be compared with this result
     checked and msg are the results of syntax checking
     """
     if not source.endswith('.py'):
@@ -265,8 +286,13 @@ def process_batch(args):
     with open(args.source) as batch:
         for line in batch:
             if line.strip() and line[0] != ';':
-                print(line.strip())
-                status = numsed(line)
+                testargs = line.strip()
+
+                # propagate parameter test directory
+                if args.batchdir:
+                    testargs += ' --batchdir %s' % args.batchdir
+
+                status = numsed(testargs)
                 if not status:
                     break
     print('ALL TESTS OK' if status else 'ONE TEST FAILURE in ' + line.strip())
