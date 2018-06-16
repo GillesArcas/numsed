@@ -18,9 +18,15 @@ from __future__ import print_function
 import sys
 import inspect
 import ast
-import codegen
-import common
-import numsed_lib
+
+try:
+    import common
+    import numsed_lib
+    import codegen
+except:
+    from . import common
+    from . import numsed_lib
+    from . import codegen
 
 
 LITERAL, UNSIGNED, SIGNED = range(3)

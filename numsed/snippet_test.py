@@ -3,12 +3,20 @@ from __future__ import print_function
 import subprocess
 import random
 
-import common
-from sedcode import (normalize,
-                 STARTUP, MAKE_CONTEXT, POP_CONTEXT, PUSH, POP,
-                 LOAD_GLOBAL, STORE_GLOBAL, LOAD_FAST, STORE_FAST,
-                 CMP, FULLADD, FULLSUB, UADD, USUB, FULLMUL,
-                 MULBYDIGIT, UMUL, DIVBY2, ODD, EQU)
+try:
+    import common
+    from sedcode import (normalize,
+                    STARTUP, MAKE_CONTEXT, POP_CONTEXT, PUSH, POP,
+                    LOAD_GLOBAL, STORE_GLOBAL, LOAD_FAST, STORE_FAST,
+                    CMP, FULLADD, FULLSUB, UADD, USUB, FULLMUL,
+                    MULBYDIGIT, UMUL, DIVBY2, ODD, EQU)
+except:
+    from . import common
+    from .sedcode import (normalize,
+                    STARTUP, MAKE_CONTEXT, POP_CONTEXT, PUSH, POP,
+                    LOAD_GLOBAL, STORE_GLOBAL, LOAD_FAST, STORE_FAST,
+                    CMP, FULLADD, FULLSUB, UADD, USUB, FULLMUL,
+                    MULBYDIGIT, UMUL, DIVBY2, ODD, EQU)
 
 
 def random_ndigits(n):
