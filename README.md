@@ -1,3 +1,5 @@
+https://travis-ci.org/GillesArcas/numsed.svg?branch=master
+
 # numsed
 Computing with sed: compiling python into sed
 
