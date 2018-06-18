@@ -55,7 +55,10 @@ def disassemble(tree):
     code = compile(tree, '<ast>', "exec")
 
     with common.ListStream() as x:
-        dis.dis(code)
+        if tuple(sys.version_info)[:2] <= (3, 6):
+            dis.dis(code)
+        else:
+            dis.dis(code, depth=0)
         for oparg in code.co_consts:
             if isinstance(oparg, types.CodeType):
                 func_code = oparg
