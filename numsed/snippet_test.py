@@ -74,10 +74,10 @@ def snippet_context_0():
         '''
     snippet_end = ''
     snippet = '\n'.join([snippet_begin] +
-                        [pattern_store % (n, s, s) for s, n in zip(lvars, range(1, nvars+1))] +
-                        [pattern_load  % (n, s) for s, n in zip(lvars, range(nvars+ 1, nvars+11))] +
-                        [pattern_store % (n, s, s) for s, n in zip(lvars, range(nvars+11, nvars+21))] +
-                        [pattern_load  % (n, s) for s, n in zip(lvars, range(nvars+21, nvars+31))] +
+                        [pattern_store % (n, s, s) for s, n in zip(lvars, range(1, nvars + 1))] +
+                        [pattern_load  % (n, s) for s, n in zip(lvars, range(nvars + 1, nvars + 11))] +
+                        [pattern_store % (n, s, s) for s, n in zip(lvars, range(nvars + 11, nvars + 21))] +
+                        [pattern_load  % (n, s) for s, n in zip(lvars, range(nvars + 21, nvars + 31))] +
                         [snippet_end])
     return snippet
 
