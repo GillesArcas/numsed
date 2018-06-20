@@ -25,11 +25,8 @@ class SedConversion(common.NumsedConversion):
     def trace(self):
         return self.sed
 
-    def run(self):
-        return run_sed(self.sed)
-
-    def print_run_result(self):
-        return False
+    def run(self, verbose=True):
+        return run_sed(self.sed, verbose)
 
 
 HEADER1 = '''\
@@ -54,7 +51,7 @@ def make_sed_header(source):
     else:
         return ''
 
-def run_sed(sed):
+def run_sed(sed, verbose=True):
     # save sed script
     with open(common.TMP_SED, 'w') as f:
         print(sed, file=f)
@@ -65,7 +62,7 @@ def run_sed(sed):
 
     com = 'sed -u -n -r -f %s %s' % (common.TMP_SED, common.TMP_INPUT)
 
-    if 0:
+    if verbose is False:
         res = subprocess.check_output(com).decode('ascii')
     else:
         res = common.run(com)

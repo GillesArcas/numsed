@@ -165,7 +165,7 @@ class OpcodeConversion(common.NumsedConversion):
     def trace(self):
         return '\n'.join(self.opcode)
 
-    def run(self):
+    def run(self, verbose=False):
         with common.ListStream() as x:
             interpreter(self.opcode, coverage=False)
         return x.singlestring()

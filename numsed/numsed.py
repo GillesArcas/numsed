@@ -9,7 +9,6 @@ import os
 import sys
 import webbrowser
 import glob
-import subprocess
 import time
 
 try:
@@ -154,16 +153,17 @@ def numsed_conversion(args):
         return None
 
 
-def process_script(args, source, expected_result=None):
+def process_script(args, source, title, expected_result=None):
 
     checked, msg = checker.check(source)
 
     if args.test:
-        return test_script(args, source, expected_result, checked, msg)
+        return test_script(args, source, title, expected_result, checked, msg)
     elif checked is False:
         print(msg)
         return ''
     else:
+        print(title)
         conversion = numsed_conversion(args)
         target = conversion(source, transformation(args))
         if args.run:
@@ -209,7 +209,7 @@ def expected_result(args, source, result, checked, msg):
             return result_from_script(source)
 
 
-def test_script(args, source, result, checked, msg):
+def test_script(args, source, title, result, checked, msg):
     """
     if result is None, the test has to be compared with the python script
     if result is not None, the test has to be compared with this result
@@ -218,9 +218,10 @@ def test_script(args, source, result, checked, msg):
     if not source.endswith('.py'):
         return False
 
+    print('%-50s' % title, end='')
+
     # make reference by running original script or using result lines in suite
     ref = expected_result(args, source, result, checked, msg)
-    print(ref)
 
     # run conversion or use result of syntax checking
     if checked is False:
@@ -232,14 +233,15 @@ def test_script(args, source, result, checked, msg):
 
         # run conversion
         t0 = time.time()
-        res = target.run()
+        res = target.run(verbose=False)
         time_sed = time.time() - t0
-        if target.print_run_result():
-            print(res)
 
     # compare
     status, diff = common.list_compare('ref', 'res', ref.splitlines(), res.splitlines())
-    if not status:
+    if status:
+        print(' OK %6.2f' % time_sed)
+    else:
+        print(' FAIL')
         for _ in diff:
             print(_)
 
@@ -248,37 +250,33 @@ def test_script(args, source, result, checked, msg):
 
 def tests_from_dir(source):
     for test in glob.glob(os.path.join(source, '*.py')):
-        print(test)
         yield test, test, None
 
 
 def tests_from_suite(source):
     for test, result in common.testlines(source):
-        print(test[0].rstrip())
         with open(common.TMP_PY, 'w') as f:
             f.writelines(test)
         yield common.TMP_PY, test[0].rstrip(), result
 
 
-def process_tests(args, tests_from_source):
-    timing = []
-    status = True
-    for test, title, result in tests_from_source(args.source):
-        r = process_script(args, test, result)
-        status = status and (not args.test or r)
-        if args.test:
-            timing.append((title, status[1]))
-            status = status[0]
-        if not status:
-            break
-    if args.test:
-        s = 0
-        for (test, timing) in timing:
-            print('%-40s %6.2f' % (test, timing))
-            s += timing
-        print('%-40s %6.2f' % ('total', s))
+def process_testset(args, tests_from_source):
+    if not args.test:
+        for test, title, result in tests_from_source(args.source):
+            process_script(args, test, title, result)
+        return True
+    else:
+        status = True
+        timing = 0
+        for test, title, result in tests_from_source(args.source):
+            sta, tim = process_script(args, test, title, result)
+            status = status and sta
+            timing += tim
+            if not status:
+                break
+        print('%-50s    %6.2f' % ('total', timing))
         print('ALL TESTS OK' if status else 'ONE TEST FAILURE')
-    return status
+        return status
 
 
 def process_batch(args):
@@ -315,12 +313,12 @@ def numsed(argstring=None):
 
     else:
         if os.path.isdir(args.source):
-            result = process_tests(args, tests_from_dir)
+            result = process_testset(args, tests_from_dir)
         elif os.path.isfile(args.source):
             if args.source.endswith('.suite.py'):
-                result = process_tests(args, tests_from_suite)
+                result = process_testset(args, tests_from_suite)
             elif args.source.endswith('.py'):
-                result = process_script(args, args.source)
+                result = process_script(args, args.source, args.source)
             elif args.source.endswith('.opc'):
                 if args.run:
                     opcode = open(args.source).readlines()

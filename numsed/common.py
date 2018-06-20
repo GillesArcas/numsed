@@ -25,14 +25,11 @@ class NumsedConversion:
     def trace(self):
         return ''
 
-    def run(self):
+    def run(self, verbose=True):
         return ''
 
     def coverage(self):
         return 'Coverage not implemented for current conversion.'
-
-    def print_run_result(self):
-        return True
 
 
 class ListStream:

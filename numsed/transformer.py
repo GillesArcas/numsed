@@ -349,7 +349,7 @@ class AstConversion(common.NumsedConversion):
             pprint_ast(self.tree)
         return x.singlestring()
 
-    def run(self):
+    def run(self, verbose=False):
         try:
             with common.ListStream() as x:
                 code = compile(self.tree, filename="<ast>", mode="exec")
@@ -384,7 +384,7 @@ class ScriptConversion(AstAssertConversion):
     def trace(self):
         return self.code
 
-    def run(self):
+    def run(self, verbose=False):
         try:
             with common.ListStream() as x:
                 code = compile(self.code, filename="<script>", mode="exec")
