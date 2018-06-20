@@ -62,7 +62,7 @@ def run_sed(sed, verbose=True):
 
     com = 'sed -u -n -r -f %s %s' % (common.TMP_SED, common.TMP_INPUT)
 
-    if verbose is False:
+    if 0: # erbose is False:
         res = subprocess.check_output(com).decode('ascii')
     else:
         res = common.run(com)
