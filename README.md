@@ -1,6 +1,9 @@
 # numsed
 Computing with sed: compiling python into sed
 
+# [![Build Status](https://travis-ci.org/GillesArcas/numsed.svg?branch=master)](https://travis-ci.org/GillesArcas/numsed)
+
+
 # Table of Contents
 * [Description](#description)
 * [Language](#language)
