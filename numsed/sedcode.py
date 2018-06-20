@@ -62,10 +62,11 @@ def run_sed(sed, verbose=True):
 
     com = 'sed -u -n -r -f %s %s' % (common.TMP_SED, common.TMP_INPUT)
 
-    if 0: # erbose is False:
+    if 0:
+        # does not work with travis
         res = subprocess.check_output(com).decode('ascii')
     else:
-        res = common.run(com)
+        res = common.run(com, echo=verbose)
 
     return res
 
