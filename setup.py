@@ -3,6 +3,7 @@
 
 import os
 import re
+import glob
 import codecs
 from setuptools import setup, find_packages
 
@@ -29,15 +30,17 @@ if __name__ == "__main__":
         name='numsed',
         version=find_version("numsed", "numsed.py"),
         licence='MIT',
-        url='https://github.com/gillesArcas/numsed',
+        url='https://github.com/GillesArcas/numsed',
         author='Gilles Arcas',
         author_email='gilles.arcas@gmail.com',
         description='Computing with sed: a compiler from python to sed\n',
         packages=find_packages(),
-        data_files=[('', ['LICENSE', 'README.md'])],
-        py_package='test.suite.py',
         entry_points={
             'console_scripts': ['numsed = numsed.numsed:numsed_main']
         },
         zip_safe=True,
+        include_package_data=True,
+        data_files=[
+           ('Lib/site-packages/numsed', ['README.md', 'LICENSE'] + glob.glob('tests/*.*')),
+        ]
     )
