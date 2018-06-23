@@ -293,7 +293,8 @@ def process_batch(args):
                 status = numsed(testargs)
                 if not status:
                     break
-    print('ALL TESTS OK' if status else 'ONE TEST FAILURE in ' + line.strip())
+    print('BATCH OK' if status else 'ONE TEST FAILURE in ' + line.strip())
+    return status
 
 
 def numsed(argstring=None):
@@ -306,7 +307,7 @@ def numsed(argstring=None):
         do_fullhelp()
 
     elif args.batch:
-        process_batch(args)
+        return process_batch(args)
 
     elif args.snippets:
         return snippet_test.main()
