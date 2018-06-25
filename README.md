@@ -64,6 +64,8 @@ Compiling a python script into sed is made in four passes:
 * The disassembly is simplified and completed to obtain an opcode program which can be interpreted independently. The interpretation of opcodes is used for testing.
 * Finally, the sed script is obtained by replacing each opcode by a sed snippet.
 
+The example directory contains an exemple of a simple python script (add.py) and the resulting opcode and sed scripts (add.opc and add.sed). The opcode script can be interpreted with the --opcode option. The sed script can be interpreted with any sed utility.
+
 ## Getting started
 
 To install, just clone or download the depository zip file. There is no dependency.
