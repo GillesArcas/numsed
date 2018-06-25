@@ -53,6 +53,8 @@ The following limitations are checked during conversion:
 
 Note also that there is no limitations (less memory) on recursion.
 
+Examples of this dialect are given in the test suite and in the example folder. This includes 20 examples from Project Euler. 
+
 ## Compilation process
 
 Compiling a python script into sed is made in four passes:
