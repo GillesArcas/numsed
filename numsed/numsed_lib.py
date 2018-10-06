@@ -63,7 +63,6 @@ def signed_gte(x, y):
 
 def udivmod(a, b):
     if b == 10:
-        #return divide_by_ten(a), modulo_ten(a)
         return divmod10(a)
 
     # http://compoasso.free.fr/primelistweb/page/prime/euclide.php
@@ -91,7 +90,6 @@ def udiv(a, b):
     if b == 10:
         return divide_by_ten(a)
 
-    # http://compoasso.free.fr/primelistweb/page/prime/euclide.php
     r = a
     q = 0
     n = 0
@@ -116,15 +114,6 @@ def umod(a, b):
     if b == 10:
         return modulo_ten(a)
 
-    q = udiv(a, b)
-    return a - q * b
-
-
-def umod(a, b):
-    if b == 10:
-        return modulo_ten(a)
-
-    # http://compoasso.free.fr/primelistweb/page/prime/euclide.php
     r = a
     q = 0
     n = 0
