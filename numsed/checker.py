@@ -14,6 +14,8 @@ The following is tested:
 - binary operators are -, +, *, //, % and **, divmod function is available
 - comparison operators are ==, !=, <, <=, >, and >=
 - boolean operators are or, and and not
+- comparison operators and boolean operators are allowed only in test
+  position (if, while and ternary if)
 - functions are defined at module level
 - functions from numsed_lib may not be redefined
 - functions accept only positional arguments with no default value
@@ -153,6 +155,8 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
     def visit_UnaryOp(self, node):
         if not isinstance(node.op, (ast.UAdd, ast.USub, ast.Not)):
             raise CheckException('operator not handled', node)
+        if isinstance(node.op, ast.Not):
+            self.assert_test_position(node)
         self.visit(node.operand)
 
     def visit_BinOp(self, node):
@@ -165,12 +169,13 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         for op in node.ops:
             if not isinstance(op, (ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE)):
                 raise CheckException('comparator not handled', node)
-            else:
-                self.visit(node.left)
-                for _ in node.comparators:
-                    self.visit(_)
+            self.assert_test_position(node)
+            self.visit(node.left)
+            for _ in node.comparators:
+                self.visit(_)
 
     def visit_BoolOp(self, node):
+        self.assert_test_position(node)
         for _ in node.values:
             self.visit(_)
 
@@ -256,6 +261,15 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
 
     def generic_visit(self, node):
         raise CheckException('construct is not handled', node)
+
+    def assert_test_position(self, node):
+        parent = parent_node(self.tree, node)
+        if isinstance(parent, (ast.BoolOp, ast.IfExp, ast.If, ast.While)):
+            pass
+        elif isinstance(parent, ast.UnaryOp) and isinstance(parent.op, ast.Not):
+            pass
+        else:
+            raise CheckException('Not in test position', node)
 
 
 def parent_node(tree, node):

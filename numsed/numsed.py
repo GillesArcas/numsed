@@ -27,7 +27,7 @@ except:
     from . import snippet_test
 
 
-VERSION = '0.21'
+VERSION = '0.9'
 
 USAGE = '''
 %s
@@ -57,7 +57,7 @@ def parse_command_line(argstring=None):
     agroup = parser.add_argument_group('Formats')
     xgroup = agroup.add_mutually_exclusive_group()
     xgroup.add_argument("--ast", help="generate abstract syntax tree", action="store_true")
-    xgroup.add_argument("--script", help="generate python script", action="store_true")
+    xgroup.add_argument("--script", help="generate transformed python script", action="store_true")
     xgroup.add_argument("--disassembly", help="generate disassembly", action="store_true")
     xgroup.add_argument("--opcode", help="generate numsed intermediate opcode", action="store_true")
     xgroup.add_argument("--sed", help="generate sed script (default)", action="store_true")
