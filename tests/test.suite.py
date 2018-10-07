@@ -614,14 +614,26 @@ numsed error: line 2 col 5: comparator not handled
 x = 1 is 2
     ^
 # ---
-# not
+# not must be in test position
 print(not 0)
-print(not 1)
-print(not 2)
 # ===
-1
-0
-0
+numsed error: line 2 col 7: Not in test position
+print(not 0)
+      ^
+# ---
+# or/and must be in test position
+print(0 and 1)
+# ===
+numsed error: line 2 col 7: Not in test position
+print(0 and 1)
+      ^
+# ---
+# comparisons must be in test position
+print(0 == 1)
+# ===
+numsed error: line 2 col 7: Not in test position
+print(0 == 1)
+      ^
 # ---
 # and
 m = -2
@@ -652,24 +664,6 @@ while m <= 2:
               1 if not(m <= n) else 0,
               1 if not(m >  n) else 0,
               1 if not(m >= n) else 0)
-        n += 1
-    m += 1
-# ---
-# and
-m = -2
-while m <= 2:
-    n = -2
-    while n <= 2:
-        print(m and n)
-        n += 1
-    m += 1
-# ---
-# or
-m = -2
-while m <= 2:
-    n = -2
-    while n <= 2:
-        print(m or n)
         n += 1
     m += 1
 # ---
@@ -773,7 +767,7 @@ def fac(n):
 
 print(fac(10))
 # ---
-# tail recursion (no tco): fac
+# tail recursion (terminal call): fac
 def fac(n):
     return fac_aux(n, n, 1)
 
@@ -794,7 +788,7 @@ def fib(n):
 
 print(fib(10))
 # ---
-# tail recursion (no tco): fib
+# tail recursion (terminal call): fib
 def fib(n):
     if n < 3:
         return 1

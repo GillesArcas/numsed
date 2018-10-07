@@ -55,6 +55,13 @@ numsed error: line 2 col 1: cannot assign to
 x[0] = 1
 ^
 # ---
+# reserved word
+is_positive = 1
+# ===
+numsed error: line 2 col 1: reserved word
+is_positive = 1
+^
+# ---
 # chained assignment
 m = n = 42
 print(m, n)
@@ -311,6 +318,13 @@ while m <= 10:
     if m + n == 13:
         continue
 # ---
+# loop on unary positive
+n = 0
+while n <= 10:
+    p = +n
+    print(p)
+    n += 1
+# ---
 # loop on adding values
 m = 0
 while m <= 10:
@@ -384,6 +398,22 @@ while m <= 10:
         n += 1
     m += 1
 # ---
+# exit
+i = 0
+while i < 10:
+    print(i)
+    if i == 5:
+        print('reached', 5)
+        exit()
+    i += 1
+# ---
+# exit
+exit(0)
+# ===
+numsed error: line 2 col 1: arguments are not allowed
+exit(0)
+^
+# ---
 # comparison operators
 m = 0
 while m <= 2:
@@ -455,14 +485,26 @@ numsed error: line 2 col 5: comparator not handled
 x = 1 is 2
     ^
 # ---
-# not
+# not must be in test position
 print(not 0)
-print(not 1)
-print(not 2)
 # ===
-1
-0
-0
+numsed error: line 2 col 7: Not in test position
+print(not 0)
+      ^
+# ---
+# or/and must be in test position
+print(0 and 1)
+# ===
+numsed error: line 2 col 7: Not in test position
+print(0 and 1)
+      ^
+# ---
+# comparisons must be in test position
+print(0 == 1)
+# ===
+numsed error: line 2 col 7: Not in test position
+print(0 == 1)
+      ^
 # ---
 # and
 m = 0
@@ -493,24 +535,6 @@ while m <= 2:
               1 if not(m <= n) else 0,
               1 if not(m >  n) else 0,
               1 if not(m >= n) else 0)
-        n += 1
-    m += 1
-# ---
-# and
-m = 0
-while m <= 2:
-    n = 0
-    while n <= 2:
-        print(m and n)
-        n += 1
-    m += 1
-# ---
-# or
-m = 0
-while m <= 2:
-    n = 0
-    while n <= 2:
-        print(m or n)
         n += 1
     m += 1
 # ---
@@ -602,9 +626,29 @@ def fac(n):
     else:
         return n * fac(n - 1)
 
-n = 10
-r = fac(n)
-print(r)
+print(fac(10))
+# ---
+# recursion: fac
+def fac(n):
+    if n == 1:
+        return 1
+    else:
+        r = fac(n - 1)
+        return n * r
+
+print(fac(10))
+# ---
+# tail recursion (terminal call): fac
+def fac(n):
+    return fac_aux(n, n, 1)
+
+def fac_aux(n, i, r):
+    if i == 1:
+        return r
+    else:
+        return fac_aux(n, i - 1, i * r)
+
+print(fac(100))
 # ---
 # recursion: fib
 def fib(n):
@@ -614,6 +658,43 @@ def fib(n):
         return fib(n - 1) + fib(n - 2)
 
 print(fib(10))
+# ---
+# tail recursion (terminal call): fib
+def fib(n):
+    if n < 3:
+        return 1
+    else:
+        return fib_aux(2, n, 1, 1)
+
+def fib_aux(i, n, r, rm1):
+    if i == n:
+        return r
+    else:
+        return fib_aux(i + 1, n, rm1 + r, r)
+
+print(fib(100))
+# ---
+# recursion: binomial coefficient
+def binomial(n, k):
+    if k == 0 or k == n:
+        return 1
+    else:
+        return binomial(n - 1, k - 1) + binomial(n - 1, k)
+
+n = 8
+k = 0
+while k <= n:
+    print(binomial(n, k))
+    k += 1
+# ---
+# recursion: McCarthy 91 function
+def f91(n):
+    if n > 100:
+        return n - 10
+    else:
+        return f91(f91(n + 11))
+        
+print(f91(87))
 # ---
 # recursion: Hofstadter G sequence
 def G(n):
@@ -642,18 +723,27 @@ def Q(n):
 
 print(Q(10))
 # ---
-# recursion: binomial coefficient
-def binomial(n, k):
-    if k == 0 or k == n:
-        return 1
+# recursion: tak
+def tak(x, y, z):
+    if x <= y:
+        return z
     else:
-        return binomial(n - 1, k - 1) + binomial(n - 1, k)
+        return tak(tak(x - 1, y, z),
+                   tak(y - 1, z, x),
+                   tak(z - 1, x, y))
 
-n = 8
-k = 0
-while k <= n:
-    print(binomial(n, k))
-    k += 1
+print(tak(12, 8, 4))
+# ---
+# recursion: ackermann
+def ack(m, n):
+    if m == 0:
+        return n + 1
+    elif n == 0:
+        return ack(m - 1, 1)
+    else:
+        return ack(m - 1, ack(m, n - 1))
+
+print(ack(3, 2))
 # ---
 # mutual recursion: odd/even
 def even(n):
@@ -668,7 +758,6 @@ def odd(n):
     else:
         return even(n - 1)
 
-n = 10
 print(even(10))
 print(odd(10))
 # ---
