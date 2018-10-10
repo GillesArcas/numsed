@@ -29,7 +29,7 @@ if __name__ == "__main__":
     setup(
         name='numsed',
         version=find_version("numsed", "numsed.py"),
-        licence='MIT',
+        license='MIT',
         url='https://github.com/GillesArcas/numsed',
         author='Gilles Arcas',
         author_email='gilles.arcas@gmail.com',
