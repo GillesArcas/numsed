@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import sys
+import os
 import subprocess
 import time
 try:
@@ -113,3 +114,5 @@ def list_compare(tag1, tag2, list1, list2):
     return res, diff
 
 
+def hasextension(filename, *ext):
+    return os.path.splitext(filename)[1].lower() in [_.lower() for _ in ext]

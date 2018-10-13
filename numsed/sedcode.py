@@ -42,11 +42,11 @@ HEADER2 = '''\
 '''
 
 def make_sed_header(source):
-    if source.endswith('.py'):
+    if  common.hasextension(source, '.py'):
         with open(source) as f:
             python = ''.join(['# ' + x for x in f.readlines()])
         return HEADER1 % python
-    elif source.endswith('.opc'):
+    elif  common.hasextension(source, '.opc'):
         return HEADER2
     else:
         return ''

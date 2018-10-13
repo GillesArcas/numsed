@@ -152,7 +152,7 @@ def parse_dis_instruction(s):
 class OpcodeConversion(common.NumsedConversion):
     def __init__(self, source, transformation):
         common.NumsedConversion.__init__(self, source, transformation)
-        if source.endswith('.py'):
+        if common.hasextension(source, '.py'):
             x = DisassemblyConversion(source, transformation)
             dis_code = x.trace()
             self.opcode = opcodes(dis_code)
