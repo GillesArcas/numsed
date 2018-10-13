@@ -68,7 +68,7 @@ def parse_command_line(argstring=None):
     xgroup.add_argument("--unsigned", help="replace division, modulo and power by functions", action="store_true")
     xgroup.add_argument("--signed", help="replace all operators by functions (default)", action="store_true")
 
-    # do not use, it is intended to pass batch directory ni batch mode
+    # do not use, it is intended to pass batch directory in batch mode
     parser.add_argument("--batchdir", help=argparse.SUPPRESS, action="store")
 
     parser.add_argument("source", nargs='?', help=argparse.SUPPRESS)
@@ -155,10 +155,18 @@ def numsed_conversion(args):
 
 def process_script(args, source, title, expected_result=None):
 
-    checked, msg = checker.check(source)
+    if common.hasextension(source, '.py'):
+        checked, msg = checker.check(source)
+    else:
+        checked, msg = True, ''
 
     if args.test:
-        return test_script(args, source, title, expected_result, checked, msg)
+        if common.hasextension(source, '.py'):
+            return test_script(args, source, title, expected_result, checked, msg)
+        else:
+            print('numsed error: no reference to check with opcode script:', args.source)
+            return ''
+
     elif checked is False:
         print(msg)
         return ''
@@ -215,7 +223,7 @@ def test_script(args, source, title, result, checked, msg):
     if result is not None, the test has to be compared with this result
     checked and msg are the results of syntax checking
     """
-    if not source.endswith('.py'):
+    if not common.hasextension(source, '.py'):
         return False
 
     print('%-50s' % title, end='')
@@ -318,15 +326,8 @@ def numsed(argstring=None):
         elif os.path.isfile(args.source):
             if args.source.endswith('.suite.py'):
                 result = process_testset(args, tests_from_suite)
-            elif args.source.endswith('.py'):
+            elif common.hasextension(args.source, '.py', '.opc'):
                 result = process_script(args, args.source, args.source)
-            elif args.source.endswith('.opc'):
-                if args.run:
-                    opcode = open(args.source).readlines()
-                    opcode = [_.rstrip() for _ in opcode]
-                    result = opcoder.interpreter(opcode)
-                else:
-                    pass
             else:
                 print('numsed error: file type not handled:', args.source)
                 return ''
