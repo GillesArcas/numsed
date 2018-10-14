@@ -28,3 +28,6 @@ install:
 script:
   #- tox
   - coverage run numsed/numsed.py --batch tests/test.batch
+
+after_success:
+  - coveralls
