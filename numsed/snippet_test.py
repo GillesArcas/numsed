@@ -629,9 +629,24 @@ def test_gen(descr, func, inplist, outlist):
         return True
     else:
         print('%-15s %s' % (descr, 'fail'))
-        for inp, out, res in zip(inplist, outlist, res):
-            if out != res:
-                print('%-8s %-8s %-8s' % (inp, out, res))
+        for inp, out, resline in zip(inplist, outlist, res):
+            if out != resline:
+                print('%-8s %-8s %-8s' % (inp, out, resline))
+
+        print('-' * 20)
+        print(normalize(func()))
+        print('-' * 20)
+        for line in inplist:
+            print(line)
+        print('-' * 20)
+        for line in outlist:
+            print(line)
+        print('-' * 20)
+        for line in res:
+            print(line)
+        print('-' * 20)
+        exit()
+
         return False
 
 
