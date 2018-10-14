@@ -2,7 +2,7 @@
 Computing with sed: compiling python into sed
 
 # [![Build Status](https://travis-ci.org/GillesArcas/numsed.svg?branch=master)](https://travis-ci.org/GillesArcas/numsed)
-
+[![Coverage Status](https://coveralls.io/repos/github/GillesArcas/numsed/badge.svg?branch=master)](https://coveralls.io/github/GillesArcas/numsed?branch=master)
 
 # Table of Contents
 * [Description](#description)
