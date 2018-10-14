@@ -84,6 +84,7 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         # list of functions defined in lib
         # used to check there is no redefinition
         self.lib_functions = {x[0] for x in inspect.getmembers(numsed_lib, inspect.isfunction)}
+        self.reserved_words = self.lib_functions | {'divmod'}
 
     def visit_Module(self, node):
         self.tree = node
@@ -130,7 +131,7 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         self.visit_child_nodes(node)
 
     def visit_Name(self, node):
-        if node.id in self.lib_functions and isinstance(node.ctx, ast.Store):
+        if node.id in self.reserved_words and isinstance(node.ctx, ast.Store):
             raise CheckException('reserved word', node)
 
     def visit_Num(self, node):
@@ -244,8 +245,8 @@ class NumsedCheckAstVisitor(ast.NodeVisitor):
         if node not in self.modulebody:
             raise CheckException('function definitions allowed only at module level', node)
 
-        if node.name in self.lib_functions:
-            raise CheckException('not allowed to redefine numsed_lib functions', node)
+        if node.name in self.reserved_words:
+            raise CheckException('reserved word', node)
         if node.args.vararg is not None:
             raise CheckException('no vararg arguments', node)
         if node.args.kwarg is not None:
