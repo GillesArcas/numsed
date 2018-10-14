@@ -7,8 +7,8 @@ Computing with sed: compiling python into sed
 # Table of Contents
 * [Description](#description)
 * [Language](#language)
-* [Compilation process](#compilation-process)
 * [Getting started](#getting-started)
+* [Compilation process](#compilation-process)
 * [ Command line](#command-line)
   * [Filename parameter](#filename-parameter)
   * [Action parameter](#action-parameter)
@@ -48,27 +48,19 @@ The following limitations are checked during conversion:
 * functions must be defined as module level instructions,
 * functions have only positional arguments with no default values,
 * functions must return an integer (with the exception of the predefined function divmod),
+* comparison operators and boolean operators are limited to test position (if, while, ternary if),
 * characters in strings are limited to ASCII-32 (space) to ASCII-125 ("}")
   less the characters "@", "|" and ";" which are used in sed snippets.
 
-Note also that there is no limitations (less memory) on recursion.
+These features and limitations are designed to guarantee that the initial python script and the resulting sed script give always the same results.
+
+Note also that recursion is handled with no limitations (except memory) on depth. 
 
 Examples of this dialect are given in the test suite and in the example folder. This includes 20 examples from Project Euler. 
 
-## Compilation process
-
-Compiling a python script into sed is made in four passes:
-
-* the python script is transformed into another python script where all operators are replaced with functions. These functions are defined in the numsed_lib module. These definitions used the standard operators assuming they work on positive operands. Let's call the resulting script the positive form.
-* The positive form is then compiled and disassembled with the dis module into opcodes.
-* The disassembly is simplified and completed to obtain an opcode program which can be interpreted independently. The interpretation of opcodes is used for testing.
-* Finally, the sed script is obtained by replacing each opcode by a sed snippet.
-
-The example directory contains an exemple of a simple python script (add.py) and the resulting opcode and sed scripts (add.opc and add.sed). The opcode script can be interpreted with the --opcode option. The sed script can be interpreted with any sed utility.
-
 ## Getting started
 
-To install, just clone or download the depository zip file. There is no dependency.
+To install, just clone or download the depository zip file and run the setup.
 
 Use the following command to compile and run a numsed python script:
 
@@ -77,6 +69,17 @@ Use the following command to compile and run a numsed python script:
 The resulting sed script is obtained with:
 
 `numsed.py --trace filename`
+
+## Compilation process
+
+Compiling a python script into sed is made in four passes:
+
+- the python script is transformed into another python script where all operators are replaced with functions. These functions are defined in the numsed_lib module. These definitions used the standard operators assuming they work on positive operands. Let's call the resulting script the positive form.
+- The positive form is then compiled and disassembled with the dis module into opcodes.
+- The disassembly is simplified and completed to obtain an opcode program which can be interpreted independently. The interpretation of opcodes is used for testing.
+- Finally, the sed script is obtained by replacing each opcode by a sed snippet.
+
+The example directory contains an exemple of a simple python script (add.py) and the resulting opcode and sed scripts (add.opc and add.sed). The opcode script can be interpreted with the --opcode option. The sed script can be interpreted with any sed utility.
 
 ## Command line
 
@@ -92,7 +95,7 @@ As all these options are defaults, this can be abbreviated into:
 
 `numsed.py filename`
 
-The other parameters are mainly used for development, testing or optimization.
+The other parameters are used for development, testing or optimization.
 
 ###### Filename parameter
 
@@ -102,7 +105,7 @@ The other parameters are mainly used for development, testing or optimization.
 
 `filename` is a collection of scripts if ended with `.suite.py`. Several python scripts are contained in the same file, separated by a comment with at least two dashes (`# ---`). In that case, the action is applied separately to each script in the collection.
 
-`filename` can be the name of directory. In that case, the action is applied to each python script in this directory. 
+`filename` can be the name of a directory. In that case, the action is applied to each python script in this directory. 
 
 ###### Action parameter
 
@@ -124,7 +127,7 @@ The other parameters are mainly used for development, testing or optimization.
 
 `--batch`
 
-* runs several sets of command line parameters. See test.batch.
+* runs several sets of command line parameters. See test.batch file in tests directory.
 
 ###### Transformation parameter
 
@@ -174,11 +177,9 @@ Testing is done with the `--test` action with a test suite:
 
 `numsed.py --test --sed --signed test.suite.py`
 
-This displays a message describing the result when terminated.
-
 ## numsed virtual machine
 
-Using the same opcodes as python, numsed uses machine model close to the one of python:
+Using the same opcodes as python, numsed uses a machine model close to the one of python:
 
 * all operators take their argument in the stack and put the result in the stack,
 * there is a global namespace,
