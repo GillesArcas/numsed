@@ -1,9 +1,14 @@
 # coverage configuration file
 
+[run]
+omit =
+    # remove site.py from coveralls reports
+    */lib/*
+
 [report]
 omit =
     numsed/codegen.py
     numsed/numsed_lib.py
-    
+
 exclude_lines =
     not used
