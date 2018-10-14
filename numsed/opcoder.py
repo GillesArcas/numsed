@@ -426,15 +426,16 @@ def EXIT_DEF():
 def divmod_required(code):
     """
     Detects if divmod definition is required. This is the case with --literal.
+    In that case, transformer does not replace the call to divmod with one of
+    the function from numsed_lib (udivmod or signed_divmod). To be able to
+    interpret the opcodes, this case is detected and a dedicated opcode
+    (DIVMOD) is inserted.
     """
-    load_name_detected = False
-    label_name_detected = False
     for _, opc, arg in scancodes(code):
         if opc == 'LOAD_NAME' and arg == 'divmod':
-            load_name_detected = True
-        elif opc == ':' and arg == 'divmod':
-            label_name_detected = True
-    return load_name_detected and not label_name_detected
+            return True
+    else:
+        return False
 
 
 def exit_required(code):
