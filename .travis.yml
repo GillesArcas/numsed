@@ -21,10 +21,10 @@ matrix:
       sudo: true
 
 
-# command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
 install:
   - pip install -U tox-travis
   - pip install coveralls
 
-# command to run tests, e.g. python setup.py test
-script: tox
+script:
+  #- tox
+  - coverage run numsed/numsed.py --batch tests/test.batch
