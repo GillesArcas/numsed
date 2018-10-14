@@ -1,0 +1,105 @@
+STARTUP
+LOAD_CONST        print.func
+MAKE_FUNCTION     0
+STORE_NAME        print
+LOAD_CONST        signed_add.func
+MAKE_FUNCTION     0
+STORE_NAME        signed_add
+LOAD_CONST        42
+STORE_NAME        m
+LOAD_CONST        5
+STORE_NAME        n
+LOAD_NAME         signed_add
+LOAD_NAME         m
+LOAD_NAME         n
+CALL_FUNCTION     2
+STORE_NAME        p
+LOAD_NAME         print
+LOAD_NAME         p
+CALL_FUNCTION     1
+POP_TOP
+EXIT
+
+:signed_add.func
+MAKE_CONTEXT
+STORE_FAST        y
+STORE_FAST        x
+LOAD_FAST         x
+IS_POSITIVE
+POP_JUMP_IF_FALSE 85
+LOAD_FAST         y
+IS_POSITIVE
+POP_JUMP_IF_FALSE 39
+LOAD_FAST         x
+LOAD_FAST         y
+BINARY_ADD
+STORE_FAST        r
+JUMP              161
+
+:39
+LOAD_FAST         y
+UNARY_NEGATIVE
+STORE_FAST        y
+LOAD_FAST         x
+LOAD_FAST         y
+COMPARE_OP        >
+POP_JUMP_IF_FALSE 71
+LOAD_FAST         x
+LOAD_FAST         y
+BINARY_SUBTRACT
+STORE_FAST        r
+JUMP              161
+
+:71
+LOAD_FAST         y
+LOAD_FAST         x
+BINARY_SUBTRACT
+UNARY_NEGATIVE
+STORE_FAST        r
+JUMP              161
+
+:85
+LOAD_FAST         x
+UNARY_NEGATIVE
+STORE_FAST        x
+LOAD_FAST         y
+IS_POSITIVE
+POP_JUMP_IF_FALSE 143
+LOAD_FAST         x
+LOAD_FAST         y
+COMPARE_OP        >
+POP_JUMP_IF_FALSE 130
+LOAD_FAST         x
+LOAD_FAST         y
+BINARY_SUBTRACT
+UNARY_NEGATIVE
+STORE_FAST        r
+JUMP              161
+
+:130
+LOAD_FAST         y
+LOAD_FAST         x
+BINARY_SUBTRACT
+STORE_FAST        r
+JUMP              161
+
+:143
+LOAD_FAST         y
+UNARY_NEGATIVE
+STORE_FAST        y
+LOAD_FAST         x
+LOAD_FAST         y
+BINARY_ADD
+UNARY_NEGATIVE
+STORE_FAST        r
+
+:161
+LOAD_FAST         r
+POP_CONTEXT
+RETURN_VALUE
+
+:print.func
+PRINT_ITEMS
+PRINT_NEWLINE
+LOAD_CONST        0
+RETURN_VALUE

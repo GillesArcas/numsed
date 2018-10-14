@@ -2,3 +2,39 @@
 --scr --test test.suite.py
 --opc --test test.suite.py
 --sed --test test.suite.py
+
+--snippets
+
+--sed --test add.py
+--sed --test rep
+
+--opc --run       add.opc
+--opc --trace     add.opc
+--opc --coverage  add.opc
+--sed --run       add.opc
+
+--ast --literal  --run   short.suite.py
+--scr --literal  --run   short.suite.py
+--opc --literal  --run   short.suite.py
+--sed --literal  --run   short.suite.py
+
+--ast --unsigned --run   short.suite.py
+--scr --unsigned --run   short.suite.py
+--opc --unsigned --run   short.suite.py
+--sed --unsigned --run   short.suite.py
+
+--ast --unsigned --test  short.suite.py
+--scr --unsigned --test  short.suite.py
+--opc --unsigned --test  short.suite.py
+--sed --unsigned --test  short.suite.py
+
+--ast --signed   --trace minimal.suite.py
+--scr --signed   --trace minimal.suite.py
+--dis --signed   --trace minimal.suite.py
+--opc --signed   --trace minimal.suite.py
+--sed --signed   --trace minimal.suite.py
+
+--ast --signed   --run   short.suite.py
+--scr --signed   --run   short.suite.py
+--opc --signed   --run   short.suite.py
+--sed --signed   --run   short.suite.py

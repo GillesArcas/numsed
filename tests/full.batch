@@ -50,3 +50,13 @@
 --opc --signed  --coverage test.suite.py
 
 --snippets
+
+--sed --test add.py
+--sed --test rep
+
+--opc --run       add.opc
+--opc --trace     add.opc
+--opc --coverage  add.opc
+
+--sed --run       add.opc
+--sed --trace     add.opc

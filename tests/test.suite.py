@@ -558,12 +558,12 @@ while m <= 2:
     m += 1
 # ---
 # comparison concatenation
-m = -2
-while m <= 2:
-    n = -2
-    while n <= 2:
-        p = -2
-        while p <= 2:
+m = -1
+while m <= 1:
+    n = -1
+    while n <= 1:
+        p = -1
+        while p <= 1:
             x = 0
             k = 1
             x += k if m == n == p else 0; k *= 2
@@ -720,7 +720,7 @@ foo(x)(y)
 def udivmod(x, y):
     return 0
 # ===
-numsed error: line 2 col 1: not allowed to redefine numsed_lib functions
+numsed error: line 2 col 1: reserved word
 def udivmod(x, y):
 ^
 # ---
