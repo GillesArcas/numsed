@@ -14,7 +14,9 @@ Computing with sed: compiling python into sed
   * [Transformation parameter](#transformation-parameter)
   * [Format parameter](#format-parameter)
 * [ Testing](#testing)
+* [Opcodes](#opcodes)
 * [ numsed virtual machine](#numsed-virtual-machine)
+* [Calls and returns](#calls-and-returns)
 * [ Links](#links)
   * [Abstract syntax tree](#abstract-syntax-trees)
   * [Opcodes](#dis-and-opcodes)
@@ -176,6 +178,57 @@ Testing is done with the `--test` action with a test suite:
 
 `numsed.py --test --sed --signed test.suite.py`
 
+## Opcodes
+
+numsed transforms sed scripts to opcodes then replace each opcode by a sed snippet. These opcodes are derived from the result of disassembling with dis utility. They are then simplified and completed to obtain an autonomous script which can be interpreted.
+
+The transformation process goes as follow:
+
+* labels and bytecode numbers are removed,
+* bytecodes requested for branching (indicated with ">>") insert a label opcode prefixed with a column (":18"),
+* the name of arguments in parentheses is kept but the index to one of the name spaces are ignored,
+* in the case of relative jumps, the parentheses contain the absolute address. Therefore, all relative jumps are transformed into absolute jumps.
+
+Here is an example:
+
+    1    0 LOAD_CONST         0 (42)                         LOAD_CONST        42
+         2 STORE_NAME         0 (n)                          STORE_NAME        n
+    2    4 LOAD_NAME          0 (n)                          LOAD_NAME         n
+         6 LOAD_CONST         1 (0)                          LOAD_CONST        0
+         8 COMPARE_OP         0 (<)                          COMPARE_OP        <
+        10 POP_JUMP_IF_FALSE 18               gives          POP_JUMP_IF_FALSE 18
+        12 LOAD_NAME          0 (n)                          LOAD_NAME         n
+        14 UNARY_NEGATIVE                                    UNARY_NEGATIVE
+        16 JUMP_FORWARD       2 (to 20)                      JUMP              20
+                                                             :18
+     >> 18 LOAD_NAME          0 (n)                          LOAD_NAME         n
+                                                             :20
+     >> 20 STORE_NAME         1 (r)                          STORE_NAME        r  
+Functions are disassembled apart. The code of functions is prefixed with the FUNCTION keyword, a label reminding the name of the function, and the names of the parameters (-1 being a dummy bytecode number). 
+
+    1    0 LOAD_CONST         0 (<code object foo at 0x0336D0D0, file "<ast>", line 1>)
+           ...
+        -1 FUNCTION           foo.func n
+           ... 
+         6 RETURN_VALUE 
+When converting disassembly to opcodes, the reference to the function object is replaced with the label of the function. This label is used as the entry point of the function.
+
+    LOAD_CONST        print.func
+    ...
+    :foo.func
+    ...
+    RETURN_VALUE
+The local context of the function is created and deleted with two additional opcodes, `MAKE_CONTEXT` and `POP_CONTEXT`, added at the beginning and at the end of the function. Once the context is created, the parameters are popped and store locally.
+
+    :foo.func
+    MAKE_CONTEXT
+    STORE_FAST        n
+    ...
+    POP_CONTEXT
+    RETURN_VALUE
+
+Finally, some more transformations are applied to opcodes to make easier the conversion to sed. For instance, INPLACE_ opcodes are replaced with their binary equivalents, BREAK_LOOP are transformed into a JUMP, and some other. Hopefully, this is enough documented in the code.
+
 ## numsed virtual machine
 
 Using the same opcodes as python, numsed uses a machine model close to the one of python:
@@ -204,6 +257,52 @@ Name spaces grow at the end of HS and are separated by a vertical bar character 
     LOAD_CONST  13         HS: 13;x;y;z;@x;42;|
     STORE_FAST x           HS: 55;x;y;z;@x;42;|x;13;
     POP_CONTEXT            HS: 55;x;y;z;@x;42;
+
+## Calls and returns
+
+The call and return instructions are missing in sed. Additionally, we need a way to branch on names as call addresses come from the stack and are stored as strings. The two available instructions are `b`, the unconditional branching, and `t`, the conditional branching which tests if a previous substitution has been successful. Both require labels which live in the sed command space but not in the sed pattern or hold spaces.
+
+We have therefore the following problems to solve:
+
+* simulate calls by using numsed stack,
+* make the conversion between string labels and sed labels. This enables to implement calls with strings as argument, but also to implement returns as branching to string labels stored in some way,
+
+### Calls
+
+Assume we have a POP_GOTO instruction taking a string at the top of stack as argument and branching to the corresponding sed label. Calls are implemented by creating and pushing an explicit return label. Ignoring function arguments to simplify the example, we have:
+
+    # TOS == "myfunc"              		# TOS == "myfunc"
+    CALL_FUNCTION                  		PUSH "myreturn"
+    ...                            		ROT_TWO
+    :myfunc            implemented as   POP_GOTO  # branch to popped value
+    ...                            		:myreturn
+    RETURN                         		...
+                                   		:myfunc
+                                   		...             
+                                   		POP_GOTO  # branch to popped value
+
+
+###Branching on string labels
+
+We have now to find a way to branch on strings. The problem is that labels for sed branching and strings are in different spaces and a conversion is required. To do this, we gather all possible values of branching labels during conversion. and test these values to branch conditionally to the corresponding sed label.
+
+This list of labels can be:
+
+* either the list of all function labels (these values will be found in the stack when executing CALL_FUNCTION),
+
+* or the list of all return labels  (these values will be found in the stack when executing RETURN).
+
+For instance, let L1, L2, ..., Ln be the possible function labels. The pseudocode to implement `GOTO "L"` where L can be in L1,  L2, ..., Ln is something like:
+
+    if string_label == "L1" goto L1
+    if string_label == "L2" goto L2
+    ...
+
+The conversion to sed is straightforward:
+
+    s/^L1$//t L1
+    s/^L2$//t L2
+    ...
 
 ## Links
 
