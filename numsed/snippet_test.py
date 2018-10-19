@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import subprocess
 import random
+import time
 
 try:
     import common
@@ -30,162 +31,63 @@ def random_content():
     return ';'.join(x)
 
 
-def test_context_0():
+def runtest(descr, func, inplist, outlist):
+    """ Run a test.
+
+    func    is a function generating the sed script to test
+    inplist is the input of the sed script
+    outlist is the expected result
     """
-    store and load 10 global variables, load the 10 variables again
-    """
-    nvars = 10
-    inplist = list()
-    outlist = list()
-    numlist1 = [random_ndigits(10) for _ in range(1, nvars+1)]
-    numlist2 = [random_ndigits(10) for _ in range(1, nvars+1)]
-    for numlist in (numlist1, numlist2):
-        for x in numlist:
-            inplist.append('%d' % x)
-            outlist.append('%d' % x)
-        for x in numlist:
-            inplist.append('pop')
-            outlist.append('%d' % x)
+    with open(common.TMP_SED, 'w') as f:
+        print(normalize(func()), file=f)
 
-    return test_gen('context_0', snippet_context_0, inplist, outlist)
+    with open(common.TMP_INPUT, 'w') as f:
+        for line in inplist:
+            print(line, file=f)
 
+    com = 'sed -r -f %s %s' % (common.TMP_SED, common.TMP_INPUT)
 
-def snippet_context_0():
-    nvars = 10
-    lvars = [random_varname() for n in range(nvars)]
-    snippet_begin = '''
-        1 {
-            STARTUP
-        }
-        '''
-    pattern_store = '''
-        %d {
-            PUSH
-            STORE_GLOBAL %s
-            LOAD_GLOBAL %s
-            POP
-        }
-    '''
-    pattern_load = '''
-        %d {
-            LOAD_GLOBAL %s
-                POP
-              }
-        '''
-    snippet_end = ''
-    snippet = '\n'.join([snippet_begin] +
-                        [pattern_store % (n, s, s) for s, n in zip(lvars, range(1, nvars + 1))] +
-                        [pattern_load  % (n, s) for s, n in zip(lvars, range(nvars + 1, nvars + 11))] +
-                        [pattern_store % (n, s, s) for s, n in zip(lvars, range(nvars + 11, nvars + 21))] +
-                        [pattern_load  % (n, s) for s, n in zip(lvars, range(nvars + 21, nvars + 31))] +
-                        [snippet_end])
-    return snippet
+    t0 = time.time()
+    #res = subprocess.check_output(com).decode('ascii').splitlines()
+    res = common.run(com, echo=False).splitlines()
+    time_sed = time.time() - t0
+
+    if res == outlist:
+        print('%-15s %s %6.2f' % (descr, 'OK', time_sed))
+        return True
+    else:
+        print('%-15s %s' % (descr, 'fail'))
+        for inp, out, resline in zip(inplist, outlist, res):
+            if out != resline:
+                print('%-8s %-8s %-8s' % (inp, out, resline))
+
+        # print('-' * 20)
+        # print(normalize(func()))
+        # print('-' * 20)
+        # for line in inplist:
+        #     print(line)
+        # print('-' * 20)
+        # for line in outlist:
+        #     print(line)
+        # print('-' * 20)
+        # for line in res:
+        #     print(line)
+        # print('-' * 20)
+        # exit()
+
+        return False
 
 
 def test_context_1():
-    '''
-    store and load the same variable in 10 different local name spaces, load
-    again the variables and pop contexts
-    '''
-    inplist = list()
-    outlist = list()
-    numlist = [random_ndigits(n) for n in range(1, 11)]
-    for x in numlist:
-        inplist.append('push%d' % x)
-        outlist.append('%d' % x)
-    for x in reversed(numlist):
-        inplist.append('pop')
-        outlist.append('%d' % x)
-
-    return test_gen('context_1', snippet_context_1, inplist, outlist)
-
-
-def snippet_context_1():
-    snippet = '''
-        1 {
-            STARTUP
-        }
-        /^push/ {
-            s/^push//
-            MAKE_CONTEXT
-            PUSH
-            STORE_FAST x
-            LOAD_FAST x
-            POP
-        }
-        /^pop/ {
-            s/^pop//
-            LOAD_FAST x
-            POP
-            POP_CONTEXT
-        }
-    '''
-    return snippet
-
-
-def test_context_2():
-    """
-    store and load 10 local variables, load the 10 variables again
-    """
-    nvars = 10
-    inplist = list()
-    outlist = list()
-    numlist = [random_ndigits(10) for _ in range(1, nvars+1)]
-    for x in numlist:
-        inplist.append('%d' % x)
-        outlist.append('%d' % x)
-    for x in numlist:
-        inplist.append('pop')
-        outlist.append('%d' % x)
-
-    return test_gen('context_2', snippet_context_2, inplist, outlist)
-
-
-def snippet_context_2():
-    nvars = 10
-    lvars = [random_varname() for n in range(nvars)]
-    snippet_begin = '''
-        1 {
-            STARTUP
-            MAKE_CONTEXT
-        }
-    '''
-    pattern_store = '''
-        %d {
-            PUSH
-            STORE_FAST %s
-            LOAD_FAST %s
-            POP
-        }
-        '''
-    pattern_load = '''
-        %d {
-            LOAD_FAST %s
-            POP
-        }
-        '''
-    snippet_end = '''
-        $ {
-            POP_CONTEXT
-        }
-        '''
-    snippet = '\n'.join([snippet_begin] +
-                        [pattern_store % (n, s, s) for n, s in zip(range(1, nvars+1), lvars)] +
-                        [pattern_load % (n, s) for n, s in zip(range(nvars+1, nvars+11), lvars)] +
-                        [snippet_end])
-    return snippet
-
-
-def test_context_3():
     '''
     store and load several times 3 global variables
     '''
     inplist = ['0']
     outlist = ['end_of_script;@;z;3;y;2;x;1']
-    return test_gen('context_3', snippet_context_3, inplist, outlist)
+    return runtest('context_1', snippet_context_1, inplist, outlist)
 
 
-def snippet_context_3():
+def snippet_context_1():
     snippet = '''
         STARTUP
         LOAD_CONST 1
@@ -207,20 +109,20 @@ def snippet_context_3():
         LOAD_CONST 3
         STORE_NAME z
         x
-        '''
+    '''
     return snippet
 
 
-def test_context_4():
+def test_context_2():
     '''
     store and load several times 3 local variables
     '''
     inplist = ['0']
     outlist = ['end_of_script;@|;x;1;y;2;z;3']
-    return test_gen('context_4', snippet_context_4, inplist, outlist)
+    return runtest('context_2', snippet_context_2, inplist, outlist)
 
 
-def snippet_context_4():
+def snippet_context_2():
     snippet = '''
         STARTUP
         MAKE_CONTEXT
@@ -243,7 +145,159 @@ def snippet_context_4():
         LOAD_CONST 3
         STORE_FAST z
         x
-        '''
+    '''
+    return snippet
+
+
+def test_context_3():
+    """
+    store and load 10 global variables, load the 10 variables again, repeat
+    with different values
+    """
+    nvars = 10
+    numlist1 = [str(random_ndigits(10)) for _ in range(nvars)]
+    numlist2 = [str(random_ndigits(10)) for _ in range(nvars)]
+
+    inplist = numlist1 + ['pop'] * nvars + numlist2 + ['pop'] * nvars
+    outlist = numlist1 + numlist1 + numlist2 + numlist2
+
+    return runtest('context_3', snippet_context_3, inplist, outlist)
+
+
+def snippet_context_3():
+    nvars = 10
+    lvars = [random_varname() for _ in range(nvars)]
+    snippet_begin = '''
+        1 {
+            STARTUP
+        }
+    '''
+    pattern_store = '''
+        %d {
+            PUSH
+            STORE_GLOBAL %s
+            LOAD_GLOBAL %s
+            POP
+        }
+    '''
+    pattern_load = '''
+        %d {
+            LOAD_GLOBAL %s
+            POP
+        }
+    '''
+
+    range1 = range(nvars * 0 + 1, nvars * 1 + 1)
+    range2 = range(nvars * 1 + 1, nvars * 2 + 1)
+    range3 = range(nvars * 2 + 1, nvars * 3 + 1)
+    range4 = range(nvars * 3 + 1, nvars * 4 + 1)
+
+    snippet = '\n'.join([snippet_begin] +
+                        [pattern_store % _ for _ in zip(range1, lvars, lvars)] +
+                        [pattern_load  % _ for _ in zip(range2, lvars, )] +
+                        [pattern_store % _ for _ in zip(range3, lvars, lvars)] +
+                        [pattern_load  % _ for _ in zip(range4, lvars)])
+    return snippet
+
+
+def test_context_4():
+    """
+    store and load 10 local variables, load the 10 variables again, repeat
+    with different values
+
+    """
+    nvars = 10
+
+    numlist1 = [str(random_ndigits(10)) for _ in range(nvars)]
+    numlist2 = [str(random_ndigits(10)) for _ in range(nvars)]
+
+    inplist = numlist1 + ['pop'] * nvars + numlist2 + ['pop'] * nvars
+    outlist = numlist1 + numlist1 + numlist2 + numlist2
+
+    return runtest('context_4', snippet_context_4, inplist, outlist)
+
+
+def snippet_context_4():
+    nvars = 10
+    lvars = [random_varname() for _ in range(nvars)]
+    snippet_begin = '''
+        1 {
+            STARTUP
+            MAKE_CONTEXT
+        }
+    '''
+    pattern_store = '''
+        %d {
+            PUSH
+            STORE_FAST %s
+            LOAD_FAST %s
+            POP
+        }
+     '''
+    pattern_load = '''
+        %d {
+            LOAD_FAST %s
+            POP
+        }
+    '''
+    snippet_end = '''
+        $ {
+            POP_CONTEXT
+        }
+    '''
+    range1 = range(nvars * 0 + 1, nvars * 1 + 1)
+    range2 = range(nvars * 1 + 1, nvars * 2 + 1)
+    range3 = range(nvars * 2 + 1, nvars * 3 + 1)
+    range4 = range(nvars * 3 + 1, nvars * 4 + 1)
+
+    snippet = '\n'.join([snippet_begin] +
+                        [pattern_store % _ for _ in zip(range1, lvars, lvars)] +
+                        [pattern_load  % _ for _ in zip(range2, lvars, )] +
+                        [pattern_store % _ for _ in zip(range3, lvars, lvars)] +
+                        [pattern_load  % _ for _ in zip(range4, lvars)] +
+                        [snippet_end])
+    return snippet
+
+
+def test_context_5():
+    '''
+    store and load the same variable in 10 different local name spaces, load
+    again the variables and pop contexts
+    '''
+    nvars = 10
+    inplist = list()
+    outlist = list()
+    numlist = [random_ndigits(n) for n in range(1, nvars + 1)]
+    for x in numlist:
+        inplist.append('push%d' % x)
+        outlist.append('%d' % x)
+    for x in reversed(numlist):
+        inplist.append('pop')
+        outlist.append('%d' % x)
+
+    return runtest('context_5', snippet_context_5, inplist, outlist)
+
+
+def snippet_context_5():
+    snippet = '''
+        1 {
+            STARTUP
+        }
+        /^push/ {
+            s/^push//
+            MAKE_CONTEXT
+            PUSH
+            STORE_FAST x
+            LOAD_FAST x
+            POP
+        }
+        /^pop/ {
+            s/^pop//
+            LOAD_FAST x
+            POP
+            POP_CONTEXT
+        }
+    '''
     return snippet
 
 
@@ -260,7 +314,7 @@ def test_cmp_1():
             inplist.append('%d;%d;' % (a, b))
             outlist.append('%s' % '<' if a < b else '=' if a == b else '>')
 
-    return test_gen('CMP_1', CMP, inplist, outlist)
+    return runtest('CMP_1', CMP, inplist, outlist)
 
 
 def test_cmp_2():
@@ -278,7 +332,7 @@ def test_cmp_2():
             inplist.append('%d;%d;' % (a, b))
             outlist.append('%s' % '<' if a < b else '=' if a == b else '>')
 
-    return test_gen('CMP_2', CMP, inplist, outlist)
+    return runtest('CMP_2', CMP, inplist, outlist)
 
 
 def test_equ():
@@ -299,7 +353,7 @@ def test_equ():
         inplist.append('%d;%d;' % (a, b))
         outlist.append('%s' % '0')
 
-    return test_gen('EQU', lambda: 'x\n' + EQU(), inplist, outlist)
+    return runtest('EQU', lambda: 'x\n' + EQU(), inplist, outlist)
 
 
 def test_fulladd():
@@ -317,7 +371,7 @@ def test_fulladd():
                 inplist.append('%d%d%d%s' % (a, b, c, rest))
                 outlist.append('%02d%s' % (a + b + c, rest))
 
-    return test_gen('FULLADD', FULLADD, inplist, outlist)
+    return runtest('FULLADD', FULLADD, inplist, outlist)
 
 
 def test_fullsub():
@@ -340,7 +394,7 @@ def test_fullsub():
                     x, y = 1, 10 + a - (b + c)
                 outlist.append('%d%d%s' % (x, y, rest))
 
-    return test_gen('FULLSUB', FULLSUB, inplist, outlist)
+    return runtest('FULLSUB', FULLSUB, inplist, outlist)
 
 
 def test_uadd():
@@ -362,7 +416,7 @@ def test_uadd():
         inplist.append('%d;%d;' % (a, b))
         outlist.append('%d;' % (a + b,))
 
-    return test_gen('UADD', UADD, inplist, outlist)
+    return runtest('UADD', UADD, inplist, outlist)
 
 
 def test_usub_1():
@@ -384,7 +438,7 @@ def test_usub_1():
         inplist.append('%d;%d;' % (a, b))
         outlist.append('%d;' % (a - b,))
 
-    return test_gen('USUB_1', USUB, inplist, outlist)
+    return runtest('USUB_1', USUB, inplist, outlist)
 
 
 def test_usub_2():
@@ -401,7 +455,7 @@ def test_usub_2():
         inplist.append('%d;%d;' % (a, b))
         outlist.append('%d;' % (a - b,))
 
-    return test_gen('USUB_2', USUB, inplist, outlist)
+    return runtest('USUB_2', USUB, inplist, outlist)
 
 
 def test_fullmul():
@@ -419,7 +473,7 @@ def test_fullmul():
                 inplist.append('%d%d%d%s' % (a, b, c, rest))
                 outlist.append('%02d%s' % (a * b + c, rest))
 
-    return test_gen('FULLMUL', FULLMUL, inplist, outlist)
+    return runtest('FULLMUL', FULLMUL, inplist, outlist)
 
 
 def test_mulbydigit():
@@ -437,7 +491,7 @@ def test_mulbydigit():
             inplist.append('%d%d;%s' % (d, a, rest))
             outlist.append('%d;%s' % (d * a, rest))
 
-    return test_gen('MULBYDIGIT', MULBYDIGIT, inplist, outlist)
+    return runtest('MULBYDIGIT', MULBYDIGIT, inplist, outlist)
 
 
 def test_umul_1():
@@ -453,7 +507,7 @@ def test_umul_1():
             inplist.append('%d;%d;' % (a, b))
             outlist.append('%d' % (a * b,))
 
-    return test_gen('UMUL_1', UMUL, inplist, outlist)
+    return runtest('UMUL_1', UMUL, inplist, outlist)
 
 
 def test_umul_2():
@@ -465,14 +519,14 @@ def test_umul_2():
     inplist = list()
     outlist = list()
     for a in range(10):
-        for b in range(1, 101):
+        for b in range(1, 51):
             x = random_ndigits(b)
             inplist.append('%d;%d;' % (a, x))
             outlist.append('%d' % (a * x,))
             inplist.append('%d;%d;' % (x, a))
             outlist.append('%d' % (x * a,))
 
-    return test_gen('UMUL_2', UMUL, inplist, outlist)
+    return runtest('UMUL_2', UMUL, inplist, outlist)
 
 
 def test_umul_3():
@@ -489,24 +543,24 @@ def test_umul_3():
         inplist.append('%d;%d;' % (a, b))
         outlist.append('%d' % (a * b,))
 
-    return test_gen('UMUL_3', UMUL, inplist, outlist)
+    return runtest('UMUL_3', UMUL, inplist, outlist)
 
 
 def test_umul_4():
     '''
-    test multiplication of 100 pairs of integers with at most 99 digits
+    test multiplication of 5 pairs of integers with at most 99 digits
     Input  PS: M;N;
     Output PS: R   with R = M*N
     '''
     inplist = list()
     outlist = list()
-    for _ in range(10):
+    for _ in range(5):
         a = random.randint(0, 10 ** 100)
         b = random.randint(0, 10 ** 100)
         inplist.append('%d;%d;' % (a, b))
         outlist.append('%d' % (a * b,))
 
-    return test_gen('UMUL_4', UMUL, inplist, outlist)
+    return runtest('UMUL_4', UMUL, inplist, outlist)
 
 
 def test_umul_5():
@@ -523,7 +577,7 @@ def test_umul_5():
         outlist.append('%d' % (n * r,))
         r *= n
 
-    return test_gen('UMUL_5', UMUL, inplist, outlist)
+    return runtest('UMUL_5', UMUL, inplist, outlist)
 
 
 def test_umul_6():
@@ -540,7 +594,7 @@ def test_umul_6():
         outlist.append('%d' % (r * 2,))
         r *= 2
 
-    return test_gen('UMUL_6', UMUL, inplist, outlist)
+    return runtest('UMUL_6', UMUL, inplist, outlist)
 
 
 def test_umul_7():
@@ -559,7 +613,7 @@ def test_umul_7():
                 inplist.append('%d;%d;' % (x, y))
                 outlist.append('%d' % (x * y,))
 
-    return test_gen('UMUL_7', UMUL, inplist, outlist)
+    return runtest('UMUL_7', UMUL, inplist, outlist)
 
 
 def test_divby2_1():
@@ -575,7 +629,7 @@ def test_divby2_1():
         inplist.append('%d;%s' % (n, s))
         outlist.append('%d;%s' % (n // 2, s))
 
-    return test_gen('DIVBY2_1', DIVBY2, inplist, outlist)
+    return runtest('DIVBY2_1', DIVBY2, inplist, outlist)
 
 
 def test_divby2_2():
@@ -592,7 +646,7 @@ def test_divby2_2():
         inplist.append('%d;%s' % (n, s))
         outlist.append('%d;%s' % (n // 2, s))
 
-    return test_gen('DIVBY2_2', DIVBY2, inplist, outlist)
+    return runtest('DIVBY2_2', DIVBY2, inplist, outlist)
 
 
 def test_odd():
@@ -608,46 +662,7 @@ def test_odd():
         inplist.append('%d;%s' % (n, s))
         outlist.append('%d;%s' % (n % 2, s))
 
-    return test_gen('ODD', ODD, inplist, outlist)
-
-
-def test_gen(descr, func, inplist, outlist):
-    with open(common.TMP_SED, 'w') as f:
-        print(normalize(func()), file=f)
-
-    with open(common.TMP_INPUT, 'w') as f:
-        for line in inplist:
-            print(line, file=f)
-
-    com = 'sed -r -f %s %s' % (common.TMP_SED, common.TMP_INPUT)
-
-    #res = subprocess.check_output(com).decode('ascii').splitlines()
-    res = common.run(com, echo=False).splitlines()
-
-    if res == outlist:
-        print('%-15s %s' % (descr, 'OK'))
-        return True
-    else:
-        print('%-15s %s' % (descr, 'fail'))
-        for inp, out, resline in zip(inplist, outlist, res):
-            if out != resline:
-                print('%-8s %-8s %-8s' % (inp, out, resline))
-
-        print('-' * 20)
-        print(normalize(func()))
-        print('-' * 20)
-        for line in inplist:
-            print(line)
-        print('-' * 20)
-        for line in outlist:
-            print(line)
-        print('-' * 20)
-        for line in res:
-            print(line)
-        print('-' * 20)
-        exit()
-
-        return False
+    return runtest('ODD', ODD, inplist, outlist)
 
 
 def main():
@@ -657,11 +672,11 @@ def main():
         print('Fail to start sed:', str(e))
         exit(1)
 
-    result = all((test_context_0(),
-                  test_context_1(),
+    result = all((test_context_1(),
                   test_context_2(),
                   test_context_3(),
                   test_context_4(),
+                  test_context_5(),
                   test_cmp_1(),
                   test_cmp_2(),
                   test_equ(),
