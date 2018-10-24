@@ -61,15 +61,17 @@ Examples of this dialect are given in the test suite and in the example folder. 
 
 ## Getting started
 
-To install, just clone or download the depository zip file and run the setup.
+To install, just clone or download the depository zip file and run the setup in download directory:
+
+`pip install .`
 
 Use the following command to compile and run a numsed python script:
 
-`numsed.py filename`
+`numsed myscript.py`
 
 The resulting sed script is obtained with:
 
-`numsed.py --trace filename`
+`numsed --trace myscript.py`
 
 ## Compilation process
 
@@ -86,15 +88,15 @@ The example directory contains an exemple of a simple python script (add.py) and
 
 The command line enables to specify several output formats, several transformations to apply to the original script, and several actions.
 
-`numsed.py <action> <transformation> <format> filename`
+`numsed <action> <transformation> <format> filename`
 
 Compiling a python script into sed and running it, is done with:
 
-`numsed.py --run --signed --sed filename`
+`numsed --run --signed --sed filename`
 
 As all these options are defaults, this can be abbreviated into:
 
-`numsed.py filename`
+`numsed filename`
 
 The other parameters are used for development, testing or optimization.
 
@@ -176,7 +178,7 @@ Notes:
 
 Testing is done with the `--test` action with a test suite:
 
-`numsed.py --test --sed --signed test.suite.py`
+`numsed --test --sed --signed test.suite.py`
 
 ## Opcodes
 
@@ -274,7 +276,7 @@ Assume we have a POP_GOTO instruction taking a string at the top of stack as arg
     # TOS == "myfunc"              		# TOS == "myfunc"
     CALL_FUNCTION                  		PUSH "myreturn"
     ...                            		ROT_TWO
-    :myfunc            implemented as   POP_GOTO  # branch to popped value
+    :myfunc                implemented as   POP_GOTO  # branch to popped value
     ...                            		:myreturn
     RETURN                         		...
                                    		:myfunc
@@ -282,7 +284,7 @@ Assume we have a POP_GOTO instruction taking a string at the top of stack as arg
                                    		POP_GOTO  # branch to popped value
 
 
-###Branching on string labels
+### Branching on string labels
 
 We have now to find a way to branch on strings. The problem is that labels for sed branching and strings are in different spaces and a conversion is required. To do this, we gather all possible values of branching labels during conversion. and test these values to branch conditionally to the corresponding sed label.
 
@@ -341,4 +343,6 @@ The inspiring sed implementation of dc by Greg Ubben:
 
 * [dc.sed](http://sed.sourceforge.net/grabbag/scripts/dc.sed)
 
+numsed uses dc implementation for the digit addition and subtraction. Still amazed by the cleverness
+of this wonderful gem.
 
