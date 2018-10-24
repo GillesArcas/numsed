@@ -61,19 +61,19 @@ def runtest(descr, func, inplist, outlist):
             if out != resline:
                 print('%-8s %-8s %-8s' % (inp, out, resline))
 
-        # print('-' * 20)
-        # print(normalize(func()))
-        # print('-' * 20)
-        # for line in inplist:
-        #     print(line)
-        # print('-' * 20)
-        # for line in outlist:
-        #     print(line)
-        # print('-' * 20)
-        # for line in res:
-        #     print(line)
-        # print('-' * 20)
-        # exit()
+        print('-' * 20)
+        print(normalize(func()))
+        print('-' * 20)
+        for line in inplist:
+            print(line)
+        print('-' * 20)
+        for line in outlist:
+            print(line)
+        print('-' * 20)
+        for line in res:
+            print(line)
+        print('-' * 20)
+        exit()
 
         return False
 
