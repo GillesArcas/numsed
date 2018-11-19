@@ -9,7 +9,7 @@ numsed uses sed snippets extracted from Greg Ubben'dc for digit addition and sub
 ```
 s/(..)/\1;9876543210;9876543210/
 s/(.)(.);\d*\1(\d*);(\d*(\2\d*))/\3\5\4/
-s/.{10}(.)\d{0,9}(\d{0,1})\d*/0\2\1/
+s/.{10}(.)\d{0,9}(\d{0,1})\d*/0\1\2/
 s/0\d(\d)/1\1/
 ```
 
@@ -22,7 +22,7 @@ This snippet assumes it starts with the pattern space (PS) containing a pair of 
 ```
 s/(..)/\1;9876543210;0123456789/
 s/(.)(.);\d*\2(\d*);(\d*(\1\d*))/\3\5\4/
-s/.{10}(.)\d{0,9}(\d{0,1})\d*;/0\2\1/
+s/.{10}(.)\d{0,9}(\d{0,1})\d*;/0\1\2/
 s/0\d(\d)/1\1/
 ```
 
@@ -51,17 +51,17 @@ If the snippet starts with 5 in PS, it ends with PS containing 01234.
 
 ##### Bracket quantifier
 
-Even if sed doesn't know integers, it has an operator handling explicitly integers. The bracket quantifier {n} enables to repeat n times the preceding regex. The value n is a constant and the trick is to modify the length of the string it works on.
+Even if sed doesn't know integers, it has an operator handling explicitly integers. The bracket quantifier {n} enables to repeat n times the preceding regex. The value n is a constant and the trick will be to modify the length of the string it works on.
 
 ##### Shifting indexes
 
 To use the bracket quantifier as an index of constant value, we have to change string it works on while keeping the result of the indexation. To do that, we use this simple identity:
 
 ```
-(i)		s[x] = (r + s)[x + len(r)]
+s[x] = (r + s)[x + len(r)]
 ```
 
-With these three techniques, the snippets construct some strings with pieces of the strings 012345678 and 9876543210, and find the result digit with a constant index.
+With these three techniques, the addition and subtraction snippets construct a strings with pieces of the strings 012345678 and 9876543210, and find the result digit with a constant index.
 
 ##Notations
 
@@ -73,15 +73,16 @@ Extremities are excluded by using reversed brackets: for instance [a9[ means 'a.
 
 By definition of [09] and [90], we can write:
 ```
-c = [09][c]                         (i')
-c = [90][9 - c]                     (ii')
+c = [09][c]
+c = [90][9 - c]
 ```
 
 Notes:
 
 * index are zero-based,
+* we know that c is a character on the left side, and a digit integer inside the bracket.
 
-* we assume that c is a character on the left side, and a digit integer inside the bracket.
+Some length properties:
 
 ```
 len([ab]) = len([ba])
@@ -92,8 +93,8 @@ len([a9]) = len([9a]) = 10 - a
 Applying the previous identities, we get also:
 
 ```
-c = [a9][c - a]     si c >= a       (i)
-c = [a0][a - c]     si a >= c       (ii)
+c = [a9][c - a]     si c >= a
+c = [a0][a - c]     si a >= c 
 ```
 
 
@@ -218,7 +219,7 @@ We get the following snippet.
 ```
 s/(..)/\1;0123456789;0123456789/
 s/(.)(.);\d*(\1\d*);(\d*(\2\d*))/\3\5\4/
-s/.{10}(.)\d{0,9}(\d{0,1})\d*/1\2\1/
+s/.{10}(.)\d{0,9}(\d{0,1})\d*/1\1\2/
 s/1\d(\d)/0\1/
 ```
 
@@ -304,23 +305,47 @@ If a < b:
 ```
 </details>
 
-The snippets assume two digits ab in PS and finish with two digits c, d = (0, a - b) if a >= b else (1, 10 + a - b).
+
+
+Here are the two snippets. They start with two digits ab in PS and finish with two digits c, d = (0, a - b) if a >= b else (1, 10 + a - b).
 
 ```
 s/(..)/\1;9876543210;0123456789/
 s/(.)(.);\d*\2(\d*);(\d*(\1\d*))/\3\5\4/
-s/.{10}(.)\d{0,9}(\d{0,1})\d*/0\2\1/
+s/.{10}(.)\d{0,9}(\d{0,1})\d*/0\1\2/
 s/0\d(\d)/1\1/
 ```
 
 ```
 s/(..)/\1;0123456789;9876543210/
 s/(.)(.);\d*(\2\d*);(\d*(\1\d*))/\3\5\4/
-s/.{10}(.)\d{0,9}(\d{0,1})\d*/1\2\1/
+s/.{10}(.)\d{0,9}(\d{0,1})\d*/1\1\2/
 s/1\d(\d)/0\1/
 ```
 
 As for addition, more variants can be constructed. First, the string extracted from the first sequence can be replaced by any string of the same length, in particular the string extracted from the reversed sequence. Second, there is no commutativity but input digits can be inverted to compute b - a. This is useful to compare the subtraction snippets with the addition ones. 
 
-Synthesis
+## Synthesis
 
+We have answered now to the initial questions: we understand how these snippets are constructed. This enables to construct variants and to derive subtraction from addition. It is remarkable that it is possible to write these snippets with a reversed string as the only difference :
+
+Addition
+```
+s/(..)/\1;0123456789;0123456789/
+s/(.)(.);\d*(\2\d*);(\d*(\1\d*))/\3\5\4/
+s/.{10}(.)\d{0,9}(\d{0,1})\d*/1\1\2/
+s/1\d(\d)/0\1/
+```
+Subtraction
+```
+s/(..)/\1;0123456789;9876543210/
+s/(.)(.);\d*(\2\d*);(\d*(\1\d*))/\3\5\4/
+s/.{10}(.)\d{0,9}(\d{0,1})\d*/1\1\2/
+s/1\d(\d)/0\1/
+```
+
+To finish on a colorful note, the following figures illustrates the working of the snippets by highlighting the string constructed with the second subst: \3 in blue, \5 in green, \4 in magenta. The digits extracted in third subst are furthermore highlighted with a yellow background.
+
+![addsub](D:\Gilles\Sed\numsed\analysis\addsub.jpg)
+
+These figures are obtained by using test_add_sub.py in analysis folder.

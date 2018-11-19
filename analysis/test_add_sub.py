@@ -18,14 +18,14 @@ def define_all():
     ADD_09_09 = r'''
         s/(..)/\1;0123456789;0123456789/
         s/(.)(.);\d*(\1\d*);(\d*(\2\d*))/\3\5\4/
-        s/.{10}(.)\d{0,9}(\d{0,1})\d*/1\2\1/
+        s/.{10}(.)\d{0,9}(\d{0,1})\d*/1\1\2/
         s/1\d(\d)/0\1/
     '''
 
     ADD_09_90 = r'''
         s/(..)/\1;0123456789;9876543210/
         s/(.)(.);(\d*)\1\d*;(\d*(\2\d*))/\3\5\4/
-        s/.{10}(.)\d{0,9}(\d{0,1})\d*/0\2\1/
+        s/.{10}(.)\d{0,9}(\d{0,1})\d*/0\1\2/
         s/0\d(\d)/1\1/
     '''
 
@@ -110,7 +110,7 @@ def runtest(descr, snippet, inplist, outlist):
     inplist is the input of the snippet
     outlist is the expected result
     """
-    snippet = func.replace(r'\d', '[0-9]')
+    snippet = snippet.replace(r'\d', '[0-9]')
     with open('tmp.sed', 'w') as f:
         print(snippet, file=f)
 
