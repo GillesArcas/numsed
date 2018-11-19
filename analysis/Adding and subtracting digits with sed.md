@@ -302,7 +302,7 @@ If a < b:
            = ([a0] + [90])[10 - (10 - b)]
            = ([9b] + [a0] + [90])[10])
 ```
-<details>
+</details>
 
 The snippets assume two digits ab in PS and finish with two digits c, d = (0, a - b) if a >= b else (1, 10 + a - b).
 
