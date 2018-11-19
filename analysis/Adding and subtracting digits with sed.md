@@ -150,13 +150,13 @@ We have found out so far that:
 * if a + b > 9,  (]a0] + [b0] + [90])[10] = a + b - 10
 * if a + b > 9,  (]a0] + [b0] + [90])[20] = a + b - 10
 
-To complete, we note that if if a + b <= 9, (]a0] + [b0] + [90])[20] is not defined.
+To complete, we note that if a + b <= 9, (]a0] + [b0] + [90])[20] is not defined.
 
 5/ Time to construct the snippet
 
 We assume that PS contains the two digits to add, PS = ab, when executing the snippet.
 
-1st step: we construct a double look up table to find  ]a0] et [b0] :
+1st step: we construct a double look up table used to extract ]a0] et [b0] :
 
 ```
 s/(..)/\1;9876543210;9876543210/               PS: ab;9876543210;9876543210
@@ -244,7 +244,7 @@ s/(.)(.);\d*\1(\d*);(\d*(\2\d*))/\3\5\4/
 s/(.)(.);\d*\2(\d*);(\d*(\1\d*))/\3\5\4/
 ```
 
-This is worthy to note as this makes the snippets for addition and subtraction closer.
+This is worthy to note as this makes the snippets for addition and subtraction easier to compare.
 
 ## Subtraction of two digits
 
