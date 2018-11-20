@@ -2,7 +2,7 @@
 
 ##       Goal
 
-numsed uses sed snippets extracted from Greg Ubben'dc for digit addition and subtraction. We analyze here simplified versions of the snippets without carry (nor decimal part as in dc).
+numsed uses sed snippets extracted from Greg Ubben'[dc](http://sed.sourceforge.net/grabbag/scripts/dc.sed) for digit addition and subtraction. We analyze here simplified versions of the snippets without carry (nor decimal part as in dc).
 
 ##### Snippet for adding two digits
 
@@ -34,13 +34,13 @@ The goal of this discussion is:
 * to find variants if any,
 * to understand the relation between the snippet for addition and the one for subtraction.
 
-##       Principles / techniques
+##       Techniques
 
-These snippets use the following principles:
+These snippets use the following techniques:
 
 ##### Look up tables
 
-This has been described by Greg and this is available here. Look up tables are used here to construct various substrings from the strings 0123456789 and 9876543210. For instance, to construct a string of length a we can write:
+This has been described by Greg Ubben (archived [here](http://sed.sourceforge.net/grabbag/tutorials/lookup_tables.txt)). Look up tables are used here to construct various substrings from the sequences 0123456789 and 9876543210. For instance, to construct a string of length a we can write:
 
 ```
 s/(.)/\1;0123456789/
@@ -49,19 +49,19 @@ s/(\d);(\d*)\1\d*/\2/
 
 If the snippet starts with 5 in PS, it ends with PS containing 01234.
 
-##### Bracket quantifier
+##### Curly braces quantifier
 
-Even if sed doesn't know integers, it has an operator handling explicitly integers. The bracket quantifier {n} enables to repeat n times the preceding regex. The value n is a constant and the trick will be to modify the length of the string it works on.
+Even if sed doesn't know integers, it has an operator handling explicitly integers. The curly braces quantifier {n} enables to repeat n times the preceding regex. The value n is a constant and the trick will be to modify the length of the string it works on.
 
 ##### Shifting indexes
 
 To use the bracket quantifier as an index of constant value, we have to change string it works on while keeping the result of the indexation. To do that, we use this simple identity:
 
 ```
-s[x] = (r + s)[x + len(r)]
+s[x] = (r + s)[x + len(r)]     (i)
 ```
 
-With these three techniques, the addition and subtraction snippets construct a strings with pieces of the strings 012345678 and 9876543210, and find the result digit with a constant index.
+With these three techniques, the addition and subtraction snippets construct a strings with pieces of the sequences 012345678 and 9876543210, and find the result digit with a constant index.
 
 ##Notations
 
@@ -80,7 +80,7 @@ c = [90][9 - c]
 Notes:
 
 * index are zero-based,
-* we know that c is a character on the left side, and a digit integer inside the bracket.
+* we know that c is a character on the left side, and a single digit integer inside the bracket.
 
 Some length properties:
 
@@ -93,8 +93,8 @@ len([a9]) = len([9a]) = 10 - a
 Applying the previous identities, we get also:
 
 ```
-c = [a9][c - a]     si c >= a
-c = [a0][a - c]     si a >= c 
+c = [a9][c - a]     if c >= a     (ii)
+c = [a0][a - c]     if a >= c     (ii') 
 ```
 
 
@@ -112,31 +112,31 @@ c = [a0][a - c]     si a >= c
 1/ Given two digits a and b, with a + b <= 9, we search the digit a + b by using indexation in the string [90].
 
 ```
-a + b = [90][9 - (a + b)]                      par application de (ii)
+a + b = [90][9 - (a + b)]                      using (ii')
       = [90][9 - a - b]
       = [90][10 - a - (b + 1)]
-      = ([b0] + [90])[10 - a]                  par application de (v)
-      = (]a0] + [b0] + [90])[10]               par application de (v)
+      = ([b0] + [90])[10 - a]                  using (i)
+      = (]a0] + [b0] + [90])[10]               using (i)
 ```
 
-We see here the application of the constant index principle: we have constructed a string which gives the expected result with a constant index. Note also that ]a0] is not used in the indexation and could be replaced by any string of length a.
+We see here the application of the constant index technique: we have constructed a string which gives the expected result with a constant index. Note also that ]a0] is not used in the indexation and could be replaced by any string of length a.
 
 2/ When a + b > 9, we search the digit  a + b - 10 in the string [90]. 
 
 ```
-a + b - 10 = [90][9 - (a + b - 10)]            par application de (ii), 
+a + b - 10 = [90][9 - (a + b - 10)]            using (ii')
            = [90][19 - a - b]
            = [90][10 - a + 10 - (b + 1)]
-           = ([b0] + [90])[10 - a + 10]        par application de (v)
-           = (]a0] + [b0] + [90])[10 + 10]     par application de (v)
+           = ([b0] + [90])[10 - a + 10]        using (i)
+           = (]a0] + [b0] + [90])[10 + 10]     using (i)
            = (]a0] + [b0] + [90])[20]
 ```
 3/ We can also write the following as b - (a + b - 10) = 10 - a >= 0.
 
 ```
-a + b - 10 = [b0][b - (a + b - 10)]    par application de (ii) sur [b0]
+a + b - 10 = [b0][b - (a + b - 10)]            using (ii')
            = [b0][10 - a]
-           = (]a0] + [b0])[10]                 par application de (v)
+           = (]a0] + [b0])[10]                 using (i)
 ```
 Finally as len(]a0] + [b0]) = a + b + 1 > 10, we can add whatever string at the right of ]a0] + [b0] without changing the result:
 ```
@@ -178,7 +178,7 @@ s/.{10}(.)\d{0,9}(\d{0,1})\d*/0\2\1/           PS: 0x if a + b <= 9, or 0xx if >
 4th step: if the 21st digit has been found, there is a carry to 1 and we set it. Otherwise we have a carry to 0 and it is already there.
 
 ```
-s/0\d(\d)/1\1/                                 PS: 0x si a + b <= 9, ou 1x si >= 9
+s/0\d(\d)/1\1/                                 PS: 0x if a + b <= 9, ou 1x si >= 9
 ```
 
 That's it.
@@ -194,19 +194,20 @@ Is there any reason the original dc snippet use 9876543210 rather than 012345678
 <summary>details</summary>
 
 ```
-* si a + b < 10
+* if a + b < 10
 
 a + b = [09][a + b]
       = [09][10 - (10 - a) + 10 - (10 - b)]
       = ([a9] + [b9] + [09])[20]
 
-a + b = [b9][a + b - b]        d'après (i)
+a + b = [b9][a + b - b]                        using (ii)
       = [b9][a]
       = [b9][10 - (10 - a)]
       = ([a9] + [b9])[10]
-      = ([a9] + [b9] + [09])[10]        on peut ajouter [09] qui n'intervient pas dans l'indexation
+      = ([a9] + [b9] + [09])[10]               len([a9] + [b9]) >= 10, adding [09] does
+          									   not change the result
 
-* si a + b >= 10
+* if a + b >= 10
 
 a + b - 10 = [09][a + b - 10]
            = [09][10 - (10 - a) + 10 - (10 - b) - 10]
@@ -344,8 +345,8 @@ s/.{10}(.)\d{0,9}(\d{0,1})\d*/1\1\2/
 s/1\d(\d)/0\1/
 ```
 
-To finish on a colorful note, the following figures illustrates the working of the snippets by highlighting the string constructed with the second subst: \3 in blue, \5 in green, \4 in magenta. The digits extracted in third subst are furthermore highlighted with a yellow background.
+To finish on a colorful note, the following figures illustrates the working of the snippets by highlighting the string constructed with the second subst: \3 in blue, \5 in green, \4 in magenta. The digits extracted in third subst are furthermore highlighted with a yellow background.Two first columns are additions, two last columns are subtraction.
 
-![addsub](D:\Gilles\Sed\numsed\analysis\addsub.jpg)
+![addsub](addsub.jpg)
 
-These figures are obtained by using test_add_sub.py in analysis folder.
+These figures are obtained by using test_add_sub.py script in analysis folder. 
