@@ -188,14 +188,20 @@ def colored_string(s, color, index1, index2):
 def main():
     colorama.init()
     define_all()
-    if len(sys.argv) == 2 and sys.argv[1] == 'test':
+    nargs = len(sys.argv) - 1
+    if nargs == 2 and sys.argv[1] == 'trace':
+        snippet = globals()[sys.argv[2]]
+        print(snippet)
+    elif nargs == 1 and sys.argv[1] == 'test':
         test_all()
-    elif len(sys.argv) == 3 and sys.argv[1] == 'colorize':
+    elif nargs == 2 and sys.argv[1] == 'colorize':
         snippet = globals()[sys.argv[2]]
         colorize(snippet)
     else:
+        s = 'ADD_09_09|ADD_09_90|ADD_90_09|ADD_90_90|SUB_09_09|SUB_90_09|SUB_09_90|SUB_90_90'
+        print('$ test-add-sub.py trace', s)
         print('$ test-add-sub.py test')
-        print('$ test-add-sub.py colorize ADD_09_09|ADD_09_90|ADD_90_09|ADD_90_90|SUB_09_09|SUB_90_09|SUB_09_90|SUB_90_90')
+        print('$ test-add-sub.py colorize', s)
 
 
 main()
