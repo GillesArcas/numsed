@@ -145,7 +145,7 @@ Finally as len(]a0] + [b0]) = a + b + 1 > 10, we can add whatever string at the 
 
 4/ Summarizing
 
-We have found out so far that:
+We have found so far that:
 
 * if a + b <= 9,  (]a0] + [b0] + [90])[10] = a + b
 * if a + b > 9,  (]a0] + [b0] + [90])[10] = a + b - 10
@@ -155,7 +155,7 @@ To complete, we note that if a + b <= 9, (]a0] + [b0] + [90])[20] is not defined
 
 5/ Time to construct the snippet
 
-We assume that PS contains the two digits to add, PS = ab, when executing the snippet.
+We assume that PS contains the two digits to add, PS = ab, when starting the snippet.
 
 1st step: we construct a double look up table used to extract ]a0] et [b0] :
 
@@ -166,7 +166,7 @@ s/(..)/\1;9876543210;9876543210/               PS: ab;9876543210;9876543210
 2nd step: we extract ]a0] and [b0] from the two sequences of digit, and we complete with [90]:
 
 ```
-s/(.)(.);\d*\1(\d*);\d*(\2\d*)/\3\5\4/         PS: ]a0] + [b0] + [90]
+s/(.)(.);\d*\1(\d*);(\d*(\2\d*))/\3\5\4/       PS: ]a0] + [b0] + [90]
 ```
 
 3rd step: we keep in PS the 11th digit and the 21st if it exists. Carry is anticipated by adding a zero.
@@ -215,7 +215,7 @@ a + b - 10 = [09][a + b - 10]
 ```
 </details>
 
-We get the following snippet.
+We obtain the following snippet.
 
 ```
 s/(..)/\1;0123456789;0123456789/
@@ -326,7 +326,7 @@ s/1\d(\d)/0\1/
 
 As for addition, more variants can be constructed. First, the string extracted from the first sequence can be replaced by any string of the same length, in particular the string extracted from the reversed sequence. Second, there is no commutativity but input digits can be inverted to compute b - a. This is useful to compare the subtraction snippets with the addition ones. 
 
-## Synthesis
+## Summary
 
 We have answered now to the initial questions: we understand how these snippets are constructed. This enables to construct variants and to derive subtraction from addition. It is remarkable that it is possible to write these snippets with a reversed string as the only difference :
 
