@@ -303,7 +303,7 @@ The conversion to sed is straightforward:
 
 ## Addition and subtraction of digits
 
-The addition and subtraction snippets are borrowed from Greg Ubben dc. They use very interesting techniques which are fully detailed [here](analysis/Adding and subtracting digits with sed.md).
+The addition and subtraction snippets are borrowed from Greg Ubben dc. They use very interesting techniques which are fully detailed [here](analysis/Adding&#32;and&#32;subtracting&#32;digits&#32;with&#32;sed.md).
 
 ![addsub](analysis/addsub.jpg)
 
