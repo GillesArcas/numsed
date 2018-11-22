@@ -9,18 +9,13 @@ Computing with sed: compiling python into sed
 * [Getting started](#getting-started)
 * [Compilation process](#compilation-process)
 * [ Command line](#command-line)
-  * [Filename parameter](#filename-parameter)
-  * [Action parameter](#action-parameter)
-  * [Transformation parameter](#transformation-parameter)
-  * [Format parameter](#format-parameter)
 * [ Testing](#testing)
 * [Opcodes](#opcodes)
 * [ numsed virtual machine](#numsed-virtual-machine)
 * [Calls and returns](#calls-and-returns)
+* [Addition and subtraction of digits](#addition-and-subtraction-of-digits)
+* [Computability](#computability)
 * [ Links](#links)
-  * [Abstract syntax tree](#abstract-syntax-trees)
-  * [Opcodes](#dis-and-opcodes)
-  * [Sed](#sed)
 
 ## Description
 
@@ -305,6 +300,34 @@ The conversion to sed is straightforward:
     s/^L1$//t L1
     s/^L2$//t L2
     ...
+
+## Addition and subtraction of digits
+
+The addition and subtraction snippets are borrowed from Greg Ubben dc. They use very interesting techniques which are fully detailed [here](analysis/Adding and subtracting digits with sed.md).
+
+![addsub](analysis/addsub.jpg)
+
+## Computability
+
+It is well known that sed is Turing complete. They are several demonstrations:
+
+* an implementation of dc (unix desktop calculator), 1997, Greg Ubben:
+
+  http://sed.sourceforge.net/grabbag/scripts/dc_overview.htm
+
+  http://sed.sourceforge.net/grabbag/scripts/dc.sed
+
+* an implementation of a Turing machine, 2001, Christophe Blaess:
+
+  http://sed.sourceforge.net/grabbag/scripts/turing.txt
+
+  http://sed.sourceforge.net/grabbag/scripts/turing.sed
+
+* an implementation of lisp, 2014, Shinichiro Hamaji:
+
+  https://github.com/shinh/sedlisp
+
+numsed adds its contribution by adding the first compiler from a (almost) real language to sed.
 
 ## Links
 

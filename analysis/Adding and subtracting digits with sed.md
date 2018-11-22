@@ -345,7 +345,7 @@ s/.{10}(.)\d{0,9}(\d{0,1})\d*/1\1\2/
 s/1\d(\d)/0\1/
 ```
 
-To finish on a colorful note, the following figures illustrates the working of the snippets by highlighting the string constructed with the second subst: \3 in blue, \5 in green, \4 in magenta. The digits extracted in third subst are furthermore highlighted with a yellow background.Two first columns are additions, two last columns are subtraction.
+To finish on a colorful note, the following figures illustrates the working of the snippets by highlighting the string constructed with the second subst: \3 in blue, \5 in green, \4 in magenta. The digits extracted in third subst are furthermore highlighted with a yellow background. Two first columns are additions, two last columns are subtraction.
 
 ![addsub](addsub.jpg)
 
