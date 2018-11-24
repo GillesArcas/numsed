@@ -55,15 +55,15 @@ Even if sed doesn't know integers, it has an operator handling explicitly intege
 
 ##### Shifting indexes
 
-To use the bracket quantifier as an index of constant value, we have to change string it works on while keeping the result of the indexation. To do that, we use this simple identity:
+To use the bracket quantifier as an index of constant value, we have to change the string it works on while keeping the result of the indexation. To do that, we use this simple identity:
 
 ```
 s[x] = (r + s)[x + len(r)]     (i)
 ```
 
-With these three techniques, the addition and subtraction snippets construct a strings with pieces of the sequences 012345678 and 9876543210, and find the result digit with a constant index.
+With these three techniques, the addition and subtraction snippets construct a string from pieces of the sequences 012345678 and 9876543210, and find the result digit with a constant index.
 
-##Notations
+## Notations
 
 To simplify writing, we use the following notations. Given two digits a and b, we note [ab] the string made of ascending digits from a to b if a <= b, or the string of descending digits if a > b. In practice, we use only strings of the following types:  [0a] ('012...a'), [a9] ('a...798'), [9a] ('98... a') or [a0] ('a...210').
 
@@ -102,8 +102,10 @@ c = [a0][a - c]     if a >= c     (ii')
 <summary>details</summary>
 
 ```
-[a9][c - a] = ([0a[ +  [a9])[c - a + a] = [09][c] = c
-[a0][a - c] = ([9a[ + [a0])[a - c + (9 - a)] = [90][9 - c] = c
+[a9][c - a] = ([0a[ +  [a9])[c - a + a]        using (i)  
+            = [09][c] = c
+[a0][a - c] = ([9a[ + [a0])[a - c + (9 - a)]   using (i) 
+            = [90][9 - c] = c
 ```
 </details>
 
@@ -180,7 +182,7 @@ Note that this always matches, whether the 21st digit exists or not.
 4th step: if the 21st digit has been found, there is a carry to 1 and we set it. Otherwise we have a carry to 0 and it is already there.
 
 ```
-s/0\d(\d)/1\1/                                 PS: 0x if a + b <= 9, ou 1x si >= 9
+s/0\d(\d)/1\1/                                 PS: 0x if a + b <= 9, or 1x if a + b > 9
 ```
 
 That's it.
@@ -206,8 +208,7 @@ a + b = [b9][a + b - b]                        using (ii)
       = [b9][a]
       = [b9][10 - (10 - a)]
       = ([a9] + [b9])[10]
-      = ([a9] + [b9] + [09])[10]               len([a9] + [b9]) >= 10, adding [09] does
-          									   not change the result
+      = ([a9] + [b9] + [09])[10]               len([a9] + [b9]) >= 10, adding [09] does not change the result
 
 * if a + b >= 10
 
@@ -216,8 +217,7 @@ a + b - 10 = [09][a + b - 10]
            = ([a9] + [b9] + [09])[10]
 ```
 </details>
-
-
+<br/>
 
 We obtain the following snippet.
 
@@ -309,8 +309,7 @@ If a < b:
            = ([9b] + [a0] + [90])[10])
 ```
 </details>
-
-
+<br/>
 
 Here are the two snippets. They start with two digits ab in PS and finish with two digits c, d = (0, a - b) if a >= b else (1, 10 + a - b).
 
@@ -349,7 +348,7 @@ s/.{10}(.)\d{0,9}(\d{0,1})\d*/1\1\2/
 s/1\d(\d)/0\1/
 ```
 
-To finish on a visual note, the following figures illustrates the working of the snippets by highlighting the string constructed with the second subst: \3 in blue, \5 in green, \4 in magenta. The digits extracted in third subst are furthermore highlighted with a yellow background. Two first columns are additions, two last columns are subtraction.
+To finish on a visual note, the following figures illustrates the working of the snippets by highlighting the string constructed with the second subst: \3 in blue, \5 in green, \4 in magenta. The digits extracted in third subst are furthermore highlighted with a yellow background. Two first columns are additions of the two white digits, two last columns are subtraction.
 
 ![addsub](addsub.jpg)
 
