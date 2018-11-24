@@ -2,7 +2,7 @@
 
 ##       Goal
 
-numsed uses sed snippets extracted from Greg Ubben'[dc](http://sed.sourceforge.net/grabbag/scripts/dc.sed) for digit addition and subtraction. We analyze here simplified versions of the snippets without carry (nor decimal part as in dc).
+numsed uses sed snippets extracted from Greg Ubben'[dc](http://sed.sourceforge.net/grabbag/scripts/dc.sed) for digit addition and subtraction. We analyse here some simplified versions of the snippets without carry (nor decimal part as in dc).
 
 ##### Snippet for adding two digits
 
@@ -40,7 +40,7 @@ These snippets use the following techniques:
 
 ##### Look up tables
 
-This has been described by Greg Ubben (archived [here](http://sed.sourceforge.net/grabbag/tutorials/lookup_tables.txt)). Look up tables are used here to construct various substrings from the sequences 0123456789 and 9876543210. For instance, to construct a string of length a we can write:
+This has been described by Greg Ubben (archived [here](http://sed.sourceforge.net/grabbag/tutorials/lookup_tables.txt)). Look up tables are used here to construct various substrings from the sequences 0123456789 and 9876543210. For instance, to construct a string of a given length we can write:
 
 ```
 s/(.)/\1;0123456789/
@@ -157,7 +157,7 @@ To complete, we note that if a + b <= 9, (]a0] + [b0] + [90])[20] is not defined
 
 We assume that PS contains the two digits to add, PS = ab, when starting the snippet.
 
-1st step: we construct a double look up table used to extract ]a0] et [b0] :
+1st step: we construct a double look up table to be used to extract ]a0] and [b0] :
 
 ```
 s/(..)/\1;9876543210;9876543210/               PS: ab;9876543210;9876543210
@@ -172,8 +172,10 @@ s/(.)(.);\d*\1(\d*);(\d*(\2\d*))/\3\5\4/       PS: ]a0] + [b0] + [90]
 3rd step: we keep in PS the 11th digit and the 21st if it exists. Carry is anticipated by adding a zero.
 
 ```
-s/.{10}(.)\d{0,9}(\d{0,1})\d*/0\2\1/           PS: 0x if a + b <= 9, or 0xx if >= 9
+s/.{10}(.)\d{0,9}(\d{0,1})\d*/0\1\2/           PS: 0x if a + b <= 9, or 0xx if >= 9
 ```
+
+Note that this always matches, whether the 21st digit exists or not.  
 
 4th step: if the 21st digit has been found, there is a carry to 1 and we set it. Otherwise we have a carry to 0 and it is already there.
 
@@ -215,6 +217,8 @@ a + b - 10 = [09][a + b - 10]
 ```
 </details>
 
+
+
 We obtain the following snippet.
 
 ```
@@ -226,7 +230,7 @@ s/1\d(\d)/0\1/
 
 ##### Using 0123456789 or 9876543210 for offset
 
-In the expressions we have exhibited, the first sequence is simply used as an offset and can be replaced with any string of the same length. For instance, the two following form are equivalent. 
+In the expressions we have exhibited, the first sequence is simply used as an offset and can be replaced with any string of the same length. For instance, the two following forms are equivalent. 
 
 ```
 s/(..)/\1;9876543210;.../
@@ -345,7 +349,7 @@ s/.{10}(.)\d{0,9}(\d{0,1})\d*/1\1\2/
 s/1\d(\d)/0\1/
 ```
 
-To finish on a colorful note, the following figures illustrates the working of the snippets by highlighting the string constructed with the second subst: \3 in blue, \5 in green, \4 in magenta. The digits extracted in third subst are furthermore highlighted with a yellow background. Two first columns are additions, two last columns are subtraction.
+To finish on a visual note, the following figures illustrates the working of the snippets by highlighting the string constructed with the second subst: \3 in blue, \5 in green, \4 in magenta. The digits extracted in third subst are furthermore highlighted with a yellow background. Two first columns are additions, two last columns are subtraction.
 
 ![addsub](addsub.jpg)
 
