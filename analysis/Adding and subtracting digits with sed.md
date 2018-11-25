@@ -2,7 +2,7 @@
 
 ##       Goal
 
-numsed uses sed snippets extracted from Greg Ubben'[dc](http://sed.sourceforge.net/grabbag/scripts/dc.sed) for digit addition and subtraction. We analyse here some simplified versions of the snippets without carry (nor decimal part as in dc).
+numsed uses sed snippets extracted from Greg Ubben'[dc](http://sed.sourceforge.net/grabbag/scripts/dc.sed) for digit addition and subtraction. We analyse here simplified versions of the snippets without carry (nor decimal part as in dc).
 
 ##### Snippet for adding two digits
 
@@ -36,7 +36,7 @@ The goal of this discussion is:
 
 ##       Techniques
 
-These snippets use the following techniques:
+We will see that these snippets use the following techniques:
 
 ##### Look up tables
 
@@ -123,7 +123,7 @@ a + b = [90][9 - (a + b)]                      using (ii')
 
 We see here the application of the constant index technique: we have constructed a string which gives the expected result with a constant index. Note also that ]a0] is not used in the indexation and could be replaced by any string of length a.
 
-2/ When a + b > 9, we search the digit  a + b - 10 in the string [90]. 
+2/ When a + b > 9, we search again the digit  a + b - 10 in the string [90]. 
 
 ```
 a + b - 10 = [90][9 - (a + b - 10)]            using (ii')
