@@ -2,7 +2,7 @@
 
 ##       Goal
 
-numsed uses sed snippets extracted from Greg Ubben'[dc](http://sed.sourceforge.net/grabbag/scripts/dc.sed) for digit addition and subtraction. We analyse here simplified versions of the snippets without carry (nor decimal part as in dc).
+numsed uses sed snippets extracted from Greg Ubben'[dc](http://sed.sourceforge.net/grabbag/scripts/dc.sed) for digit addition and subtraction. We analyse here simplified versions of the snippets without carry (nor sign and decimal part as in dc).
 
 ##### Snippet for adding two digits
 
