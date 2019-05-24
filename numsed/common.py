@@ -73,21 +73,29 @@ def run(cmd, echo=True):
 def testlines(name):
     '''
     yield each test in a test suite
+
+    Tests are made of a script section and an optional result section when
+    numsed result is different from python result. Tests are separated with
+    comments including '---'. Optional results are introduced with comments
+    including '==='.
+    Returns the lines of the script and the optional result (None when absent).
     '''
-    lines = []
-    result = None
-    dest = lines
+    script_lines = []
+    result_lines = None
+    dest = script_lines
     with open(name) as f:
         for line in f:
-            if line.startswith('#') and '===' in line:
-                result = []
-                dest = result
-            elif line.startswith('#') and '---' in line:
-                yield lines, result
-                lines = []
-                result = None
-                dest = lines
+            if line.startswith('#') and '---' in line:
+                yield script_lines, result_lines
+                script_lines = []
+                result_lines = None
+                dest = script_lines
+            elif line.startswith('#') and '===' in line:
+                result_lines = []
+                dest = result_lines
             else:
+                # append to script lines in script section, to result lines in
+                # result setion
                 dest.append(line)
 
 
